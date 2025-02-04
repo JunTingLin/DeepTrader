@@ -116,8 +116,10 @@ class RLAgent():
                 = self.actor(x_a, x_m, masks, deterministic=False)
 
             ror = torch.from_numpy(self.env.ror).to(self.args.device)
-            normed_ror = (ror - torch.mean(ror, dim=-1, keepdim=True)) / \
-                         torch.std(ror, dim=-1, keepdim=True)
+            # normed_ror = (ror - torch.mean(ror, dim=-1, keepdim=True)) / \
+            #              torch.std(ror, dim=-1, keepdim=True)
+            normed_ror = (ror - torch.min(ror, dim=-1, keepdim=True).values) / \
+                         (torch.max(ror, dim=-1, keepdim=True).values - torch.min(ror, dim=-1, keepdim=True).values)
 
             next_states, rewards, rho_labels, masks, done, info = \
                 self.env.step(weights, rho.detach().cpu().numpy())
