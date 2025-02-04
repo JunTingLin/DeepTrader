@@ -23,7 +23,6 @@
     ],
     "num_assets": 30,
     "G": 4,
-    "mode": "train",
     "num_rounds": 80000,
     "max_grad_norm": 100.0,
     "weight_decay": 0.001,

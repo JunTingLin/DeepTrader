@@ -24,7 +24,6 @@ class DataGenerator():
                  norm_type='div-last',
                  window_len=20,
                  trade_len=7,
-                 mode='train',
                  allow_short=True,
                  ):
 
@@ -39,7 +38,6 @@ class DataGenerator():
         self.norm_type = norm_type
         self.window_len = window_len
         self.trade_len = trade_len
-        self.mode = mode
         self.allow_short = allow_short
 
         self.__org_assets_data = assets_data.copy()[:, :, :in_features[0]]
@@ -396,7 +394,6 @@ class PortfolioEnv(object):
                  norm_type='div-last',
                  is_norm=True,
                  allow_short=True,
-                 mode='train',
                  assets_name=None,
                  ):
 
@@ -409,12 +406,11 @@ class PortfolioEnv(object):
         self.val_idx = val_idx
         self.test_idx = test_idx
         self.allow_short = allow_short
-        self.mode = mode
 
         self.src = DataGenerator(assets_data=assets_data, rtns_data=rtns_data, market_data=market_data,
                                  in_features=in_features, val_idx=val_idx, test_idx=test_idx,
                                  batch_size=batch_size, max_steps=max_steps, norm_type=norm_type,
-                                 window_len=window_len, trade_len=trade_len, mode=mode, allow_short=allow_short)
+                                 window_len=window_len, trade_len=trade_len, allow_short=allow_short)
 
         self.sim = PortfolioSim(num_assets=self.num_assets, fee=fee, time_cost=time_cost, allow_short=allow_short)
 
