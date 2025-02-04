@@ -171,6 +171,37 @@ class RLAgent():
         return rtns, avg_rho, avg_mdd
 
     def evaluation(self, logger=None):
+        self.__set_eval()
+        states, masks = self.env.reset()
+
+        steps = 0
+        batch_size = states[0].shape[0]
+
+        agent_wealth = np.ones((batch_size, 1), dtype=np.float32)
+        rho_record = []
+        while True:
+            steps += 1
+            x_a = torch.from_numpy(states[0]).to(self.args.device)
+            masks = torch.from_numpy(masks).to(self.args.device)
+            if self.args.msu_bool:
+                x_m = torch.from_numpy(states[1]).to(self.args.device)
+            else:
+                x_m = None
+
+            weights, rho, _, _ \
+                = self.actor(x_a, x_m, masks, deterministic=True)
+            next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
+
+            agent_wealth = np.concatenate((agent_wealth, info['total_value'][..., None]), axis=-1)
+            states = next_states
+
+            if done:
+                break
+
+        return agent_wealth
+    
+
+    def test(self, logger=None):
         self.__set_test()
         states, masks = self.env.reset()
 

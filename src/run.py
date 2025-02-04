@@ -67,7 +67,8 @@ def run(func_args):
         market_history = np.load(data_prefix + 'market_data.npy')
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        test_idx = 2999
+        val_idx = func_args.val_idx
+        test_idx = func_args.test_idx
         allow_short = True
     elif func_args.market == 'HSI':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
@@ -87,7 +88,7 @@ def run(func_args):
         allow_short = False
 
     env = PortfolioEnv(assets_data=stocks_data, market_data=market_history, rtns_data=rate_of_return,
-                        in_features=func_args.in_features, val_idx=test_idx, test_idx=test_idx,
+                        in_features=func_args.in_features, val_idx=val_idx, test_idx=test_idx,
                         batch_size=func_args.batch_size, window_len=func_args.window_len, trade_len=func_args.trade_len,
                         max_steps=func_args.max_steps, norm_type=func_args.norm_type,
                         allow_short=allow_short)
