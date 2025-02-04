@@ -67,7 +67,7 @@ def run(func_args):
             market_history = np.load(data_prefix + 'market_data.npy')
             assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
             A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-            test_idx = 7328
+            test_idx = 2999
             allow_short = True
         elif func_args.market == 'HSI':
             stocks_data = np.load(data_prefix + 'stocks_data.npy')

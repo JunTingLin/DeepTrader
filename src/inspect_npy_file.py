@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 def verify_data(file_path):
     data = np.load(file_path, allow_pickle=True)
@@ -8,10 +7,10 @@ def verify_data(file_path):
     print(f"Data Shape: {data.shape}")
     print(f"Data Type: {data.dtype}")
 
-    # 檢查 NaN 和 Inf 值
     print(f"Checking {file_path}")
     print("NaN count:", np.isnan(data).sum() if np.issubdtype(data.dtype, np.floating) else "Not Applicable")
     print("Inf count:", np.isinf(data).sum() if np.issubdtype(data.dtype, np.floating) else "Not Applicable")
+    print("0 count:", (data == 0).sum() if np.issubdtype(data.dtype, np.floating) else "Not Applicable")
 
     print("\n")
 
