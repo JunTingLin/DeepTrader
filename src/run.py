@@ -102,13 +102,23 @@ def run(func_args):
         max_cr = 0
         for epoch in range(func_args.epochs):
             epoch_return = 0
+            epoch_loss = 0
             for j in tqdm(range(mini_batch_num)):
-                episode_return, avg_rho, avg_mdd = agent.train_episode()
+                episode_return, avg_rho, avg_mdd, episode_loss = agent.train_episode()
                 epoch_return += episode_return
+                epoch_loss += episode_loss
             avg_train_return = epoch_return / mini_batch_num
-            logger.warning('[%s]round %d, avg train return %.4f, avg rho %.4f, avg mdd %.4f' %
-                            (start_time, epoch, avg_train_return, avg_rho, avg_mdd))
+            avg_epoch_loss = epoch_loss / mini_batch_num
+            logger.warning('[%s]round %d, avg train return %.4f, avg rho %.4f, avg mdd %.4f, avg loss %.4f' %
+                            (start_time, epoch, avg_train_return, avg_rho, avg_mdd, avg_epoch_loss))
+            writer.add_scalar('Train/Loss', avg_epoch_loss, global_step=epoch)
+            writer.add_scalar('Train/Return', avg_train_return, global_step=epoch)
+            writer.add_scalar('Train/Rho', avg_rho, global_step=epoch)
+            writer.add_scalar('Train/MDD', avg_mdd, global_step=epoch)
+
             agent_wealth = agent.evaluation()
+            logger.warning('agent_wealth: %s' % agent_wealth)
+            logger.warning('agent_wealth shape: %s' % agent_wealth.shape)
             metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
             writer.add_scalar('Test/APR', metrics['APR'], global_step=epoch)
             writer.add_scalar('Test/MDD', metrics['MDD'], global_step=epoch)

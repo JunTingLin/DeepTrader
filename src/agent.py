@@ -163,12 +163,14 @@ class RLAgent():
                 loss.backward()
                 grad_norm, grad_norm_clip = self.clip_grad_norms(self.optimizer.param_groups, self.args.max_grad_norm)
                 self.optimizer.step()
+
+                loss_val = loss.item()
                 break
 
         rtns = (agent_wealth[:, -1] / agent_wealth[:, 0]).mean()
         avg_rho = np.mean(rho_records)
         avg_mdd = mdd.mean()
-        return rtns, avg_rho, avg_mdd
+        return rtns, avg_rho, avg_mdd, loss_val
 
     def evaluation(self, logger=None):
         self.__set_eval()
