@@ -3,96 +3,214 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
-
 from utils.functions import calculate_metrics
-
 
 logging.basicConfig(level=logging.INFO)
 
-def main():
+TRADE_MODE = "M"
+TRADE_LEN = 21
+TARGET_DIR = "."
+START_DATE = "2000-01-01"
+END_DATE = "2023-12-31"
 
-    msu_dynamic = np.array([[1.0, 1.01020549, 0.99331695, 1.00888751, 0.91067623, 0.94109122,
-                            0.99255158, 0.90993389, 0.92367026, 0.8669656, 0.79741821, 0.7472606,
-                            0.76437693, 0.81799155, 0.82616172, 0.80434067, 0.79941158, 0.86251101,
-                            0.87476584, 0.88833666, 0.9055071, 0.88670873, 0.97932383, 0.90542295,
-                            0.92803245, 0.93608238, 0.87691841, 0.87936126, 0.84496004, 0.87683084,
-                            0.90423617, 0.95408367, 0.98435162, 0.9835528, 0.96263212, 0.93534184,
-                            0.91410835, 0.92525288, 0.93584364, 1.0360557, 1.02484125, 0.97727914,
-                            0.94051327, 0.92342561, 0.88508903]])
+def load_agent_wealth():
+    """
+    Load and flatten agent wealth arrays for validation and test.
+    Expected shape of each loaded array is (1, 101).
+    """
+    val_w_MSU_dynamic = np.load('agent_wealth_val_w_MSU_dynamic.npy').flatten()
+    val_w_MSU_rho0    = np.load('agent_wealth_val_w_MSU_rho0.npy').flatten()
+    val_w_MSU_rho05   = np.load('agent_wealth_val_w_MSU_rho05.npy').flatten()
+    val_w_MSU_rho1    = np.load('agent_wealth_val_w_MSU_rho1.npy').flatten()
     
+    test_w_MSU_dynamic = np.load('agent_wealth_test_w_MSU_dynamic.npy').flatten()
+    test_w_MSU_rho0    = np.load('agent_wealth_test_w_MSU_rho0.npy').flatten()
+    test_w_MSU_rho05   = np.load('agent_wealth_test_w_MSU_rho05.npy').flatten()
+    test_w_MSU_rho1    = np.load('agent_wealth_test_w_MSU_rho1.npy').flatten()
+    
+    return {
+        'val_w_MSU_dynamic': val_w_MSU_dynamic,
+        'val_w_MSU_rho0': val_w_MSU_rho0,
+        'val_w_MSU_rho05': val_w_MSU_rho05,
+        'val_w_MSU_rho1': val_w_MSU_rho1,
+        'test_w_MSU_dynamic': test_w_MSU_dynamic,
+        'test_w_MSU_rho0': test_w_MSU_rho0,
+        'test_w_MSU_rho05': test_w_MSU_rho05,
+        'test_w_MSU_rho1': test_w_MSU_rho1
+    }
 
-    # Flatten arrays to shape (48,) if necessary
-    if msu_dynamic.ndim == 2 and msu_dynamic.shape[0] == 1:
-        msu_dynamic = msu_dynamic[0]
-        logging.info(f"msu_dynamic shape: {msu_dynamic.shape}")
-    # if msu_rho0.ndim == 2 and msu_rho0.shape[0] == 1:
-    #     msu_rho0 = msu_rho0[0]
-    # if msu_rho05.ndim == 2 and msu_rho05.shape[0] == 1:
-    #     msu_rho05 = msu_rho05[0]
-    # if msu_rho1.ndim == 2 and msu_rho1.shape[0] == 1:
-    #     msu_rho1 = msu_rho1[0]
+def get_business_day_segments():
+    """
+    Generate the full business day date range (6260 days) and split into:
+      - Training: indices 0 to 2042 (2043 days)
+      - Validation: indices 2043 to 4150 (2108 days)
+      - Test: indices 4151 to 6259 (2109 days)
+    """
+    full_days = pd.bdate_range(start=START_DATE, end=END_DATE)
+    total_days = len(full_days)
+    logging.info(f"Total business days: {total_days}")
     
-    # Generate all business days
-    all_days = pd.bdate_range(start='2010-01-01', end='2025-01-31')
-    # Select 1000 test days
-    test_daily_dates = all_days[3000:3936]
-    logging.info(f"Test period length = {len(test_daily_dates)} days")
-    logging.info(f"Start date = {test_daily_dates[0]}")
-    logging.info(f"End date = {test_daily_dates[-1]}")
+    train_days = full_days[0:2043]
+    val_days   = full_days[2043:4151]
+    test_days  = full_days[4151:6260]
     
-    # Download DJIA data directly using yfinance for the test period
+    logging.info(f"Training days: {len(train_days)}")
+    logging.info(f"Validation days: {len(val_days)}")
+    logging.info(f"Test days: {len(test_days)}")
+    
+    return full_days, train_days, val_days, test_days
+
+def download_djia_data(full_days):
+    """
+    Download DJIA data for the period covering full_days,
+    reindex to the full business day range and fill missing values.
+    """
     djia_ticker = yf.Ticker("^DJI")
-    df_djia = djia_ticker.history(start=test_daily_dates[0].strftime("%Y-%m-%d"),
-                                  end=test_daily_dates[-1].strftime("%Y-%m-%d"))
-    # Remove timezone information from the index
+    df_djia = djia_ticker.history(start=full_days[0].strftime("%Y-%m-%d"),
+                                  end=full_days[-1].strftime("%Y-%m-%d"))
     df_djia.index = df_djia.index.tz_localize(None)
-
-    # Reindex to the test daily dates and forward-fill missing values
-    df_djia = df_djia.reindex(test_daily_dates)
+    df_djia = df_djia.reindex(full_days)
     df_djia.replace(0, np.nan, inplace=True)
     df_djia.ffill(inplace=True)
     df_djia.bfill(inplace=True)
-    
-    # Compute cumulative wealth using Close prices (Buy & Hold strategy)
+    return df_djia
+
+def compute_cumulative_wealth(df_djia):
+    """
+    Compute cumulative wealth from DJIA Close prices using a Buy & Hold strategy.
+    Rebase the series so that it starts at 1.
+    """
     djia_close = df_djia["Close"].copy()
     daily_return = djia_close.pct_change().fillna(0.0)
-    djia_wealth_daily = (1.0 + daily_return).cumprod()
-    # Resample DJIA wealth to 21-day intervals to match the DeepTrader sample dates
-    djia_wealth = djia_wealth_daily.iloc[::21].reset_index(drop=True)
-    logging.info(f"DJIA cumulative return shape: {djia_wealth.shape}")
+    wealth_daily = (1.0 + daily_return).cumprod()
+    wealth_rebased = wealth_daily / wealth_daily.iloc[0]  # rebasing: divide by the first value
+    return wealth_rebased
+
+def resample_series(series, num_points=101):
+    """
+    Resample a pandas Series to a fixed number of points.
+    This function simply selects num_points evenly spaced indices from the series.
+    """
+    indices = np.linspace(0, len(series) - 1, num_points, dtype=int)
+    return series.iloc[indices].values
+
+def calculate_all_metrics(series_dict, label_suffix=""):
+    """
+    Calculate metrics for each wealth series using the calculate_metrics function.
+    """
+    metrics_results = {}
+    for key, series in series_dict.items():
+        reshaped = series.reshape(1, -1)  # ensure shape is (1, num_points)
+        metrics_results[key + label_suffix] = calculate_metrics(reshaped, TRADE_MODE)
+    return metrics_results
+
+def plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict):
+    """
+    Plot the full timeline with background shading for Training, Validation, and Test segments.
+    For Validation and Test segments, overlay DJIA and agent wealth trends.
+    """
+    plt.figure(figsize=(14, 7))
     
-    # x_sub: Dates corresponding to the 48 sample points (every 21 days)
-    day_list = list(range(0, len(test_daily_dates), 21))  # e.g., 0, 21, 42, ... (~48 points)
-    x_sub = test_daily_dates[day_list]
+    # Plot background shading for each segment
+    plt.axvspan(train_days[0], train_days[-1], facecolor='gray', alpha=0.1, label='Training Period')
+    plt.axvspan(val_days[0], val_days[-1], facecolor='gray', alpha=0.3, label='Validation Period')
+    plt.axvspan(test_days[0], test_days[-1], facecolor='gray', alpha=0.5, label='Test Period')
     
-    # Plot multiple curves 
-    plt.figure(figsize=(10, 6))
+    def resample_dates(dates, num_points=101):
+        indices = np.linspace(0, len(dates) - 1, num_points, dtype=int)
+        return dates[indices]
     
-    # Plot DJIA (21-day data)
-    plt.plot(x_sub, djia_wealth, color='black', linestyle='--', marker='o',
-             label='DJIA (Buy & Hold, 21-day)')
+    val_dates_sampled = resample_dates(val_days)
+    test_dates_sampled = resample_dates(test_days)
     
-    # Plot DeepTrader results with different MSU settings
-    plt.plot(x_sub, msu_dynamic, color='blue', linestyle='-', marker='o',
-             label='DeepTrader (MSU dynamic ρ)')
-    # plt.plot(x_sub, msu_rho0, color='red', linestyle='--', marker='s',
-    #          label='DeepTrader (MSU, ρ=0)')
-    # plt.plot(x_sub, msu_rho05, color='green', linestyle='-.', marker='^',
-    #          label='DeepTrader (MSU, ρ=0.5)')
-    # plt.plot(x_sub, msu_rho1, color='orange', linestyle=':', marker='D',
-    #          label='DeepTrader (MSU, ρ=1)')
+    # Resample DJIA wealth for Validation and Test segments and rebase to start at 1
+    djia_wealth_val = resample_series(djia_wealth_daily[val_days])
+    djia_wealth_val = djia_wealth_val / djia_wealth_val[0]
+    djia_wealth_test = resample_series(djia_wealth_daily[test_days])
+    djia_wealth_test = djia_wealth_test / djia_wealth_test[0]
     
-    plt.title(f"DeepTrader vs. DJIA ({len(test_daily_dates)} Days Test)", fontsize=16)
+    # Plot DJIA wealth trends (black)
+    plt.plot(val_dates_sampled, djia_wealth_val, color='black', linestyle='-', marker='o', label='DJIA (Validation)')
+    plt.plot(test_dates_sampled, djia_wealth_test, color='black', linestyle='--', marker='o', label='DJIA (Test)')
+    
+    # Plot agent wealth curves for Validation
+    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_dynamic'], color='blue', linestyle='-', marker='o', label='Dynamic (Val)')
+    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho0'],    color='red', linestyle='--', marker='s', label='ρ=0 (Val)')
+    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho05'],   color='green', linestyle='-.', marker='^', label='ρ=0.5 (Val)')
+    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho1'],    color='orange', linestyle=':', marker='D', label='ρ=1 (Val)')
+    
+    # Plot agent wealth curves for Test
+    plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_dynamic'], color='blue', linestyle='-', marker='o', label='Dynamic (Test)')
+    plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_rho0'],    color='red', linestyle='--', marker='s', label='ρ=0 (Test)')
+    plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_rho05'],   color='green', linestyle='-.', marker='^', label='ρ=0.5 (Test)')
+    plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_rho1'],    color='orange', linestyle=':', marker='D', label='ρ=1 (Test)')
+    
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)
+    plt.title("DeepTrader vs. DJIA", fontsize=16)
     plt.grid(True)
-    plt.legend(fontsize=12)
+    plt.legend(fontsize=10, loc='upper left')
     plt.tight_layout()
     plt.show()
 
-    djia_wealth = djia_wealth.to_frame().T.to_numpy()
-    metrics = calculate_metrics(djia_wealth, "M")
-    print(metrics)
+def main():
+    # Load agent wealth arrays and flatten them
+    agent_wealth = load_agent_wealth()
+    
+    # Get full business day range and segments
+    full_days, train_days, val_days, test_days = get_business_day_segments()
+    
+    # Download DJIA data and compute daily cumulative wealth (rebased to 1)
+    df_djia = download_djia_data(full_days)
+    djia_wealth_daily = compute_cumulative_wealth(df_djia)
+    
+    # Prepare agent wealth segments for Validation and Test (rebased to start at 1)
+    wealth_val_dict = {
+        'val_w_MSU_dynamic': agent_wealth['val_w_MSU_dynamic'] / agent_wealth['val_w_MSU_dynamic'][0],
+        'val_w_MSU_rho0':    agent_wealth['val_w_MSU_rho0'] / agent_wealth['val_w_MSU_rho0'][0],
+        'val_w_MSU_rho05':   agent_wealth['val_w_MSU_rho05'] / agent_wealth['val_w_MSU_rho05'][0],
+        'val_w_MSU_rho1':    agent_wealth['val_w_MSU_rho1'] / agent_wealth['val_w_MSU_rho1'][0]
+    }
+    wealth_test_dict = {
+        'test_w_MSU_dynamic': agent_wealth['test_w_MSU_dynamic'] / agent_wealth['test_w_MSU_dynamic'][0],
+        'test_w_MSU_rho0':    agent_wealth['test_w_MSU_rho0'] / agent_wealth['test_w_MSU_rho0'][0],
+        'test_w_MSU_rho05':   agent_wealth['test_w_MSU_rho05'] / agent_wealth['test_w_MSU_rho05'][0],
+        'test_w_MSU_rho1':    agent_wealth['test_w_MSU_rho1'] / agent_wealth['test_w_MSU_rho1'][0]
+    }
+    
+    # Calculate metrics for each series using calculate_metrics.
+    metrics_val = calculate_all_metrics({
+        'val_w_MSU_dynamic': wealth_val_dict['val_w_MSU_dynamic'],
+        'val_w_MSU_rho0': wealth_val_dict['val_w_MSU_rho0'],
+        'val_w_MSU_rho05': wealth_val_dict['val_w_MSU_rho05'],
+        'val_w_MSU_rho1': wealth_val_dict['val_w_MSU_rho1']
+    }, label_suffix=" (Val)")
+    
+    metrics_test = calculate_all_metrics({
+        'test_w_MSU_dynamic': wealth_test_dict['test_w_MSU_dynamic'],
+        'test_w_MSU_rho0': wealth_test_dict['test_w_MSU_rho0'],
+        'test_w_MSU_rho05': wealth_test_dict['test_w_MSU_rho05'],
+        'test_w_MSU_rho1': wealth_test_dict['test_w_MSU_rho1']
+    }, label_suffix=" (Test)")
+    
+    # Also calculate metrics for DJIA wealth segments.
+    djia_wealth_val = resample_series(djia_wealth_daily[val_days])
+    djia_wealth_val = djia_wealth_val / djia_wealth_val[0]
+    djia_wealth_test = resample_series(djia_wealth_daily[test_days])
+    djia_wealth_test = djia_wealth_test / djia_wealth_test[0]
+    
+    metrics_djia_val = calculate_metrics(djia_wealth_val.reshape(1, -1), TRADE_MODE)
+    metrics_djia_test = calculate_metrics(djia_wealth_test.reshape(1, -1), TRADE_MODE)
+    
+    logging.info("Validation Metrics:")
+    logging.info(metrics_val)
+    logging.info(f"DJIA (Val): {metrics_djia_val}")
+    logging.info("Test Metrics:")
+    logging.info(metrics_test)
+    logging.info(f"DJIA (Test): {metrics_djia_test}")
+    
+    # Plot the results with the full business day x-axis and different background colors.
+    plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
 
 if __name__ == "__main__":
     main()
