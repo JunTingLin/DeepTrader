@@ -118,7 +118,7 @@ def run(func_args):
 
             agent_wealth = agent.evaluation()
             logger.warning('agent_wealth: %s' % agent_wealth)
-            logger.warning('agent_wealth shape: %s' % agent_wealth.shape)
+            logger.warning('agent_wealth shape: %s', agent_wealth.shape)
             metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
             writer.add_scalar('Test/APR', metrics['APR'], global_step=epoch)
             writer.add_scalar('Test/MDD', metrics['MDD'], global_step=epoch)
