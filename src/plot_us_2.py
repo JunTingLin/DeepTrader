@@ -21,21 +21,34 @@ def load_agent_wealth():
     val_w_MSU_rho0    = np.load('agent_wealth_val_w_MSU_rho0.npy').flatten()
     val_w_MSU_rho05   = np.load('agent_wealth_val_w_MSU_rho05.npy').flatten()
     val_w_MSU_rho1    = np.load('agent_wealth_val_w_MSU_rho1.npy').flatten()
+    val_wo_MSU_rho0   = np.load('agent_wealth_val_wo_MSU_rho0.npy').flatten()
+    val_wo_MSU_rho05  = np.load('agent_wealth_val_wo_MSU_rho05.npy').flatten()
+    val_wo_MSU_rho1   = np.load('agent_wealth_val_wo_MSU_rho1.npy').flatten()
     
     test_w_MSU_dynamic = np.load('agent_wealth_test_w_MSU_dynamic.npy').flatten()
     test_w_MSU_rho0    = np.load('agent_wealth_test_w_MSU_rho0.npy').flatten()
     test_w_MSU_rho05   = np.load('agent_wealth_test_w_MSU_rho05.npy').flatten()
     test_w_MSU_rho1    = np.load('agent_wealth_test_w_MSU_rho1.npy').flatten()
+    test_wo_MSU_rho0   = np.load('agent_wealth_test_wo_MSU_rho0.npy').flatten()
+    test_wo_MSU_rho05  = np.load('agent_wealth_test_wo_MSU_rho05.npy').flatten()
+    test_wo_MSU_rho1   = np.load('agent_wealth_test_wo_MSU_rho1.npy').flatten()
     
     return {
         'val_w_MSU_dynamic': val_w_MSU_dynamic,
         'val_w_MSU_rho0': val_w_MSU_rho0,
         'val_w_MSU_rho05': val_w_MSU_rho05,
         'val_w_MSU_rho1': val_w_MSU_rho1,
+        'val_wo_MSU_rho0': val_wo_MSU_rho0,
+        'val_wo_MSU_rho05': val_wo_MSU_rho05,
+        'val_wo_MSU_rho1': val_wo_MSU_rho1,
+
         'test_w_MSU_dynamic': test_w_MSU_dynamic,
         'test_w_MSU_rho0': test_w_MSU_rho0,
         'test_w_MSU_rho05': test_w_MSU_rho05,
-        'test_w_MSU_rho1': test_w_MSU_rho1
+        'test_w_MSU_rho1': test_w_MSU_rho1,
+        'test_wo_MSU_rho0': test_wo_MSU_rho0,
+        'test_wo_MSU_rho05': test_wo_MSU_rho05,
+        'test_wo_MSU_rho1': test_wo_MSU_rho1
     }
 
 def get_business_day_segments():
@@ -136,17 +149,26 @@ def plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, 
     plt.plot(test_dates_sampled, djia_wealth_test, color='r', linestyle='-', marker='o', label=None)
     
     # For agent wealth, plot each series once (use label only for the first segment)
-    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label='DeepTrader (Dynamic)')
+    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
     plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label=None)
     
-    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (ρ=0)')
+    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
     plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
     
-    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (ρ=0.5)')
+    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
     plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
     
-    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (ρ=1)')
+    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
     plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
+
+    plt.plot(val_dates_sampled, wealth_val_dict['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
+    plt.plot(test_dates_sampled, wealth_test_dict['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
+
+    plt.plot(val_dates_sampled, wealth_val_dict['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
+    plt.plot(test_dates_sampled, wealth_test_dict['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
+
+    plt.plot(val_dates_sampled, wealth_val_dict['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
+    plt.plot(test_dates_sampled, wealth_test_dict['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)
@@ -173,25 +195,42 @@ def plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict,
     djia_monthly_test = rebase_yearly(djia_monthly_test)
     
     # For agent series, convert to pd.Series and rebase yearly
-    val_dynamic = pd.Series(wealth_val_dict['val_w_MSU_dynamic'], index=val_dates)
-    val_dynamic = rebase_yearly(val_dynamic)
-    test_dynamic = pd.Series(wealth_test_dict['test_w_MSU_dynamic'], index=test_dates)
-    test_dynamic = rebase_yearly(test_dynamic)
+    val_w_MSU_dynamic = pd.Series(wealth_val_dict['val_w_MSU_dynamic'], index=val_dates)
+    val_w_MSU_dynamic = rebase_yearly(val_w_MSU_dynamic)
+    test_w_MSU_dynamic = pd.Series(wealth_test_dict['test_w_MSU_dynamic'], index=test_dates)
+    test_w_MSU_dynamic = rebase_yearly(test_w_MSU_dynamic)
     
-    val_rho0 = pd.Series(wealth_val_dict['val_w_MSU_rho0'], index=val_dates)
-    val_rho0 = rebase_yearly(val_rho0)
-    test_rho0 = pd.Series(wealth_test_dict['test_w_MSU_rho0'], index=test_dates)
-    test_rho0 = rebase_yearly(test_rho0)
+    val_w_MSU_rho0 = pd.Series(wealth_val_dict['val_w_MSU_rho0'], index=val_dates)
+    val_w_MSU_rho0 = rebase_yearly(val_w_MSU_rho0)
+    test_w_MSU_rho0 = pd.Series(wealth_test_dict['test_w_MSU_rho0'], index=test_dates)
+    test_w_MSU_rho0 = rebase_yearly(test_w_MSU_rho0)
     
-    val_rho05 = pd.Series(wealth_val_dict['val_w_MSU_rho05'], index=val_dates)
-    val_rho05 = rebase_yearly(val_rho05)
-    test_rho05 = pd.Series(wealth_test_dict['test_w_MSU_rho05'], index=test_dates)
-    test_rho05 = rebase_yearly(test_rho05)
+    val_w_MSU_rho05 = pd.Series(wealth_val_dict['val_w_MSU_rho05'], index=val_dates)
+    val_w_MSU_rho05 = rebase_yearly(val_w_MSU_rho05)
+    test_w_MSU_rho05 = pd.Series(wealth_test_dict['test_w_MSU_rho05'], index=test_dates)
+    test_w_MSU_rho05 = rebase_yearly(test_w_MSU_rho05)
     
-    val_rho1 = pd.Series(wealth_val_dict['val_w_MSU_rho1'], index=val_dates)
-    val_rho1 = rebase_yearly(val_rho1)
-    test_rho1 = pd.Series(wealth_test_dict['test_w_MSU_rho1'], index=test_dates)
-    test_rho1 = rebase_yearly(test_rho1)
+    val_w_MSU_rho1 = pd.Series(wealth_val_dict['val_w_MSU_rho1'], index=val_dates)
+    val_w_MSU_rho1 = rebase_yearly(val_w_MSU_rho1)
+    test_w_MSU_rho1 = pd.Series(wealth_test_dict['test_w_MSU_rho1'], index=test_dates)
+    test_w_MSU_rho1 = rebase_yearly(test_w_MSU_rho1)
+
+
+    val_wo_MSU_rho0 = pd.Series(wealth_val_dict['val_wo_MSU_rho0'], index=val_dates)
+    val_wo_MSU_rho0 = rebase_yearly(val_wo_MSU_rho0)
+    test_wo_MSU_rho0 = pd.Series(wealth_test_dict['test_wo_MSU_rho0'], index=test_dates)
+    test_wo_MSU_rho0 = rebase_yearly(test_wo_MSU_rho0)
+
+    val_wo_MSU_rho05 = pd.Series(wealth_val_dict['val_wo_MSU_rho05'], index=val_dates)
+    val_wo_MSU_rho05 = rebase_yearly(val_wo_MSU_rho05)
+    test_wo_MSU_rho05 = pd.Series(wealth_test_dict['test_wo_MSU_rho05'], index=test_dates)
+    test_wo_MSU_rho05 = rebase_yearly(test_wo_MSU_rho05)
+
+    val_wo_MSU_rho1 = pd.Series(wealth_val_dict['val_wo_MSU_rho1'], index=val_dates)
+    val_wo_MSU_rho1 = rebase_yearly(val_wo_MSU_rho1)
+    test_wo_MSU_rho1 = pd.Series(wealth_test_dict['test_wo_MSU_rho1'], index=test_dates)
+    test_wo_MSU_rho1 = rebase_yearly(test_wo_MSU_rho1)
+
     
     plt.figure(figsize=(12, 6))
     
@@ -204,21 +243,30 @@ def plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict,
     plt.plot(test_dates, djia_monthly_test, color='r', linestyle='-', marker='o', label=None)
     
     # Plot agent monthly wealth trends, one label per series.
-    plt.plot(val_dates, val_dynamic, color='b', linestyle='-', marker='o', label='DeepTrader (Dynamic)')
-    plt.plot(test_dates, test_dynamic, color='b', linestyle='-', marker='o', label=None)
+    plt.plot(val_dates, val_w_MSU_dynamic, color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
+    plt.plot(test_dates, test_w_MSU_dynamic, color='b', linestyle='-', marker='o', label=None)
     
-    plt.plot(val_dates, val_rho0, color='darkblue', linestyle='-', marker='o', label='DeepTrader (ρ=0)')
-    plt.plot(test_dates, test_rho0, color='darkblue', linestyle='-', marker='o', label=None)
+    plt.plot(val_dates, val_w_MSU_rho0, color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
+    plt.plot(test_dates, test_w_MSU_rho0, color='darkblue', linestyle='-', marker='o', label=None)
     
-    plt.plot(val_dates, val_rho05, color='c', linestyle='-', marker='o', label='DeepTrader (ρ=0.5)')
-    plt.plot(test_dates, test_rho05, color='c', linestyle='-', marker='o', label=None)
+    plt.plot(val_dates, val_w_MSU_rho05, color='c', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
+    plt.plot(test_dates, test_w_MSU_rho05, color='c', linestyle='-', marker='o', label=None)
     
-    plt.plot(val_dates, val_rho1, color='steelblue', linestyle='-', marker='o', label='DeepTrader (ρ=1)')
-    plt.plot(test_dates, test_rho1, color='steelblue', linestyle='-', marker='o', label=None)
+    plt.plot(val_dates, val_w_MSU_rho1, color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
+    plt.plot(test_dates, test_w_MSU_rho1, color='steelblue', linestyle='-', marker='o', label=None)
+
+    plt.plot(val_dates, val_wo_MSU_rho0, color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
+    plt.plot(test_dates, test_wo_MSU_rho0, color='limegreen', linestyle='-', marker='o', label=None)
+
+    plt.plot(val_dates, val_wo_MSU_rho05, color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
+    plt.plot(test_dates, test_wo_MSU_rho05, color='g', linestyle='-', marker='o', label=None)
+
+    plt.plot(val_dates, val_wo_MSU_rho1, color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
+    plt.plot(test_dates, test_wo_MSU_rho1, color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth (Monthly, Yearly Rebased)", fontsize=14)
-    plt.title("Monthly Wealth Trends: DeepTrader vs. DJIA (Rebased Each Year)", fontsize=16)
+    plt.title("DeepTrader vs. DJIA (Rebased Each Year)", fontsize=16)
     plt.grid(True)
     plt.legend(fontsize=10, loc='upper left')
     plt.tight_layout()
@@ -233,15 +281,18 @@ def calculate_periodic_returns(data, period):
     returns = resampled.pct_change().dropna()
     return returns
 
-def calculate_win_rate(periodic_returns):
+def calculate_win_rate(periodic_returns, benchmark_column='DowJones'):
     """
-    Calculate win rate as the ratio of periods where AgentWealth is higher than DowJones.
-    Expects a DataFrame with columns 'AgentWealth' and 'DowJones'.
+    Calculate win rate for each agent column as the ratio of periods 
+    where the agent's return is higher than the benchmark's return.
     """
-    wins = (periodic_returns['AgentWealth'] > periodic_returns['DowJones']).sum()
-    total = len(periodic_returns)
-    win_rate = wins / total
-    return win_rate
+    agent_columns = [col for col in periodic_returns.columns if col != benchmark_column]
+    win_rates = {}
+    for col in agent_columns:
+        wins = (periodic_returns[col] > periodic_returns[benchmark_column]).sum()
+        total = len(periodic_returns)
+        win_rates[col] = wins / total
+    return pd.Series(win_rates)
 
 def main():
     # Load agent wealth arrays and flatten them
@@ -253,94 +304,142 @@ def main():
     # Download DJIA data and compute daily cumulative wealth (rebased to 1)
     df_djia = download_djia_data(full_days)
     djia_wealth_daily = compute_cumulative_wealth(df_djia)
+
+    # Resample DJIA wealth for Validation and Test segments and rebase to start at 1
+    djia_wealth_val = resample_series(djia_wealth_daily[val_days], VAL_NUM_POINTS)
+    djia_wealth_val = djia_wealth_val / djia_wealth_val[0]
+    djia_wealth_test = resample_series(djia_wealth_daily[test_days], TEST_NUM_POINTS)
+    djia_wealth_test = djia_wealth_test / djia_wealth_test[0]
     
     # Prepare agent wealth segments (rebased to start at 1)
-    val_dynamic = agent_wealth_dict['val_w_MSU_dynamic'] / agent_wealth_dict['val_w_MSU_dynamic'][0]
-    test_dynamic = agent_wealth_dict['test_w_MSU_dynamic'] / agent_wealth_dict['test_w_MSU_dynamic'][0]
+    val_w_MSU_dynamic = agent_wealth_dict['val_w_MSU_dynamic'] / agent_wealth_dict['val_w_MSU_dynamic'][0]
+    val_w_MSU_rho0 = agent_wealth_dict['val_w_MSU_rho0'] / agent_wealth_dict['val_w_MSU_rho0'][0]
+    val_w_MSU_rho05 = agent_wealth_dict['val_w_MSU_rho05'] / agent_wealth_dict['val_w_MSU_rho05'][0]
+    val_w_MSU_rho1 = agent_wealth_dict['val_w_MSU_rho1'] / agent_wealth_dict['val_w_MSU_rho1'][0]
+    val_wo_MSU_rho0 = agent_wealth_dict['val_wo_MSU_rho0'] / agent_wealth_dict['val_wo_MSU_rho0'][0]
+    val_wo_MSU_rho05 = agent_wealth_dict['val_wo_MSU_rho05'] / agent_wealth_dict['val_wo_MSU_rho05'][0]
+    val_wo_MSU_rho1 = agent_wealth_dict['val_wo_MSU_rho1'] / agent_wealth_dict['val_wo_MSU_rho1'][0]
+
+    test_w_MSU_dynamic = agent_wealth_dict['test_w_MSU_dynamic'] / agent_wealth_dict['test_w_MSU_dynamic'][0]
+    test_w_MSU_rho0 = agent_wealth_dict['test_w_MSU_rho0'] / agent_wealth_dict['test_w_MSU_rho0'][0]
+    test_w_MSU_rho05 = agent_wealth_dict['test_w_MSU_rho05'] / agent_wealth_dict['test_w_MSU_rho05'][0]
+    test_w_MSU_rho1 = agent_wealth_dict['test_w_MSU_rho1'] / agent_wealth_dict['test_w_MSU_rho1'][0]
+    test_wo_MSU_rho0 = agent_wealth_dict['test_wo_MSU_rho0'] / agent_wealth_dict['test_wo_MSU_rho0'][0]
+    test_wo_MSU_rho05 = agent_wealth_dict['test_wo_MSU_rho05'] / agent_wealth_dict['test_wo_MSU_rho05'][0]
+    test_wo_MSU_rho1 = agent_wealth_dict['test_wo_MSU_rho1'] / agent_wealth_dict['test_wo_MSU_rho1'][0]
     
     # --- Individual calculation for metrics on the Dynamic series ---
-    metrics_val_dynamic = calculate_metrics(val_dynamic.reshape(1, -1), TRADE_MODE)
-    metrics_test_dynamic = calculate_metrics(test_dynamic.reshape(1, -1), TRADE_MODE)
+    metrics_test_w_MSU_dynamic = calculate_metrics(test_w_MSU_dynamic.reshape(1, -1), TRADE_MODE)
+    metrics_test_w_MSU_rho0 = calculate_metrics(test_w_MSU_rho0.reshape(1, -1), TRADE_MODE)
+    metrics_test_w_MSU_rho05 = calculate_metrics(test_w_MSU_rho05.reshape(1, -1), TRADE_MODE)
+    metrics_test_w_MSU_rho1 = calculate_metrics(test_w_MSU_rho1.reshape(1, -1), TRADE_MODE)
+    metrics_test_wo_MSU_rho0 = calculate_metrics(test_wo_MSU_rho0.reshape(1, -1), TRADE_MODE)
+    metrics_test_wo_MSU_rho05 = calculate_metrics(test_wo_MSU_rho05.reshape(1, -1), TRADE_MODE)
+    metrics_test_wo_MSU_rho1 = calculate_metrics(test_wo_MSU_rho1.reshape(1, -1), TRADE_MODE)
+    metrics_test_djia_wealth = calculate_metrics(djia_wealth_test.reshape(1,-1), TRADE_MODE)
+
+    print("metrics_test_w_MSU_dynamic:", metrics_test_w_MSU_dynamic)
+    print("metrics_test_w_MSU_rho0:", metrics_test_w_MSU_rho0)
+    print("metrics_test_w_MSU_rho05:", metrics_test_w_MSU_rho05)
+    print("metrics_test_w_MSU_rho1:", metrics_test_w_MSU_rho1)
+    print("metrics_test_wo_MSU_rho0:", metrics_test_wo_MSU_rho0)
+    print("metrics_test_wo_MSU_rho05:", metrics_test_wo_MSU_rho05)
+    print("metrics_test_wo_MSU_rho1:", metrics_test_wo_MSU_rho1)
+    print("metrics_test_djia_wealth:", metrics_test_djia_wealth)
     
-    print("Validation Metrics for Dynamic:", metrics_val_dynamic)
-    print("Test Metrics for Dynamic:", metrics_test_dynamic)
     
     # Prepare dictionaries for plotting purposes
     wealth_val_dict = {
-        'val_w_MSU_dynamic': val_dynamic,
-        'val_w_MSU_rho0': agent_wealth_dict['val_w_MSU_rho0'] / agent_wealth_dict['val_w_MSU_rho0'][0],
-        'val_w_MSU_rho05': agent_wealth_dict['val_w_MSU_rho05'] / agent_wealth_dict['val_w_MSU_rho05'][0],
-        'val_w_MSU_rho1': agent_wealth_dict['val_w_MSU_rho1'] / agent_wealth_dict['val_w_MSU_rho1'][0]
+        'val_w_MSU_dynamic': val_w_MSU_dynamic,
+        'val_w_MSU_rho0': val_w_MSU_rho0,
+        'val_w_MSU_rho05': val_w_MSU_rho05,
+        'val_w_MSU_rho1': val_w_MSU_rho1,
+        'val_wo_MSU_rho0': val_wo_MSU_rho0,
+        'val_wo_MSU_rho05': val_wo_MSU_rho05,
+        'val_wo_MSU_rho1': val_wo_MSU_rho1
     }
     wealth_test_dict = {
-        'test_w_MSU_dynamic': test_dynamic,
-        'test_w_MSU_rho0': agent_wealth_dict['test_w_MSU_rho0'] / agent_wealth_dict['test_w_MSU_rho0'][0],
-        'test_w_MSU_rho05': agent_wealth_dict['test_w_MSU_rho05'] / agent_wealth_dict['test_w_MSU_rho05'][0],
-        'test_w_MSU_rho1': agent_wealth_dict['test_w_MSU_rho1'] / agent_wealth_dict['test_w_MSU_rho1'][0]
+        'test_w_MSU_dynamic': test_w_MSU_dynamic,
+        'test_w_MSU_rho0': test_w_MSU_rho0,
+        'test_w_MSU_rho05': test_w_MSU_rho05,
+        'test_w_MSU_rho1': test_w_MSU_rho1,
+        'test_wo_MSU_rho0': test_wo_MSU_rho0,
+        'test_wo_MSU_rho05': test_wo_MSU_rho05,
+        'test_wo_MSU_rho1': test_wo_MSU_rho1
     }
     
     # Plot the results with the full business day x-axis and background shading.
-    plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
+    # plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
 
     # ----- Plot Monthly Results (Directly using the 101 monthly points) -----
-    plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
+    # plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
     
     # ----- Calculate Win Rates for the Dynamic series without interpolation -----
     # Directly use the 101 monthly points.
     # For validation:
     val_dates_sampled = resample_dates(val_days, VAL_NUM_POINTS)
-    agent_monthly_val = val_dynamic  # already 101 points
     djia_monthly_val = resample_series(djia_wealth_daily[val_days], VAL_NUM_POINTS)
     djia_monthly_val = djia_monthly_val / djia_monthly_val[0]
-    df_val_dynamic = pd.DataFrame({
-        'AgentWealth': agent_monthly_val,
+    df_val = pd.DataFrame({
+        'val_w_MSU_dynamic': val_w_MSU_dynamic,
+        'val_w_MSU_rho1': val_w_MSU_rho1,
+        'val_wo_MSU_rho05': val_wo_MSU_rho05,
+        'val_wo_MSU_rho1': val_wo_MSU_rho1,
         'DowJones': djia_monthly_val
     }, index=val_dates_sampled)
     
     # For test:
     test_dates_sampled = resample_dates(test_days, TEST_NUM_POINTS)
-    agent_monthly_test = test_dynamic  # already 101 points
     djia_monthly_test = resample_series(djia_wealth_daily[test_days], TEST_NUM_POINTS)
     djia_monthly_test = djia_monthly_test / djia_monthly_test[0]
-    df_test_dynamic = pd.DataFrame({
-        'AgentWealth': agent_monthly_test,
+    df_test = pd.DataFrame({
+        'test_w_MSU_dynamic': test_w_MSU_dynamic,
+        'val_w_MSU_rho1': val_w_MSU_rho1,
+        'val_wo_MSU_rho05': val_wo_MSU_rho05,
+        'val_wo_MSU_rho1': val_wo_MSU_rho1,
         'DowJones': djia_monthly_test
     }, index=test_dates_sampled)
     
     # Calculate periodic returns for validation using different period codes:
-    monthly_returns_val = calculate_periodic_returns(df_val_dynamic, 'ME')
-    quarterly_returns_val = calculate_periodic_returns(df_val_dynamic, 'QE')
-    semi_annual_returns_val = calculate_periodic_returns(df_val_dynamic, '6ME')
-    annual_returns_val = calculate_periodic_returns(df_val_dynamic, 'YE')
+    monthly_returns_val = calculate_periodic_returns(df_val, 'ME')
+    quarterly_returns_val = calculate_periodic_returns(df_val, 'QE')
+    semi_annual_returns_val = calculate_periodic_returns(df_val, '6ME')
+    annual_returns_val = calculate_periodic_returns(df_val, 'YE')
+
+    print("Validation Periodic Returns for Series:")
+    print(f"Annual Returns: {annual_returns_val}")
     
-    # Calculate win rates for validation for the dynamic series
-    monthly_win_rate_val = calculate_win_rate(monthly_returns_val)
-    quarterly_win_rate_val = calculate_win_rate(quarterly_returns_val)
-    semi_annual_win_rate_val = calculate_win_rate(semi_annual_returns_val)
-    annual_win_rate_val = calculate_win_rate(annual_returns_val)
+    # Calculate win rates for validation
+    monthly_win_rate_val = calculate_win_rate(monthly_returns_val, benchmark_column='DowJones')
+    quarterly_win_rate_val = calculate_win_rate(quarterly_returns_val, benchmark_column='DowJones')
+    semi_annual_win_rate_val = calculate_win_rate(semi_annual_returns_val, benchmark_column='DowJones')
+    annual_win_rate_val = calculate_win_rate(annual_returns_val, benchmark_column='DowJones')
     
-    print("Validation Period Win Rates for Dynamic Series:")
-    print(f"Monthly Win Rate: {monthly_win_rate_val * 100:.2f}%")
-    print(f"Quarterly Win Rate: {quarterly_win_rate_val * 100:.2f}%")
-    print(f"Semi-annual Win Rate: {semi_annual_win_rate_val * 100:.2f}%")
-    print(f"Annual Win Rate: {annual_win_rate_val * 100:.2f}%")
+    print("Validation Period Win Rates for Series:")
+    print(f"Monthly Win Rate: {monthly_win_rate_val}")
+    print(f"Quarterly Win Rate: {quarterly_win_rate_val}")
+    print(f"Semi-annual Win Rate: {semi_annual_win_rate_val}")
+    print(f"Annual Win Rate: {annual_win_rate_val}")
     
     # Calculate periodic returns and win rates for test (using the 101 monthly points)
-    monthly_returns_test = calculate_periodic_returns(df_test_dynamic, 'ME')
-    quarterly_returns_test = calculate_periodic_returns(df_test_dynamic, 'QE')
-    semi_annual_returns_test = calculate_periodic_returns(df_test_dynamic, '6ME')
-    annual_returns_test = calculate_periodic_returns(df_test_dynamic, 'YE')
+    monthly_returns_test = calculate_periodic_returns(df_test, 'ME')
+    quarterly_returns_test = calculate_periodic_returns(df_test, 'QE')
+    semi_annual_returns_test = calculate_periodic_returns(df_test, '6ME')
+    annual_returns_test = calculate_periodic_returns(df_test, 'YE')
+
+    print("Test Periodic Returns for Series:")
+    print(f"Annual Returns: {annual_returns_test}")
     
     monthly_win_rate_test = calculate_win_rate(monthly_returns_test)
     quarterly_win_rate_test = calculate_win_rate(quarterly_returns_test)
     semi_annual_win_rate_test = calculate_win_rate(semi_annual_returns_test)
     annual_win_rate_test = calculate_win_rate(annual_returns_test)
     
-    print("Test Period Win Rates for Dynamic Series:")
-    print(f"Monthly Win Rate: {monthly_win_rate_test * 100:.2f}%")
-    print(f"Quarterly Win Rate: {quarterly_win_rate_test * 100:.2f}%")
-    print(f"Semi-annual Win Rate: {semi_annual_win_rate_test * 100:.2f}%")
-    print(f"Annual Win Rate: {annual_win_rate_test * 100:.2f}%")
+    print("Test Period Win Rates for Series:")
+    print(f"Monthly Win Rate: {monthly_win_rate_test}")
+    print(f"Quarterly Win Rate: {quarterly_win_rate_test}")
+    print(f"Semi-annual Win Rate: {semi_annual_win_rate_test}")
+    print(f"Annual Win Rate: {annual_win_rate_test}")
 
 if __name__ == "__main__":
     main()
