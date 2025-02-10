@@ -131,6 +131,7 @@ def run(func_args):
                 print('New Best CR Policy!!!!')
                 max_cr = metrics['CR']
                 torch.save(actor, os.path.join(model_save_dir, 'best_cr-'+str(epoch)+'.pkl'))
+                np.save('agent_wealth.npy', agent_wealth)
             logger.warning('after training %d round, max wealth: %.4f, min wealth: %.4f,'
                             ' avg wealth: %.4f, final wealth: %.4f, ARR: %.3f%%, ASR: %.3f, AVol" %.3f,'
                             'MDD: %.2f%%, CR: %.3f, DDR: %.3f'

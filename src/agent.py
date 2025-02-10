@@ -24,6 +24,7 @@ class RLActor(nn.Module):
                        supports=supports,
                        spatial_bool=args.spatial_bool,
                        addaptiveadj=args.addaptiveadj)
+        print("msu_bool: ", args.msu_bool)
         if args.msu_bool:
             self.msu = MSU(in_features=args.in_features[1],
                            window_len=args.window_len,
@@ -74,6 +75,8 @@ class RLActor(nn.Module):
         else:
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
+        # force rho to 0.5
+        rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
         return weights, rho, scores_p, rho_log_p
 
 

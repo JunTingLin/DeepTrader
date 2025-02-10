@@ -35,6 +35,7 @@ def calculate_metrics(agent_wealth, trade_mode, MAR=0.):
     AT = np.mean(trade_ror, axis=-1, keepdims=True)
     VT = np.std(trade_ror, axis=-1, keepdims=True)
 
+    # APR = 平均報酬 × 年化因子
     APR = AT * Ny
     AVOL = VT * math.sqrt(Ny)
     ASR = APR / AVOL

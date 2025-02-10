@@ -9,8 +9,8 @@ TRADE_LEN = 21
 TARGET_DIR = "."
 START_DATE = "2000-01-01"
 END_DATE = "2023-12-31"
-VAL_NUM_POINTS = 101
-TEST_NUM_POINTS = 101
+# VAL_NUM_POINTS = 101
+# TEST_NUM_POINTS = 101
 
 def load_agent_wealth():
     """
@@ -98,20 +98,11 @@ def compute_cumulative_wealth(df_djia):
     wealth_rebased = wealth_daily / wealth_daily.iloc[0]
     return wealth_rebased
 
-def resample_series(series, num_points):
-    """
-    Resample a pandas Series to a fixed number of points.
-    This function selects num_points evenly spaced indices from the series.
-    """
-    indices = np.linspace(0, len(series) - 1, num_points, dtype=int)
-    return series.iloc[indices].values
+def resample_series(series, step):
+    return series.iloc[::step].values
 
-def resample_dates(dates, num_points):
-    """
-    Resample a DatetimeIndex to a fixed number of points.
-    """
-    indices = np.linspace(0, len(dates) - 1, num_points, dtype=int)
-    return dates[indices]
+def resample_dates(dates, step):
+    return dates[::step]
 
 def rebase_yearly(series):
     """
@@ -135,13 +126,13 @@ def plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, 
     plt.axvspan(val_days[0], val_days[-1], facecolor='gray', alpha=0.3, label='Validation Period')
     plt.axvspan(test_days[0], test_days[-1], facecolor='gray', alpha=0.5, label='Test Period')
     
-    val_dates_sampled = resample_dates(val_days, VAL_NUM_POINTS)
-    test_dates_sampled = resample_dates(test_days, TEST_NUM_POINTS)
+    val_dates_sampled = resample_dates(val_days, TRADE_LEN)
+    test_dates_sampled = resample_dates(test_days, TRADE_LEN)
     
     # Resample DJIA wealth for Validation and Test segments and rebase to start at 1
-    djia_wealth_val = resample_series(djia_wealth_daily[val_days], VAL_NUM_POINTS)
+    djia_wealth_val = resample_series(djia_wealth_daily[val_days], TRADE_LEN)
     djia_wealth_val = djia_wealth_val / djia_wealth_val[0]
-    djia_wealth_test = resample_series(djia_wealth_daily[test_days], TEST_NUM_POINTS)
+    djia_wealth_test = resample_series(djia_wealth_daily[test_days], TRADE_LEN)
     djia_wealth_test = djia_wealth_test / djia_wealth_test[0]
     
     # Plot DJIA wealth trends
@@ -184,14 +175,14 @@ def plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict,
     For each year, the cumulative wealth is rebased so that it starts at 1.
     The plot includes yearly cumulative wealth for DJIA and for each DeepTrader series.
     """
-    # Resample dates to monthly sampling (101 points)
-    val_dates = resample_dates(val_days, VAL_NUM_POINTS)
-    test_dates = resample_dates(test_days, TEST_NUM_POINTS)
+    # Resample dates to monthly sampling
+    val_dates = resample_dates(val_days, TRADE_LEN)
+    test_dates = resample_dates(test_days, TRADE_LEN)
     
     # Convert DJIA monthly series to pd.Series and rebase yearly
-    djia_monthly_val = pd.Series(resample_series(djia_wealth_daily[val_days], VAL_NUM_POINTS), index=val_dates)
+    djia_monthly_val = pd.Series(resample_series(djia_wealth_daily[val_days], TRADE_LEN), index=val_dates)
     djia_monthly_val = rebase_yearly(djia_monthly_val)
-    djia_monthly_test = pd.Series(resample_series(djia_wealth_daily[test_days], TEST_NUM_POINTS), index=test_dates)
+    djia_monthly_test = pd.Series(resample_series(djia_wealth_daily[test_days], TRADE_LEN), index=test_dates)
     djia_monthly_test = rebase_yearly(djia_monthly_test)
     
     # For agent series, convert to pd.Series and rebase yearly
@@ -268,7 +259,7 @@ def plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict,
     plt.ylabel("Cumulative Wealth (Monthly, Yearly Rebased)", fontsize=14)
     plt.title("DeepTrader vs. DJIA (Rebased Each Year)", fontsize=16)
     plt.grid(True)
-    plt.legend(fontsize=10, loc='upper left')
+    plt.legend(fontsize=10, loc='upper center')
     plt.tight_layout()
     plt.show()
 
@@ -306,9 +297,9 @@ def main():
     djia_wealth_daily = compute_cumulative_wealth(df_djia)
 
     # Resample DJIA wealth for Validation and Test segments and rebase to start at 1
-    djia_wealth_val = resample_series(djia_wealth_daily[val_days], VAL_NUM_POINTS)
+    djia_wealth_val = resample_series(djia_wealth_daily[val_days], TRADE_LEN)
     djia_wealth_val = djia_wealth_val / djia_wealth_val[0]
-    djia_wealth_test = resample_series(djia_wealth_daily[test_days], TEST_NUM_POINTS)
+    djia_wealth_test = resample_series(djia_wealth_daily[test_days], TRADE_LEN)
     djia_wealth_test = djia_wealth_test / djia_wealth_test[0]
     
     # Prepare agent wealth segments (rebased to start at 1)
@@ -369,16 +360,16 @@ def main():
     }
     
     # Plot the results with the full business day x-axis and background shading.
-    # plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
+    plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
 
     # ----- Plot Monthly Results (Directly using the 101 monthly points) -----
-    # plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
+    plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
     
     # ----- Calculate Win Rates for the Dynamic series without interpolation -----
-    # Directly use the 101 monthly points.
+
     # For validation:
-    val_dates_sampled = resample_dates(val_days, VAL_NUM_POINTS)
-    djia_monthly_val = resample_series(djia_wealth_daily[val_days], VAL_NUM_POINTS)
+    val_dates_sampled = resample_dates(val_days, TRADE_LEN)
+    djia_monthly_val = resample_series(djia_wealth_daily[val_days], TRADE_LEN)
     djia_monthly_val = djia_monthly_val / djia_monthly_val[0]
     df_val = pd.DataFrame({
         'val_w_MSU_dynamic': val_w_MSU_dynamic,
@@ -389,8 +380,8 @@ def main():
     }, index=val_dates_sampled)
     
     # For test:
-    test_dates_sampled = resample_dates(test_days, TEST_NUM_POINTS)
-    djia_monthly_test = resample_series(djia_wealth_daily[test_days], TEST_NUM_POINTS)
+    test_dates_sampled = resample_dates(test_days, TRADE_LEN)
+    djia_monthly_test = resample_series(djia_wealth_daily[test_days], TRADE_LEN)
     djia_monthly_test = djia_monthly_test / djia_monthly_test[0]
     df_test = pd.DataFrame({
         'test_w_MSU_dynamic': test_w_MSU_dynamic,
