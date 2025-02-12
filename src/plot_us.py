@@ -16,21 +16,21 @@ def load_agent_wealth():
     """
     Load and flatten agent wealth arrays for validation and test.
     """
-    val_w_MSU_dynamic = np.load('agent_wealth_val_w_MSU_dynamic.npy').flatten()
-    val_w_MSU_rho0    = np.load('agent_wealth_val_w_MSU_rho0.npy').flatten()
-    val_w_MSU_rho05   = np.load('agent_wealth_val_w_MSU_rho05.npy').flatten()
-    val_w_MSU_rho1    = np.load('agent_wealth_val_w_MSU_rho1.npy').flatten()
-    val_wo_MSU_rho0   = np.load('agent_wealth_val_wo_MSU_rho0.npy').flatten()
-    val_wo_MSU_rho05  = np.load('agent_wealth_val_wo_MSU_rho05.npy').flatten()
-    val_wo_MSU_rho1   = np.load('agent_wealth_val_wo_MSU_rho1.npy').flatten()
+    val_w_MSU_dynamic = np.load(r'outputs\0207\035156\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho0    = np.load(r'outputs\0207\195947\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho05   = np.load(r'outputs\0208\012246\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho1    = np.load(r'outputs\0207\152525\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho0   = np.load(r'outputs\0209\112527\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho05  = np.load(r'outputs\0209\162424\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho1   = np.load(r'outputs\0209\033149\npy_file\agent_wealth_val.npy').flatten()
     
-    test_w_MSU_dynamic = np.load('agent_wealth_test_w_MSU_dynamic.npy').flatten()
-    test_w_MSU_rho0    = np.load('agent_wealth_test_w_MSU_rho0.npy').flatten()
-    test_w_MSU_rho05   = np.load('agent_wealth_test_w_MSU_rho05.npy').flatten()
-    test_w_MSU_rho1    = np.load('agent_wealth_test_w_MSU_rho1.npy').flatten()
-    test_wo_MSU_rho0   = np.load('agent_wealth_test_wo_MSU_rho0.npy').flatten()
-    test_wo_MSU_rho05  = np.load('agent_wealth_test_wo_MSU_rho05.npy').flatten()
-    test_wo_MSU_rho1   = np.load('agent_wealth_test_wo_MSU_rho1.npy').flatten()
+    test_w_MSU_dynamic = np.load(r'outputs\0207\035156\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho0    = np.load(r'outputs\0207\195947\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho05   = np.load(r'outputs\0208\012246\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho1    = np.load(r'outputs\0207\152525\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho0   = np.load(r'outputs\0209\112527\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho05  = np.load(r'outputs\0209\162424\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho1   = np.load(r'outputs\0209\033149\npy_file\agent_wealth_test.npy').flatten()
     
     return {
         'val_w_MSU_dynamic': val_w_MSU_dynamic,
@@ -107,19 +107,26 @@ def process_data():
     """
     full_days, train_days, val_days, test_days = get_business_day_segments()
     
-    # Download DJIA data and compute daily cumulative wealth
-    df_djia = download_djia_data(full_days)
-    djia_wealth_daily = compute_cumulative_wealth(df_djia)
+    # Download DJIA data for the entire period
+    df_djia_full = download_djia_data(full_days)
+
+    # Split DJIA data into validation and test segments
+    df_djia_val = df_djia_full.loc[val_days]
+    df_djia_test = df_djia_full.loc[test_days]
+
+    # Compute cumulative wealth separately for validation and test segments
+    djia_wealth_val = compute_cumulative_wealth(df_djia_val)
+    djia_wealth_test = compute_cumulative_wealth(df_djia_test)
     
     # Sample dates for validation and test segments
     val_sample_dates = val_days[::TRADE_LEN]
     test_sample_dates = test_days[::TRADE_LEN]
     
-    # Sample DJIA cumulative wealth for validation and test segments, and rebase each segment to 1
-    djia_series_val = djia_wealth_daily[val_days].iloc[::TRADE_LEN].copy()
+    # Sample the DJIA cumulative wealth for each segment and rebase to 1
+    djia_series_val = djia_wealth_val.iloc[::TRADE_LEN].copy()
     djia_series_val = djia_series_val / djia_series_val.iloc[0]
     
-    djia_series_test = djia_wealth_daily[test_days].iloc[::TRADE_LEN].copy()
+    djia_series_test = djia_wealth_test.iloc[::TRADE_LEN].copy()
     djia_series_test = djia_series_test / djia_series_test.iloc[0]
     
     # Load agent data and rebase (each agent series is assumed to have the same number of points as sample dates)
@@ -284,46 +291,43 @@ def compute_metrics_df(df, series_list):
     return pd.DataFrame(metrics_dict)
 
 
-def main():
-    # Process data into DataFrames
-    df_val, df_test, full_days, train_days, val_days, test_days = process_data()
-    
-    # Compute periodic returns and win rates for multiple period codes
-    period_codes = ['ME', 'QE', '6ME', 'YE']
-    print("\nPeriodic Returns and Win Rates (Validation):")
-    for period in period_codes:
-        returns_val = calculate_periodic_returns_df(df_val, period)
-        win_rate_val = calculate_win_rate_df(returns_val, benchmark_column='DowJones')
-        print(f"\nPeriod: {period}")
-        if period == 'YE':
-            print("Returns:")
-            print(returns_val)
-        print("Win Rates:")
-        print(win_rate_val)
-    
-    print("\nPeriodic Returns and Win Rates (Test):")
-    for period in period_codes:
-        returns_test = calculate_periodic_returns_df(df_test, period)
-        win_rate_test = calculate_win_rate_df(returns_test, benchmark_column='DowJones')
-        print(f"\nPeriod: {period}")
-        if period == 'YE':
-            print("Returns:")
-            print(returns_test)
-        print("Win Rates:")
-        print(win_rate_test)
-    
-    # Compute performance metrics for all columns (including DowJones)
-    # For validation, use all columns present in df_val; similarly for test.
-    metrics_val = compute_metrics_df(df_val, df_val.columns)
-    metrics_test = compute_metrics_df(df_test, df_test.columns)
-    print("\nValidation Metrics:")
-    print(metrics_val)
-    print("\nTest Metrics:")
-    print(metrics_test)
 
-    # Plot cumulative wealth with background shading
-    plot_results(df_val, df_test, train_days, val_days, test_days)
-    plot_yearly_results(df_val, df_test, val_days, test_days)
+# Process data into DataFrames
+df_val, df_test, full_days, train_days, val_days, test_days = process_data()
 
-if __name__ == "__main__":
-    main()
+# Compute periodic returns and win rates for multiple period codes
+period_codes = ['ME', 'QE', '6ME', 'YE']
+print("\nPeriodic Returns and Win Rates (Validation):")
+for period in period_codes:
+    returns_val = calculate_periodic_returns_df(df_val, period)
+    win_rate_val = calculate_win_rate_df(returns_val, benchmark_column='DowJones')
+    print(f"\nPeriod: {period}")
+    if period == 'YE':
+        print("Returns:")
+        print(returns_val)
+    print("Win Rates:")
+    print(win_rate_val)
+
+print("\nPeriodic Returns and Win Rates (Test):")
+for period in period_codes:
+    returns_test = calculate_periodic_returns_df(df_test, period)
+    win_rate_test = calculate_win_rate_df(returns_test, benchmark_column='DowJones')
+    print(f"\nPeriod: {period}")
+    if period == 'YE':
+        print("Returns:")
+        print(returns_test)
+    print("Win Rates:")
+    print(win_rate_test)
+
+# Compute performance metrics for all columns (including DowJones)
+# For validation, use all columns present in df_val; similarly for test.
+metrics_val = compute_metrics_df(df_val, df_val.columns)
+metrics_test = compute_metrics_df(df_test, df_test.columns)
+print("\nValidation Metrics:")
+print(metrics_val)
+print("\nTest Metrics:")
+print(metrics_test)
+
+# Plot cumulative wealth with background shading
+plot_results(df_val, df_test, train_days, val_days, test_days)
+plot_yearly_results(df_val, df_test, val_days, test_days)
