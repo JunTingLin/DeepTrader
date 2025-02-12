@@ -385,9 +385,9 @@ def main():
     djia_monthly_test = djia_monthly_test / djia_monthly_test[0]
     df_test = pd.DataFrame({
         'test_w_MSU_dynamic': test_w_MSU_dynamic,
-        'val_w_MSU_rho1': val_w_MSU_rho1,
-        'val_wo_MSU_rho05': val_wo_MSU_rho05,
-        'val_wo_MSU_rho1': val_wo_MSU_rho1,
+        'test_w_MSU_rho1': test_w_MSU_rho1,
+        'test_wo_MSU_rho05': test_wo_MSU_rho05,
+        'test_wo_MSU_rho1': test_wo_MSU_rho1,
         'DowJones': djia_monthly_test
     }, index=test_dates_sampled)
     

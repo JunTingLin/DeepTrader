@@ -54,7 +54,7 @@ def test(func_args):
                         max_steps=func_args.max_steps, norm_type=func_args.norm_type,
                         allow_short=allow_short)
     
-    best_model_path = r"outputs\0205\193140\model_file"
+    best_model_path = r"outputs\0209\162424\model_file"
     model_sort = sorted(
         [x for x in os.listdir(best_model_path) if "best_cr" in x],
         key=lambda s: int(re.search(r'\d+', s).group())
@@ -72,6 +72,8 @@ def test(func_args):
         agent_wealth = agent.test()
         print("agent_wealth: ", agent_wealth)
         print("agent_wealth.shape: ", agent_wealth.shape)
+        # np.save("agent_wealth.npy", agent_wealth)
+        np.save("agent_wealth_test_wo_MSU_rho05.npy", agent_wealth)
 
         metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
         print("APR:", metrics['APR'])
