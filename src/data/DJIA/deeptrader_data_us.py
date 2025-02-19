@@ -224,12 +224,12 @@ if __name__ == '__main__':
     for ticker in djia_tickers:
         print("Downloading:", ticker)
         try:
-            sample_data = yf.download(ticker, start='2000-01-01', end='2023-12-31', progress=False)
+            sample_data = yf.download(ticker, start='2000-01-03', end='2000-01-04', progress=False)
             if sample_data.empty or sample_data.index[0] != pd.Timestamp('2000-01-03'):
                 print("Skipping:", ticker, "due to no data on 2000-01-03.")
                 continue
 
-            stock_data = yf.download(ticker, start='2000-01-03', end='2024-03-01', auto_adjust=False, progress=False)
+            stock_data = yf.download(ticker, start='2000-01-03', end='2023-12-31', auto_adjust=False, progress=False)
             if stock_data.empty:
                 print("Skipping:", ticker, "due to empty DataFrame.")
                 continue
@@ -248,9 +248,9 @@ if __name__ == '__main__':
     df_us['Date'] = pd.to_datetime(df_us['Date'])
     df_us = df_us.sort_values(by=['Ticker','Date'])
 
-    cols_to_normalize = ['Open','High','Low','Close','Adj Close','Volume']
-    scaler = MinMaxScaler()
-    df_us[cols_to_normalize] = scaler.fit_transform(df_us[cols_to_normalize])
+    # cols_to_normalize = ['Open','High','Low','Close','Adj Close','Volume']
+    # scaler = MinMaxScaler()
+    # df_us[cols_to_normalize] = scaler.fit_transform(df_us[cols_to_normalize])
     
     # alpha list
     alphas = ['Alpha001','Alpha002','Alpha003','Alpha004','Alpha006','Alpha012','Alpha019',
