@@ -18,8 +18,8 @@
     "theta": 0.15,
     "sigma": 0.5,
     "in_features": [
-        5,
-        4
+        34,
+        27
     ],
     "num_assets": 28,
     "G": 4,

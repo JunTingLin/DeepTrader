@@ -37,6 +37,8 @@ def run(func_args):
         os.makedirs(img_dir)
     if not os.path.isdir(model_save_dir):
         os.mkdir(model_save_dir)
+    if not os.path.isdir(npy_save_dir):
+        os.mkdir(npy_save_dir)
 
     hyper = copy.deepcopy(func_args.__dict__)
     print(hyper)
