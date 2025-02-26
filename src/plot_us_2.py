@@ -1,38 +1,42 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import yfinance as yf
+from datetime import datetime
 from utils.functions import calculate_metrics
 
-TRADE_MODE = "M"
-TRADE_LEN = 21
-TARGET_DIR = "."
+# -------------------------------
+# Constants
+# -------------------------------
+TRADE_MODE = "M"    # "M": Monthly mode (12 trading periods per year)
+TRADE_LEN = 21      # Sampling interval: 21 business days per sample
 START_DATE = "2000-01-01"
 END_DATE = "2023-12-31"
-# VAL_NUM_POINTS = 101
-# TEST_NUM_POINTS = 101
 
+# -------------------------------
+# Data Loading Functions
+# -------------------------------
 def load_agent_wealth():
     """
     Load and flatten agent wealth arrays for validation and test.
-    Expected shape of each loaded array is (1, 101).
     """
-    val_w_MSU_dynamic = np.load('agent_wealth_val_w_MSU_dynamic.npy').flatten()
-    val_w_MSU_rho0    = np.load('agent_wealth_val_w_MSU_rho0.npy').flatten()
-    val_w_MSU_rho05   = np.load('agent_wealth_val_w_MSU_rho05.npy').flatten()
-    val_w_MSU_rho1    = np.load('agent_wealth_val_w_MSU_rho1.npy').flatten()
-    val_wo_MSU_rho0   = np.load('agent_wealth_val_wo_MSU_rho0.npy').flatten()
-    val_wo_MSU_rho05  = np.load('agent_wealth_val_wo_MSU_rho05.npy').flatten()
-    val_wo_MSU_rho1   = np.load('agent_wealth_val_wo_MSU_rho1.npy').flatten()
-    
-    test_w_MSU_dynamic = np.load('agent_wealth_test_w_MSU_dynamic.npy').flatten()
-    test_w_MSU_rho0    = np.load('agent_wealth_test_w_MSU_rho0.npy').flatten()
-    test_w_MSU_rho05   = np.load('agent_wealth_test_w_MSU_rho05.npy').flatten()
-    test_w_MSU_rho1    = np.load('agent_wealth_test_w_MSU_rho1.npy').flatten()
-    test_wo_MSU_rho0   = np.load('agent_wealth_test_wo_MSU_rho0.npy').flatten()
-    test_wo_MSU_rho05  = np.load('agent_wealth_test_wo_MSU_rho05.npy').flatten()
-    test_wo_MSU_rho1   = np.load('agent_wealth_test_wo_MSU_rho1.npy').flatten()
-    
+    # 验证集数据 (Validation data)
+    val_w_MSU_dynamic = np.load(r'outputs\0207\035156\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho1    = np.load(r'outputs\0207\152525\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho0    = np.load(r'outputs\0207\195947\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho05   = np.load(r'outputs\0208\012246\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho1   = np.load(r'outputs\0209\033149\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho0   = np.load(r'outputs\0209\112527\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho05  = np.load(r'outputs\0209\162424\npy_file\agent_wealth_val.npy').flatten()
+
+    # 测试集数据 (Test data)
+    test_w_MSU_dynamic = np.load(r'outputs\0207\035156\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho1    = np.load(r'outputs\0207\152525\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho0    = np.load(r'outputs\0207\195947\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho05   = np.load(r'outputs\0208\012246\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho1   = np.load(r'outputs\0209\033149\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho0   = np.load(r'outputs\0209\112527\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho05  = np.load(r'outputs\0209\162424\npy_file\agent_wealth_test.npy').flatten()
+
     return {
         'val_w_MSU_dynamic': val_w_MSU_dynamic,
         'val_w_MSU_rho0': val_w_MSU_rho0,
@@ -51,12 +55,14 @@ def load_agent_wealth():
         'test_wo_MSU_rho1': test_wo_MSU_rho1
     }
 
+
 def get_business_day_segments():
     """
-    Generate the full business day date range (6260 days) and split into:
+    Generate full business day date range from START_DATE to END_DATE,
+    and split into:
       - Training: indices 0 to 2042 (2043 days)
       - Validation: indices 2043 to 4150 (2108 days)
-      - Test: indices 4151 to 6259 (2109 days)
+      - Testing: indices 4151 to 6259 (2109 days)
     """
     full_days = pd.bdate_range(start=START_DATE, end=END_DATE)
     total_days = len(full_days)
@@ -72,24 +78,23 @@ def get_business_day_segments():
     
     return full_days, train_days, val_days, test_days
 
-def download_djia_data(full_days):
+def get_djia_data(full_days, file_path="^DJI.csv"):
     """
-    Download DJIA data for the period covering full_days,
-    reindex to the full business day range and fill missing values.
+    Load DJIA data from a local CSV file, filter for full_days, 
+    reindex to the full business day range, and fill missing values.
     """
-    djia_ticker = yf.Ticker("^DJI")
-    df_djia = djia_ticker.history(start=full_days[0].strftime("%Y-%m-%d"),
-                                  end=full_days[-1].strftime("%Y-%m-%d"))
-    df_djia.index = df_djia.index.tz_localize(None)
-    df_djia = df_djia.reindex(full_days)
-    df_djia.replace(0, np.nan, inplace=True)
-    df_djia.ffill(inplace=True)
-    df_djia.bfill(inplace=True)
-    return df_djia
+    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
+    full_days = pd.DatetimeIndex(full_days)
+    df = df.loc[full_days[0]:full_days[-1]]
+    df = df.reindex(full_days)
+    df.replace(0, np.nan, inplace=True)
+    df.ffill(inplace=True)
+    df.bfill(inplace=True)
+    return df
 
 def compute_cumulative_wealth(df_djia):
     """
-    Compute cumulative wealth from DJIA Close prices using a Buy & Hold strategy.
+    Compute daily cumulative wealth using a Buy & Hold strategy from DJIA Close prices.
     Rebase the series so that it starts at 1.
     """
     djia_close = df_djia["Close"].copy()
@@ -99,67 +104,124 @@ def compute_cumulative_wealth(df_djia):
     return wealth_rebased
 
 def resample_series(series, step):
+    """
+    Resample a series at regular intervals.
+    """
     return series.iloc[::step].values
 
 def resample_dates(dates, step):
+    """
+    Resample dates at regular intervals.
+    """
     return dates[::step]
 
-def rebase_yearly(series):
+# -------------------------------
+# Data Processing
+# -------------------------------
+def process_data():
     """
-    Rebase a time series so that each year's first value becomes 1.
+    Process all data into validation and testing DataFrames.
+    1. Generate full business days and split into training, validation, and testing segments.
+    2. Download DJIA data for the full period, then extract the validation segment (indices 2043 to 4150)
+       and test segment (indices 4151 to 6259), computing their cumulative wealth independently (starting at 1).
+    3. Load the agent wealth data arrays (val_w_MSU_dynamic, test_w_MSU_dynamic, etc.), which cover the 
+       respective validation and testing periods.
+    4. Create DataFrames (df_val and df_test) with the sample dates as index and columns for each 
+       agent series and 'DowJones'.
     """
-    rebased = series.copy()
-    for year, group in series.groupby(series.index.year):
-        rebased.loc[group.index] = group / group.iloc[0]
-    return rebased
+    full_days, train_days, val_days, test_days = get_business_day_segments()
+    
+    # Download DJIA data for the entire period
+    df_djia_full = get_djia_data(full_days)
+    
+    # Extract validation segment: indices 2043 to 4150
+    df_djia_val = df_djia_full.loc[val_days]
+    djia_wealth_val = compute_cumulative_wealth(df_djia_val)
+    
+    # Extract testing segment: indices 4151 to 6259
+    df_djia_test = df_djia_full.loc[test_days]
+    djia_wealth_test = compute_cumulative_wealth(df_djia_test)
+    
+    # Sample dates for validation and testing segments
+    val_sample_dates = val_days[::TRADE_LEN]
+    test_sample_dates = test_days[::TRADE_LEN]
+    
+    # Sample the DJIA cumulative wealth for validation and testing, and rebase to 1
+    djia_series_val = djia_wealth_val.iloc[::TRADE_LEN].copy()
+    djia_series_val = djia_series_val / djia_series_val.iloc[0]
+    
+    djia_series_test = djia_wealth_test.iloc[::TRADE_LEN].copy()
+    djia_series_test = djia_series_test / djia_series_test.iloc[0]
+    
+    # Load combined agent wealth data
+    agent_wealth = load_agent_wealth()
+    
+    # Process validation data
+    n_val = len(val_sample_dates)
+    val_data = {}
+    for key in agent_wealth:
+        if key.startswith('val_'):
+            # Assume the agent array covers the entire validation period and has n_val points
+            agent_val = agent_wealth[key][:n_val]
+            agent_val = agent_val / agent_val[0]
+            val_data[key] = agent_val
+    
+    # Process test data
+    n_test = len(test_sample_dates)
+    test_data = {}
+    for key in agent_wealth:
+        if key.startswith('test_'):
+            # Assume the agent array covers the entire testing period and has n_test points
+            agent_test = agent_wealth[key][:n_test]
+            agent_test = agent_test / agent_test[0]
+            test_data[key] = agent_test
+    
+    # Create a validation DataFrame with sample dates as index and include DJIA as 'DowJones'
+    df_val = pd.DataFrame(val_data, index=val_sample_dates)
+    df_val['DowJones'] = djia_series_val.values
+    
+    # Create a testing DataFrame with sample dates as index and include DJIA as 'DowJones'
+    df_test = pd.DataFrame(test_data, index=test_sample_dates)
+    df_test['DowJones'] = djia_series_test.values
+    
+    return df_val, df_test, full_days, train_days, val_days, test_days
 
-def plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict):
+# -------------------------------
+# Plotting Functions (using original axvspan and color settings)
+# -------------------------------
+def plot_results(df_val, df_test, train_days, val_days, test_days):
     """
-    Plot the full timeline with background shading for Training, Validation, and Test segments.
-    For Validation and Test segments, overlay DJIA and agent wealth trends.
-    For each agent series, use a single label.
+    Plot cumulative wealth with background shading for Training, Validation, and Testing periods.
+    Uses original settings for axvspan and color.
     """
     plt.figure(figsize=(14, 7))
     
-    # Background shading for segments
+    # Background shading for segments: training, validation, and testing
     plt.axvspan(train_days[0], train_days[-1], facecolor='gray', alpha=0.1, label='Training Period')
     plt.axvspan(val_days[0], val_days[-1], facecolor='gray', alpha=0.3, label='Validation Period')
-    plt.axvspan(test_days[0], test_days[-1], facecolor='gray', alpha=0.5, label='Test Period')
+    plt.axvspan(test_days[0], test_days[-1], facecolor='gray', alpha=0.5, label='Testing Period')
     
-    val_dates_sampled = resample_dates(val_days, TRADE_LEN)
-    test_dates_sampled = resample_dates(test_days, TRADE_LEN)
+    # Plot DJIA wealth for validation and testing
+    plt.plot(df_val.index, df_val['DowJones'], color='r', linestyle='-', marker='o', label='DJIA')
+    plt.plot(df_test.index, df_test['DowJones'], color='r', linestyle='-', marker='o', label=None)
     
-    # Resample DJIA wealth for Validation and Test segments and rebase to start at 1
-    djia_wealth_val = resample_series(djia_wealth_daily[val_days], TRADE_LEN)
-    djia_wealth_val = djia_wealth_val / djia_wealth_val[0]
-    djia_wealth_test = resample_series(djia_wealth_daily[test_days], TRADE_LEN)
-    djia_wealth_test = djia_wealth_test / djia_wealth_test[0]
+    # Plot agent wealth for validation segment
+    plt.plot(df_val.index, df_val['val_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
+    plt.plot(df_val.index, df_val['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
+    plt.plot(df_val.index, df_val['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
+    plt.plot(df_val.index, df_val['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
+    plt.plot(df_val.index, df_val['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
+    plt.plot(df_val.index, df_val['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
+    plt.plot(df_val.index, df_val['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
     
-    # Plot DJIA wealth trends
-    plt.plot(val_dates_sampled, djia_wealth_val, color='r', linestyle='-', marker='o', label='DJIA')
-    plt.plot(test_dates_sampled, djia_wealth_test, color='r', linestyle='-', marker='o', label=None)
-    
-    # For agent wealth, plot each series once (use label only for the first segment)
-    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
-    plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label=None)
-    
-    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
-    plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
-    
-    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
-    plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
-    
-    plt.plot(val_dates_sampled, wealth_val_dict['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
-    plt.plot(test_dates_sampled, wealth_test_dict['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
-
-    plt.plot(val_dates_sampled, wealth_val_dict['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
-    plt.plot(test_dates_sampled, wealth_test_dict['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
-
-    plt.plot(val_dates_sampled, wealth_val_dict['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
-    plt.plot(test_dates_sampled, wealth_test_dict['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
-
-    plt.plot(val_dates_sampled, wealth_val_dict['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
-    plt.plot(test_dates_sampled, wealth_test_dict['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
+    # Plot agent wealth for testing segment
+    plt.plot(df_test.index, df_test['test_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)
@@ -169,268 +231,159 @@ def plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, 
     plt.tight_layout()
     plt.show()
 
-def plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict):
+def plot_yearly_results(df_val, df_test, val_days, test_days):
     """
-    Plot yearly wealth trends (using the existing 101 points) for Validation and Test segments.
-    For each year, the cumulative wealth is rebased so that it starts at 1.
-    The plot includes yearly cumulative wealth for DJIA and for each DeepTrader series.
+    Plot yearly rebased cumulative wealth. Each year's first value is rebased to 1.
+    Background shading is applied for the Validation and Testing periods.
     """
-    # Resample dates to monthly sampling
-    val_dates = resample_dates(val_days, TRADE_LEN)
-    test_dates = resample_dates(test_days, TRADE_LEN)
-    
-    # Convert DJIA monthly series to pd.Series and rebase yearly
-    djia_monthly_val = pd.Series(resample_series(djia_wealth_daily[val_days], TRADE_LEN), index=val_dates)
-    djia_monthly_val = rebase_yearly(djia_monthly_val)
-    djia_monthly_test = pd.Series(resample_series(djia_wealth_daily[test_days], TRADE_LEN), index=test_dates)
-    djia_monthly_test = rebase_yearly(djia_monthly_test)
-    
-    # For agent series, convert to pd.Series and rebase yearly
-    val_w_MSU_dynamic = pd.Series(wealth_val_dict['val_w_MSU_dynamic'], index=val_dates)
-    val_w_MSU_dynamic = rebase_yearly(val_w_MSU_dynamic)
-    test_w_MSU_dynamic = pd.Series(wealth_test_dict['test_w_MSU_dynamic'], index=test_dates)
-    test_w_MSU_dynamic = rebase_yearly(test_w_MSU_dynamic)
-    
-    val_w_MSU_rho0 = pd.Series(wealth_val_dict['val_w_MSU_rho0'], index=val_dates)
-    val_w_MSU_rho0 = rebase_yearly(val_w_MSU_rho0)
-    test_w_MSU_rho0 = pd.Series(wealth_test_dict['test_w_MSU_rho0'], index=test_dates)
-    test_w_MSU_rho0 = rebase_yearly(test_w_MSU_rho0)
-    
-    val_w_MSU_rho05 = pd.Series(wealth_val_dict['val_w_MSU_rho05'], index=val_dates)
-    val_w_MSU_rho05 = rebase_yearly(val_w_MSU_rho05)
-    test_w_MSU_rho05 = pd.Series(wealth_test_dict['test_w_MSU_rho05'], index=test_dates)
-    test_w_MSU_rho05 = rebase_yearly(test_w_MSU_rho05)
-    
-    val_w_MSU_rho1 = pd.Series(wealth_val_dict['val_w_MSU_rho1'], index=val_dates)
-    val_w_MSU_rho1 = rebase_yearly(val_w_MSU_rho1)
-    test_w_MSU_rho1 = pd.Series(wealth_test_dict['test_w_MSU_rho1'], index=test_dates)
-    test_w_MSU_rho1 = rebase_yearly(test_w_MSU_rho1)
+    def rebase_yearly_series(s):
+        rebased = s.copy()
+        for year, group in s.groupby(s.index.year):
+            rebased.loc[group.index] = group / group.iloc[0]
+        return rebased
 
-
-    val_wo_MSU_rho0 = pd.Series(wealth_val_dict['val_wo_MSU_rho0'], index=val_dates)
-    val_wo_MSU_rho0 = rebase_yearly(val_wo_MSU_rho0)
-    test_wo_MSU_rho0 = pd.Series(wealth_test_dict['test_wo_MSU_rho0'], index=test_dates)
-    test_wo_MSU_rho0 = rebase_yearly(test_wo_MSU_rho0)
-
-    val_wo_MSU_rho05 = pd.Series(wealth_val_dict['val_wo_MSU_rho05'], index=val_dates)
-    val_wo_MSU_rho05 = rebase_yearly(val_wo_MSU_rho05)
-    test_wo_MSU_rho05 = pd.Series(wealth_test_dict['test_wo_MSU_rho05'], index=test_dates)
-    test_wo_MSU_rho05 = rebase_yearly(test_wo_MSU_rho05)
-
-    val_wo_MSU_rho1 = pd.Series(wealth_val_dict['val_wo_MSU_rho1'], index=val_dates)
-    val_wo_MSU_rho1 = rebase_yearly(val_wo_MSU_rho1)
-    test_wo_MSU_rho1 = pd.Series(wealth_test_dict['test_wo_MSU_rho1'], index=test_dates)
-    test_wo_MSU_rho1 = rebase_yearly(test_wo_MSU_rho1)
-
+    # Create copies of the dataframes
+    df_val_yearly = df_val.copy()
+    df_test_yearly = df_test.copy()
+    
+    # Rebase each column yearly
+    for col in df_val_yearly.columns:
+        df_val_yearly[col] = rebase_yearly_series(df_val_yearly[col])
+    
+    for col in df_test_yearly.columns:
+        df_test_yearly[col] = rebase_yearly_series(df_test_yearly[col])
     
     plt.figure(figsize=(12, 6))
     
-    # Background shading only for Validation and Test segments.
+    # Background shading for validation and testing segments
     plt.axvspan(val_days[0], val_days[-1], facecolor='gray', alpha=0.3, label='Validation Period')
-    plt.axvspan(test_days[0], test_days[-1], facecolor='gray', alpha=0.5, label='Test Period')
+    plt.axvspan(test_days[0], test_days[-1], facecolor='gray', alpha=0.5, label='Testing Period')
     
-    # Plot DJIA monthly wealth trends
-    plt.plot(val_dates, djia_monthly_val, color='r', linestyle='-', marker='o', label='DJIA')
-    plt.plot(test_dates, djia_monthly_test, color='r', linestyle='-', marker='o', label=None)
+    # Plot DJIA yearly rebased for validation and testing
+    plt.plot(df_val_yearly.index, df_val_yearly['DowJones'], color='r', linestyle='-', marker='o', label='DJIA')
+    plt.plot(df_test_yearly.index, df_test_yearly['DowJones'], color='r', linestyle='-', marker='o', label=None)
     
-    # Plot agent monthly wealth trends, one label per series.
-    plt.plot(val_dates, val_w_MSU_dynamic, color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
-    plt.plot(test_dates, test_w_MSU_dynamic, color='b', linestyle='-', marker='o', label=None)
+    # Plot agent yearly rebased for validation
+    plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
     
-    plt.plot(val_dates, val_w_MSU_rho0, color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
-    plt.plot(test_dates, test_w_MSU_rho0, color='darkblue', linestyle='-', marker='o', label=None)
-    
-    plt.plot(val_dates, val_w_MSU_rho05, color='c', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
-    plt.plot(test_dates, test_w_MSU_rho05, color='c', linestyle='-', marker='o', label=None)
-    
-    plt.plot(val_dates, val_w_MSU_rho1, color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
-    plt.plot(test_dates, test_w_MSU_rho1, color='steelblue', linestyle='-', marker='o', label=None)
-
-    plt.plot(val_dates, val_wo_MSU_rho0, color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
-    plt.plot(test_dates, test_wo_MSU_rho0, color='limegreen', linestyle='-', marker='o', label=None)
-
-    plt.plot(val_dates, val_wo_MSU_rho05, color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
-    plt.plot(test_dates, test_wo_MSU_rho05, color='g', linestyle='-', marker='o', label=None)
-
-    plt.plot(val_dates, val_wo_MSU_rho1, color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
-    plt.plot(test_dates, test_wo_MSU_rho1, color='lawngreen', linestyle='-', marker='o', label=None)
+    # Plot agent yearly rebased for testing
+    plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
-    plt.ylabel("Cumulative Wealth (Monthly, Yearly Rebased)", fontsize=14)
-    plt.title("DeepTrader vs. DJIA (Rebased Each Year)", fontsize=16)
+    plt.ylabel("Cumulative Wealth (Yearly Rebased)", fontsize=14)
+    plt.title("DeepTrader vs. DJIA (Yearly Rebased)", fontsize=16)
     plt.grid(True)
     plt.legend(fontsize=10, loc='upper center')
     plt.tight_layout()
     plt.show()
 
-def calculate_periodic_returns(data, period):
+# -------------------------------
+# Periodic Returns & Win Rate Functions
+# -------------------------------
+def calculate_periodic_returns_df(df, period):
     """
-    Resample the data to the specified period using the last value of each period,
-    then compute period-over-period returns.
+    Resample the DataFrame using the specified period (e.g., 'ME', 'QE', '6ME', 'YE')
+    by taking the last value of each period, then compute period-over-period returns.
     """
-    resampled = data.resample(period).last()
+    resampled = df.resample(period).last()
     returns = resampled.pct_change().dropna()
     return returns
 
-def calculate_win_rate(periodic_returns, benchmark_column='DowJones'):
+def calculate_win_rate_df(returns_df, benchmark_column='DowJones'):
     """
-    Calculate win rate for each agent column as the ratio of periods 
-    where the agent's return is higher than the benchmark's return.
+    Calculate win rate for each column (except the benchmark) as the ratio of periods
+    where the column's return is higher than the benchmark's return.
     """
-    agent_columns = [col for col in periodic_returns.columns if col != benchmark_column]
+    cols = [col for col in returns_df.columns if col != benchmark_column]
     win_rates = {}
-    for col in agent_columns:
-        wins = (periodic_returns[col] > periodic_returns[benchmark_column]).sum()
-        total = len(periodic_returns)
+    total = len(returns_df)
+    for col in cols:
+        wins = (returns_df[col] > returns_df[benchmark_column]).sum()
         win_rates[col] = wins / total
     return pd.Series(win_rates)
 
+def compute_metrics_df(df, series_list):
+    """
+    For each specified series in the DataFrame, compute performance metrics (APR, AVOL, ASR, MDD, CR, DDR)
+    using calculate_metrics, and return a DataFrame where rows are metrics and columns are strategies.
+    """
+    metrics_dict = {}
+    for col in series_list:
+        wealth = df[col].values
+        m = calculate_metrics(wealth.reshape(1, -1), TRADE_MODE)
+        metrics_dict[col] = {
+            'APR': m['APR'][0, 0] if isinstance(m['APR'], np.ndarray) else m['APR'],
+            'AVOL': m['AVOL'][0, 0] if isinstance(m['AVOL'], np.ndarray) else m['AVOL'],
+            'ASR': m['ASR'][0, 0] if isinstance(m['ASR'], np.ndarray) else m['ASR'],
+            'MDD': m['MDD'],
+            'CR': m['CR'][0, 0] if isinstance(m['CR'], np.ndarray) else m['CR'],
+            'DDR': m['DDR'][0, 0] if isinstance(m['DDR'], np.ndarray) else m['DDR']
+        }
+    return pd.DataFrame(metrics_dict)
+
+# -------------------------------
+# Main
+# -------------------------------
 def main():
-    # Load agent wealth arrays and flatten them
-    agent_wealth_dict = load_agent_wealth()
+    # Process data into validation and testing DataFrames
+    df_val, df_test, full_days, train_days, val_days, test_days = process_data()
     
-    # Get full business day range and segments
-    full_days, train_days, val_days, test_days = get_business_day_segments()
+    print("Validation Data (first 5 rows):")
+    print(df_val.head())
     
-    # Download DJIA data and compute daily cumulative wealth (rebased to 1)
-    df_djia = download_djia_data(full_days)
-    djia_wealth_daily = compute_cumulative_wealth(df_djia)
-
-    # Resample DJIA wealth for Validation and Test segments and rebase to start at 1
-    djia_wealth_val = resample_series(djia_wealth_daily[val_days], TRADE_LEN)
-    djia_wealth_val = djia_wealth_val / djia_wealth_val[0]
-    djia_wealth_test = resample_series(djia_wealth_daily[test_days], TRADE_LEN)
-    djia_wealth_test = djia_wealth_test / djia_wealth_test[0]
+    print("\nTesting Data (first 5 rows):")
+    print(df_test.head())
     
-    # Prepare agent wealth segments (rebased to start at 1)
-    val_w_MSU_dynamic = agent_wealth_dict['val_w_MSU_dynamic'] / agent_wealth_dict['val_w_MSU_dynamic'][0]
-    val_w_MSU_rho0 = agent_wealth_dict['val_w_MSU_rho0'] / agent_wealth_dict['val_w_MSU_rho0'][0]
-    val_w_MSU_rho05 = agent_wealth_dict['val_w_MSU_rho05'] / agent_wealth_dict['val_w_MSU_rho05'][0]
-    val_w_MSU_rho1 = agent_wealth_dict['val_w_MSU_rho1'] / agent_wealth_dict['val_w_MSU_rho1'][0]
-    val_wo_MSU_rho0 = agent_wealth_dict['val_wo_MSU_rho0'] / agent_wealth_dict['val_wo_MSU_rho0'][0]
-    val_wo_MSU_rho05 = agent_wealth_dict['val_wo_MSU_rho05'] / agent_wealth_dict['val_wo_MSU_rho05'][0]
-    val_wo_MSU_rho1 = agent_wealth_dict['val_wo_MSU_rho1'] / agent_wealth_dict['val_wo_MSU_rho1'][0]
-
-    test_w_MSU_dynamic = agent_wealth_dict['test_w_MSU_dynamic'] / agent_wealth_dict['test_w_MSU_dynamic'][0]
-    test_w_MSU_rho0 = agent_wealth_dict['test_w_MSU_rho0'] / agent_wealth_dict['test_w_MSU_rho0'][0]
-    test_w_MSU_rho05 = agent_wealth_dict['test_w_MSU_rho05'] / agent_wealth_dict['test_w_MSU_rho05'][0]
-    test_w_MSU_rho1 = agent_wealth_dict['test_w_MSU_rho1'] / agent_wealth_dict['test_w_MSU_rho1'][0]
-    test_wo_MSU_rho0 = agent_wealth_dict['test_wo_MSU_rho0'] / agent_wealth_dict['test_wo_MSU_rho0'][0]
-    test_wo_MSU_rho05 = agent_wealth_dict['test_wo_MSU_rho05'] / agent_wealth_dict['test_wo_MSU_rho05'][0]
-    test_wo_MSU_rho1 = agent_wealth_dict['test_wo_MSU_rho1'] / agent_wealth_dict['test_wo_MSU_rho1'][0]
+    # Plot cumulative wealth with background shading (Training vs Validation vs Testing)
+    plot_results(df_val, df_test, train_days, val_days, test_days)
+    plot_yearly_results(df_val, df_test, val_days, test_days)
     
-    # --- Individual calculation for metrics on the Dynamic series ---
-    metrics_test_w_MSU_dynamic = calculate_metrics(test_w_MSU_dynamic.reshape(1, -1), TRADE_MODE)
-    metrics_test_w_MSU_rho0 = calculate_metrics(test_w_MSU_rho0.reshape(1, -1), TRADE_MODE)
-    metrics_test_w_MSU_rho05 = calculate_metrics(test_w_MSU_rho05.reshape(1, -1), TRADE_MODE)
-    metrics_test_w_MSU_rho1 = calculate_metrics(test_w_MSU_rho1.reshape(1, -1), TRADE_MODE)
-    metrics_test_wo_MSU_rho0 = calculate_metrics(test_wo_MSU_rho0.reshape(1, -1), TRADE_MODE)
-    metrics_test_wo_MSU_rho05 = calculate_metrics(test_wo_MSU_rho05.reshape(1, -1), TRADE_MODE)
-    metrics_test_wo_MSU_rho1 = calculate_metrics(test_wo_MSU_rho1.reshape(1, -1), TRADE_MODE)
-    metrics_test_djia_wealth = calculate_metrics(djia_wealth_test.reshape(1,-1), TRADE_MODE)
-
-    print("metrics_test_w_MSU_dynamic:", metrics_test_w_MSU_dynamic)
-    print("metrics_test_w_MSU_rho0:", metrics_test_w_MSU_rho0)
-    print("metrics_test_w_MSU_rho05:", metrics_test_w_MSU_rho05)
-    print("metrics_test_w_MSU_rho1:", metrics_test_w_MSU_rho1)
-    print("metrics_test_wo_MSU_rho0:", metrics_test_wo_MSU_rho0)
-    print("metrics_test_wo_MSU_rho05:", metrics_test_wo_MSU_rho05)
-    print("metrics_test_wo_MSU_rho1:", metrics_test_wo_MSU_rho1)
-    print("metrics_test_djia_wealth:", metrics_test_djia_wealth)
+    # Compute periodic returns and win rates for validation period
+    period_codes = ['ME', 'QE', '6ME', 'YE']
+    print("\nPeriodic Returns and Win Rates (Validation):")
+    for period in period_codes:
+        returns_val = calculate_periodic_returns_df(df_val, period)
+        win_rate_val = calculate_win_rate_df(returns_val, benchmark_column='DowJones')
+        print(f"\nValidation Period: {period}")
+        if period == 'YE':
+            print("Returns:")
+            print(returns_val)
+        print("Win Rates:")
+        print(win_rate_val)
     
+    # Compute periodic returns and win rates for testing period
+    print("\nPeriodic Returns and Win Rates (Testing):")
+    for period in period_codes:
+        returns_test = calculate_periodic_returns_df(df_test, period)
+        win_rate_test = calculate_win_rate_df(returns_test, benchmark_column='DowJones')
+        print(f"\nTesting Period: {period}")
+        if period == 'YE':
+            print("Returns:")
+            print(returns_test)
+        print("Win Rates:")
+        print(win_rate_test)
     
-    # Prepare dictionaries for plotting purposes
-    wealth_val_dict = {
-        'val_w_MSU_dynamic': val_w_MSU_dynamic,
-        'val_w_MSU_rho0': val_w_MSU_rho0,
-        'val_w_MSU_rho05': val_w_MSU_rho05,
-        'val_w_MSU_rho1': val_w_MSU_rho1,
-        'val_wo_MSU_rho0': val_wo_MSU_rho0,
-        'val_wo_MSU_rho05': val_wo_MSU_rho05,
-        'val_wo_MSU_rho1': val_wo_MSU_rho1
-    }
-    wealth_test_dict = {
-        'test_w_MSU_dynamic': test_w_MSU_dynamic,
-        'test_w_MSU_rho0': test_w_MSU_rho0,
-        'test_w_MSU_rho05': test_w_MSU_rho05,
-        'test_w_MSU_rho1': test_w_MSU_rho1,
-        'test_wo_MSU_rho0': test_wo_MSU_rho0,
-        'test_wo_MSU_rho05': test_wo_MSU_rho05,
-        'test_wo_MSU_rho1': test_wo_MSU_rho1
-    }
+    # Compute performance metrics for validation columns
+    metrics_val = compute_metrics_df(df_val, df_val.columns)
+    print("\nValidation Metrics:")
+    print(metrics_val)
     
-    # Plot the results with the full business day x-axis and background shading.
-    plot_results(full_days, train_days, val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
-
-    # ----- Plot Monthly Results (Directly using the 101 monthly points) -----
-    plot_yearly_results(val_days, test_days, djia_wealth_daily, wealth_val_dict, wealth_test_dict)
-    
-    # ----- Calculate Win Rates for the Dynamic series without interpolation -----
-
-    # For validation:
-    val_dates_sampled = resample_dates(val_days, TRADE_LEN)
-    djia_monthly_val = resample_series(djia_wealth_daily[val_days], TRADE_LEN)
-    djia_monthly_val = djia_monthly_val / djia_monthly_val[0]
-    df_val = pd.DataFrame({
-        'val_w_MSU_dynamic': val_w_MSU_dynamic,
-        'val_w_MSU_rho1': val_w_MSU_rho1,
-        'val_wo_MSU_rho05': val_wo_MSU_rho05,
-        'val_wo_MSU_rho1': val_wo_MSU_rho1,
-        'DowJones': djia_monthly_val
-    }, index=val_dates_sampled)
-    
-    # For test:
-    test_dates_sampled = resample_dates(test_days, TRADE_LEN)
-    djia_monthly_test = resample_series(djia_wealth_daily[test_days], TRADE_LEN)
-    djia_monthly_test = djia_monthly_test / djia_monthly_test[0]
-    df_test = pd.DataFrame({
-        'test_w_MSU_dynamic': test_w_MSU_dynamic,
-        'test_w_MSU_rho1': test_w_MSU_rho1,
-        'test_wo_MSU_rho05': test_wo_MSU_rho05,
-        'test_wo_MSU_rho1': test_wo_MSU_rho1,
-        'DowJones': djia_monthly_test
-    }, index=test_dates_sampled)
-    
-    # Calculate periodic returns for validation using different period codes:
-    monthly_returns_val = calculate_periodic_returns(df_val, 'ME')
-    quarterly_returns_val = calculate_periodic_returns(df_val, 'QE')
-    semi_annual_returns_val = calculate_periodic_returns(df_val, '6ME')
-    annual_returns_val = calculate_periodic_returns(df_val, 'YE')
-
-    print("Validation Periodic Returns for Series:")
-    print(f"Annual Returns: {annual_returns_val}")
-    
-    # Calculate win rates for validation
-    monthly_win_rate_val = calculate_win_rate(monthly_returns_val, benchmark_column='DowJones')
-    quarterly_win_rate_val = calculate_win_rate(quarterly_returns_val, benchmark_column='DowJones')
-    semi_annual_win_rate_val = calculate_win_rate(semi_annual_returns_val, benchmark_column='DowJones')
-    annual_win_rate_val = calculate_win_rate(annual_returns_val, benchmark_column='DowJones')
-    
-    print("Validation Period Win Rates for Series:")
-    print(f"Monthly Win Rate: {monthly_win_rate_val}")
-    print(f"Quarterly Win Rate: {quarterly_win_rate_val}")
-    print(f"Semi-annual Win Rate: {semi_annual_win_rate_val}")
-    print(f"Annual Win Rate: {annual_win_rate_val}")
-    
-    # Calculate periodic returns and win rates for test (using the 101 monthly points)
-    monthly_returns_test = calculate_periodic_returns(df_test, 'ME')
-    quarterly_returns_test = calculate_periodic_returns(df_test, 'QE')
-    semi_annual_returns_test = calculate_periodic_returns(df_test, '6ME')
-    annual_returns_test = calculate_periodic_returns(df_test, 'YE')
-
-    print("Test Periodic Returns for Series:")
-    print(f"Annual Returns: {annual_returns_test}")
-    
-    monthly_win_rate_test = calculate_win_rate(monthly_returns_test)
-    quarterly_win_rate_test = calculate_win_rate(quarterly_returns_test)
-    semi_annual_win_rate_test = calculate_win_rate(semi_annual_returns_test)
-    annual_win_rate_test = calculate_win_rate(annual_returns_test)
-    
-    print("Test Period Win Rates for Series:")
-    print(f"Monthly Win Rate: {monthly_win_rate_test}")
-    print(f"Quarterly Win Rate: {quarterly_win_rate_test}")
-    print(f"Semi-annual Win Rate: {semi_annual_win_rate_test}")
-    print(f"Annual Win Rate: {annual_win_rate_test}")
+    # Compute performance metrics for testing columns
+    metrics_test = compute_metrics_df(df_test, df_test.columns)
+    print("\nTesting Metrics:")
+    print(metrics_test)
 
 if __name__ == "__main__":
     main()

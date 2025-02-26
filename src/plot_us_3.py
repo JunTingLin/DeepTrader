@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import yfinance as yf
-import math
 from datetime import datetime
 from utils.functions import calculate_metrics
 
@@ -56,15 +54,14 @@ def get_business_day_segments():
     print(f"Testing days: {len(test_days)}")
     return full_days, train_days, test_days
 
-def download_djia_data(full_days):
+def get_djia_data(full_days, file_path="^DJI.csv"):
     """
-    Download DJIA data for the period covering full_days,
-    reindex to the full business day range and fill missing values.
+    Load DJIA data from a local CSV file, filter for full_days, 
+    reindex to the full business day range, and fill missing values.
     """
-    djia_ticker = yf.Ticker("^DJI")
-    df = djia_ticker.history(start=full_days[0].strftime("%Y-%m-%d"),
-                             end=full_days[-1].strftime("%Y-%m-%d"))
-    df.index = df.index.tz_localize(None)
+    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
+    full_days = pd.DatetimeIndex(full_days)
+    df = df.loc[full_days[0]:full_days[-1]]
     df = df.reindex(full_days)
     df.replace(0, np.nan, inplace=True)
     df.ffill(inplace=True)
@@ -99,7 +96,7 @@ def process_data():
     full_days, train_days, test_days = get_business_day_segments()
     
     # Download DJIA data for the entire period
-    df_djia_full = download_djia_data(full_days)
+    df_djia_full = get_djia_data(full_days)
     
     # Extract testing segment: indices 2043 to 6259
     df_djia_test = df_djia_full.loc[test_days]
