@@ -2,7 +2,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
-from utils.functions import calculate_metrics
+
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from utils.functions import calculate_metrics # ../utils/functions.py
 
 # -------------------------------
 # Constants
@@ -19,23 +23,23 @@ def load_agent_wealth():
     """
     Load and flatten agent wealth arrays for validation and test.
     """
-    # 验证集数据 (Validation data)
-    val_w_MSU_dynamic = np.load(r'outputs\0207\035156\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_rho1    = np.load(r'outputs\0207\152525\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_rho0    = np.load(r'outputs\0207\195947\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_rho05   = np.load(r'outputs\0208\012246\npy_file\agent_wealth_val.npy').flatten()
-    val_wo_MSU_rho1   = np.load(r'outputs\0209\033149\npy_file\agent_wealth_val.npy').flatten()
-    val_wo_MSU_rho0   = np.load(r'outputs\0209\112527\npy_file\agent_wealth_val.npy').flatten()
-    val_wo_MSU_rho05  = np.load(r'outputs\0209\162424\npy_file\agent_wealth_val.npy').flatten()
+    # Validation data
+    val_w_MSU_dynamic = np.load(r'..\outputs\0207\035156\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho1    = np.load(r'..\outputs\0207\152525\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho0    = np.load(r'..\outputs\0207\195947\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho05   = np.load(r'..\outputs\0208\012246\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho1   = np.load(r'..\outputs\0209\033149\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho0   = np.load(r'..\outputs\0209\112527\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho05  = np.load(r'..\outputs\0209\162424\npy_file\agent_wealth_val.npy').flatten()
 
-    # 测试集数据 (Test data)
-    test_w_MSU_dynamic = np.load(r'outputs\0207\035156\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_rho1    = np.load(r'outputs\0207\152525\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_rho0    = np.load(r'outputs\0207\195947\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_rho05   = np.load(r'outputs\0208\012246\npy_file\agent_wealth_test.npy').flatten()
-    test_wo_MSU_rho1   = np.load(r'outputs\0209\033149\npy_file\agent_wealth_test.npy').flatten()
-    test_wo_MSU_rho0   = np.load(r'outputs\0209\112527\npy_file\agent_wealth_test.npy').flatten()
-    test_wo_MSU_rho05  = np.load(r'outputs\0209\162424\npy_file\agent_wealth_test.npy').flatten()
+    # Test data
+    test_w_MSU_dynamic = np.load(r'..\outputs\0207\035156\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho1    = np.load(r'..\outputs\0207\152525\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho0    = np.load(r'..\outputs\0207\195947\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho05   = np.load(r'..\outputs\0208\012246\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho1   = np.load(r'..\outputs\0209\033149\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho0   = np.load(r'..\outputs\0209\112527\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho05  = np.load(r'..\outputs\0209\162424\npy_file\agent_wealth_test.npy').flatten()
 
     return {
         'val_w_MSU_dynamic': val_w_MSU_dynamic,

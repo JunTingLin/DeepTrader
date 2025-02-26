@@ -2,7 +2,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
-from utils.functions import calculate_metrics
+
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from utils.functions import calculate_metrics # ../utils/functions.py
 
 # -------------------------------
 # Constants
@@ -19,13 +23,13 @@ def load_agent_wealth():
     """
     Load and flatten agent wealth arrays for validation and test.
     """
-    w_MSU_dynamic = np.load(r'outputs\0219\052939\npy_file\agent_wealth_val.npy').flatten()
-    w_MSU_rho0    = np.load(r'outputs\0219\133519\npy_file\agent_wealth_val.npy').flatten()
-    w_MSU_rho05   = np.load(r'outputs\0219\215859\npy_file\agent_wealth_val.npy').flatten()
-    w_MSU_rho1    = np.load(r'outputs\0220\152515\npy_file\agent_wealth_val.npy').flatten()
-    wo_MSU_rho0   = np.load(r'outputs\0220\224010\npy_file\agent_wealth_val.npy').flatten()
-    wo_MSU_rho05  = np.load(r'outputs\0221\081940\npy_file\agent_wealth_val.npy').flatten()
-    wo_MSU_rho1   = np.load(r'outputs\0221\153057\npy_file\agent_wealth_val.npy').flatten()
+    w_MSU_dynamic = np.load(r'..\outputs\0219\052939\npy_file\agent_wealth_val.npy').flatten()
+    w_MSU_rho0    = np.load(r'..\outputs\0219\133519\npy_file\agent_wealth_val.npy').flatten()
+    w_MSU_rho05   = np.load(r'..\outputs\0219\215859\npy_file\agent_wealth_val.npy').flatten()
+    w_MSU_rho1    = np.load(r'..\outputs\0220\152515\npy_file\agent_wealth_val.npy').flatten()
+    wo_MSU_rho0   = np.load(r'..\outputs\0220\224010\npy_file\agent_wealth_val.npy').flatten()
+    wo_MSU_rho05  = np.load(r'..\outputs\0221\081940\npy_file\agent_wealth_val.npy').flatten()
+    wo_MSU_rho1   = np.load(r'..\outputs\0221\153057\npy_file\agent_wealth_val.npy').flatten()
     
 
     return {
