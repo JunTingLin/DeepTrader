@@ -17,6 +17,7 @@ class DataGenerator():
                  in_features,
                  val_idx,
                  test_idx,
+                 test_idx_end,
                  batch_size,
                  val_mode=False,
                  test_mode=False,
@@ -31,6 +32,7 @@ class DataGenerator():
         self.market_features = in_features[1]
         self.val_idx = val_idx
         self.test_idx = test_idx
+        self.test_idx_end = test_idx_end
         self.batch_size = batch_size
         self.val_mode = val_mode
         self.test_mode = test_mode
@@ -64,7 +66,9 @@ class DataGenerator():
     def _step(self):
 
         if self.test_mode:
-            if self.cursor + self.trade_len >= self.__assets_data.shape[1] - 1:
+            # if self.cursor + self.trade_len >= self.__assets_data.shape[1] - 1:
+            # 修改此處：使用 test_idx_end 作為測試區間的結束判斷
+            if self.cursor + self.trade_len >= self.test_idx_end:
                 return None, None, None, None, None, None, None, True
         obs, market_obs, future_return, past_return = self._get_data()
         obs_masks, future_return_masks = self._get_masks(obs, future_return)
@@ -86,7 +90,9 @@ class DataGenerator():
         if self.val_mode:
             done = (self.cursor >= self.test_idx)
         elif self.test_mode:
-            done = (self.cursor >= self.__assets_data.shape[1] - 1)
+            # done = (self.cursor >= self.__assets_data.shape[1] - 1)
+            # 修改此處：當 cursor 大於或等於 test_idx_end 則結束
+            done = (self.cursor >= self.test_idx_end)
         else:
             done = ((self.cursor >= self.val_idx).any() or (self.step_cnt >= self.max_steps))
         self.step_cnt += 1
@@ -113,11 +119,16 @@ class DataGenerator():
         elif self.test_mode:
             self.cursor = np.array([self.test_idx])
         else:
-            if len(self.tmp_order) == 0:
-                # self.tmp_order = self.order_set.copy()
+            # if len(self.tmp_order) == 0:
+            #     # self.tmp_order = self.order_set.copy()
+            #     self.tmp_order = np.random.permutation(self.order_set).copy()
+            # self.cursor = self.tmp_order[:min(self.batch_size, len(self.tmp_order))]
+            # self.tmp_order = self.tmp_order[min(self.batch_size, len(self.tmp_order)):]
+            # 若剩餘索引不足一個完整 batch，就丟棄（drop_last）並重新生成全新的隨機順序
+            if len(self.tmp_order) < self.batch_size:
                 self.tmp_order = np.random.permutation(self.order_set).copy()
-            self.cursor = self.tmp_order[:min(self.batch_size, len(self.tmp_order))]
-            self.tmp_order = self.tmp_order[min(self.batch_size, len(self.tmp_order)):]
+            self.cursor = self.tmp_order[:self.batch_size]
+            self.tmp_order = self.tmp_order[self.batch_size:]
 
         obs, market_obs, future_return, past_return = self._get_data()
         obs_masks, future_return_masks = self._get_masks(obs, future_return)
@@ -137,7 +148,9 @@ class DataGenerator():
         if self.val_mode:
             done = (self.cursor >= self.test_idx + 1)
         elif self.test_mode:
-            done = (self.cursor >= self.__assets_data.shape[1])
+            # done = (self.cursor >= self.__assets_data.shape[1])
+            # 修改此處：用 test_idx_end 判斷
+            done = (self.cursor >= self.test_idx_end)
         else:
             done = (self.cursor >= self.val_idx).any()
         assert not np.isnan(obs + obs_normed).any()
@@ -256,6 +269,19 @@ class DataGenerator():
     def train(self):
         self.test_mode = False
         self.val_mode = False
+
+    def roll_update(self):
+        # 每次更新向後移動 trade_len 天
+        self.val_idx += self.trade_len
+        self.test_idx += self.trade_len
+        self.test_idx_end += self.trade_len
+
+        # 重新計算依賴於 val_idx 的變數，例如 train_set_len 與 order_set
+        self.train_set_len = self.val_idx - 2 * self.trade_len - self.window_len + 1
+        self.order_set = np.arange(5 * (self.window_len + 1) - 1, self.val_idx - 6 * self.trade_len)
+        print(f"train_set_len: {self.train_set_len}, order_set_len: {len(self.order_set)}")
+
+        self.tmp_order = np.array([])
 
 
 class PortfolioSim(object):
@@ -385,6 +411,7 @@ class PortfolioEnv(object):
                  in_features,
                  val_idx,
                  test_idx,
+                 test_idx_end,
                  batch_size,
                  fee=0.001,
                  time_cost=0.0,
@@ -405,10 +432,11 @@ class PortfolioEnv(object):
         self.is_norm = is_norm
         self.val_idx = val_idx
         self.test_idx = test_idx
+        self.test_idx_end = test_idx_end
         self.allow_short = allow_short
 
         self.src = DataGenerator(assets_data=assets_data, rtns_data=rtns_data, market_data=market_data,
-                                 in_features=in_features, val_idx=val_idx, test_idx=test_idx,
+                                 in_features=in_features, val_idx=val_idx, test_idx=test_idx, test_idx_end=test_idx_end,
                                  batch_size=batch_size, max_steps=max_steps, norm_type=norm_type,
                                  window_len=window_len, trade_len=trade_len, allow_short=allow_short)
 
@@ -449,3 +477,6 @@ class PortfolioEnv(object):
 
     def set_train(self):
         self.src.train()
+
+    def roll_update(self):
+        self.src.roll_update()
