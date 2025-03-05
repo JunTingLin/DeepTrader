@@ -56,7 +56,7 @@ def run(func_args):
     formatter = logging.Formatter(BASIC_FORMAT, DATE_FORMAT)
     chlr = logging.StreamHandler()
     chlr.setFormatter(formatter)
-    chlr.setLevel('WARNING')
+    chlr.setLevel('INFO')
     fhlr = logging.FileHandler(os.path.join(save_dir, 'logger.log'))
     fhlr.setFormatter(formatter)
     logger.addHandler(chlr)
@@ -68,6 +68,7 @@ def run(func_args):
         market_history = np.load(os.path.join(data_prefix, 'market_data.npy'))
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
+        train_idx = func_args.train_idx
         val_idx = func_args.val_idx
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end  # 新增測試結束指標
@@ -82,6 +83,7 @@ def run(func_args):
         market_data=market_history,
         rtns_data=rate_of_return,
         in_features=func_args.in_features,
+        train_idx=train_idx,
         val_idx=val_idx,
         test_idx=test_idx,
         test_idx_end=test_idx_end,
@@ -90,7 +92,8 @@ def run(func_args):
         trade_len=func_args.trade_len,
         max_steps=func_args.max_steps,
         norm_type=func_args.norm_type,
-        allow_short=allow_short
+        allow_short=allow_short,
+        logger=logger
     )
 
     supports = [A]
@@ -103,8 +106,8 @@ def run(func_args):
     # 這裡使用 func_args.epochs 作為每個 cycle 內訓練的 epoch 數
     epochs_per_cycle = epochs_per_cycle = func_args.epochs
     while True:
-        logger.warning("Starting cycle %d: val_idx=%d, test_idx=%d, test_idx_end=%d" %
-                       (cycle, env.src.val_idx, env.src.test_idx, env.src.test_idx_end))
+        logger.warning("Starting cycle %d: train_idx=%d, val_idx=%d, test_idx=%d, test_idx_end=%d" %
+                       (cycle, env.src.train_idx, env.src.val_idx, env.src.test_idx, env.src.test_idx_end))
         best_cycle_CR = -float('inf')
         # 在每個 cycle 內訓練若干 epoch
         for epoch in range(epochs_per_cycle):

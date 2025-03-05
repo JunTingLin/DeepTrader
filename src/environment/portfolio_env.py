@@ -15,6 +15,7 @@ class DataGenerator():
                  rtns_data,
                  market_data,
                  in_features,
+                 train_idx,
                  val_idx,
                  test_idx,
                  test_idx_end,
@@ -26,10 +27,12 @@ class DataGenerator():
                  window_len=20,
                  trade_len=7,
                  allow_short=True,
+                 logger=None
                  ):
 
         self.assets_features = in_features[0]
         self.market_features = in_features[1]
+        self.train_idx = train_idx
         self.val_idx = val_idx
         self.test_idx = test_idx
         self.test_idx_end = test_idx_end
@@ -41,6 +44,7 @@ class DataGenerator():
         self.window_len = window_len
         self.trade_len = trade_len
         self.allow_short = allow_short
+        self.logger = logger
 
         self.__org_assets_data = assets_data.copy()[:, :, :in_features[0]]
         self.__ror_data = rtns_data
@@ -51,10 +55,13 @@ class DataGenerator():
             self.__org_market_data = market_data[:, :in_features[1]]
             self.__market_data = self.__org_market_data.copy()
 
-        self.train_set_len = self.val_idx - 2 * self.trade_len - window_len + 1
+        
 
         # self.order_set = np.arange(2483, self.val_idx - 2 * trade_len)
-        self.order_set = np.arange(5 * (self.window_len + 1) - 1, self.val_idx - 6 * trade_len)
+        self.train_set_len = self.val_idx - self.train_idx
+        lower_bound = max(self.train_idx, 5 * (self.window_len + 1) - 1)
+        self.order_set = np.arange(lower_bound, self.val_idx - 6 * self.trade_len)
+        self.logger.info(f"train_set_len: {self.train_set_len}, order_set_len: {len(self.order_set)}")
         self.tmp_order = np.array([])
 
         # ==== Sample ====
@@ -272,14 +279,15 @@ class DataGenerator():
 
     def roll_update(self):
         # 每次更新向後移動 trade_len 天
+        self.train_idx += self.trade_len
         self.val_idx += self.trade_len
         self.test_idx += self.trade_len
         self.test_idx_end += self.trade_len
 
-        # 重新計算依賴於 val_idx 的變數，例如 train_set_len 與 order_set
-        self.train_set_len = self.val_idx - 2 * self.trade_len - self.window_len + 1
-        self.order_set = np.arange(5 * (self.window_len + 1) - 1, self.val_idx - 6 * self.trade_len)
-        print(f"train_set_len: {self.train_set_len}, order_set_len: {len(self.order_set)}")
+        self.train_set_len = self.val_idx - self.train_idx
+        lower_bound = max(self.train_idx, 5*(self.window_len+1)-1)
+        self.order_set = np.arange(lower_bound, self.val_idx - 6 * self.trade_len)
+        self.logger.info(f"train_set_len: {self.train_set_len}, order_set_len: {len(self.order_set)}")
 
         self.tmp_order = np.array([])
 
@@ -409,6 +417,7 @@ class PortfolioEnv(object):
                  market_data,
                  rtns_data,
                  in_features,
+                 train_idx,
                  val_idx,
                  test_idx,
                  test_idx_end,
@@ -422,6 +431,7 @@ class PortfolioEnv(object):
                  is_norm=True,
                  allow_short=True,
                  assets_name=None,
+                 logger=None
                  ):
 
         self.window_len = window_len
@@ -430,15 +440,18 @@ class PortfolioEnv(object):
         self.val_mode = False
         self.test_mode = False
         self.is_norm = is_norm
+        self.train_idx = train_idx
         self.val_idx = val_idx
         self.test_idx = test_idx
         self.test_idx_end = test_idx_end
         self.allow_short = allow_short
+        self.logger = logger
 
         self.src = DataGenerator(assets_data=assets_data, rtns_data=rtns_data, market_data=market_data,
-                                 in_features=in_features, val_idx=val_idx, test_idx=test_idx, test_idx_end=test_idx_end,
+                                 in_features=in_features, train_idx=train_idx, val_idx=val_idx, test_idx=test_idx, test_idx_end=test_idx_end,
                                  batch_size=batch_size, max_steps=max_steps, norm_type=norm_type,
-                                 window_len=window_len, trade_len=trade_len, allow_short=allow_short)
+                                 window_len=window_len, trade_len=trade_len, allow_short=allow_short,
+                                 logger=logger)
 
         self.sim = PortfolioSim(num_assets=self.num_assets, fee=fee, time_cost=time_cost, allow_short=allow_short)
 

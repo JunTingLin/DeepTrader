@@ -75,8 +75,8 @@ class RLActor(nn.Module):
         else:
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
-        # # force rho to 1
-        # rho = torch.ones((weights.shape[0])).to(self.args.device) * 1
+        # force rho to 05
+        rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
         return weights, rho, scores_p, rho_log_p
 
 
