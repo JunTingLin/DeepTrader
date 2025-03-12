@@ -55,7 +55,7 @@ def load_agent_wealth():
     """
     
     # Merge wealth series for each strategy
-    w_MSU_dynamic = merge_agent_wealth_series(r"..\outputs_2\0303\232310\npy_file\agent_wealth_test_cycle*.npy")
+    w_MSU_dynamic = merge_agent_wealth_series(r"..\outputs_2\0304\000154\npy_file\agent_wealth_test_cycle*.npy")
     w_MSU_rho0    = merge_agent_wealth_series(r"..\outputs_2\0304\023512\npy_file\agent_wealth_test_cycle*.npy")
     w_MSU_rho05   = merge_agent_wealth_series(r"..\outputs_2\0304\023629\npy_file\agent_wealth_test_cycle*.npy")
     w_MSU_rho1    = merge_agent_wealth_series(r"..\outputs_2\0304\023707\npy_file\agent_wealth_test_cycle*.npy")

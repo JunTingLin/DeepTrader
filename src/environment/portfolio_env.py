@@ -61,6 +61,7 @@ class DataGenerator():
         self.train_set_len = self.val_idx - self.train_idx
         lower_bound = max(self.train_idx, 5 * (self.window_len + 1) - 1)
         self.order_set = np.arange(lower_bound, self.val_idx - 6 * self.trade_len)
+        # self.order_set = np.arange(self.train_idx, self.val_idx)
         self.logger.info(f"train_set_len: {self.train_set_len}, order_set_len: {len(self.order_set)}")
         self.tmp_order = np.array([])
 
@@ -287,6 +288,7 @@ class DataGenerator():
         self.train_set_len = self.val_idx - self.train_idx
         lower_bound = max(self.train_idx, 5*(self.window_len+1)-1)
         self.order_set = np.arange(lower_bound, self.val_idx - 6 * self.trade_len)
+        # self.order_set = np.arange(self.train_idx, self.val_idx)
         self.logger.info(f"train_set_len: {self.train_set_len}, order_set_len: {len(self.order_set)}")
 
         self.tmp_order = np.array([])
