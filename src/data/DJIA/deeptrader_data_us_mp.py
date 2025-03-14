@@ -3,7 +3,7 @@ import numpy as np
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 import talib
-
+import multiprocessing as mp
 
 def calculate_returns(df):
     df['Returns'] = df['Close'].pct_change()
@@ -154,99 +154,138 @@ def calculate_alpha101(df):
     alpha101 = (df['Close'] - df['Open']) / ((df['High'] - df['Low']) + 0.001)
     return alpha101
 
-djia_tickers = ['MMM', 'AXP', 'AMGN', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'HPQ',
-                'GS', 'HD', 'HON', 'IBM', 'INTC', 'JNJ', 'JPM', 'MCD', 'MRK', 'MSFT',
-                'NKE', 'PFE', 'PG', 'CRM', 'TRV', 'UNH', 'VZ', 'V', 'WBA', 'DIS']
-df_us = pd.DataFrame()
-for ticker in djia_tickers:
-    print("Downloading:", ticker)
-    try:
-        sample_data = yf.download(ticker, start='2000-01-03', end='2000-01-04', progress=False)
-        
-        if sample_data.empty or sample_data.index[0] != pd.Timestamp('2000-01-03'):
-            print("Skipping:", ticker, "due to no data on 2000-01-03.")
-            continue
-        
-        # Download full data
-        stock_data = yf.download(ticker, start='2000-01-03', end='2023-12-31', auto_adjust=False, progress=False)
-        if stock_data.empty:
-            print("Skipping:", ticker, "due to empty DataFrame.")
-            continue
-
-        # Reset index so 'Date' becomes a normal column
-        stock_data.reset_index(inplace=True)
-        stock_data.columns = stock_data.columns.droplevel(level=1)  # (Open, MMM) -> Open
-        
-        stock_data['Ticker'] = ticker
-        
-        # Vertical concat
-        df_us = pd.concat([df_us, stock_data], ignore_index=True)
-
-    except Exception as e:
-        print(f"Error downloading {ticker}: {e}")
-        continue
-
-
-df_us['Date'] = pd.to_datetime(df_us['Date'])
-df_us = df_us.sort_values(by=['Ticker', 'Date'])
-# df_us[['Open', 'Volume']] = df_us[['Open', 'Volume']].replace(0, np.nan)
-# df_us[['Open', 'Volume']] = df_us.groupby('Ticker')[['Open', 'Volume']].transform(lambda x: x.fillna(method='ffill'))
-
-# cols_to_normalize = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
-# scaler = MinMaxScaler()
-# df_us[cols_to_normalize] = scaler.fit_transform(df_us[cols_to_normalize])
-
-alphas = ['Alpha001', 'Alpha002', 'Alpha003', 'Alpha004', 'Alpha006', 'Alpha012', 'Alpha019', 
-          'Alpha033', 'Alpha038', 'Alpha040', 'Alpha044', 'Alpha045', 'Alpha046', 'Alpha051', 
-          'Alpha052', 'Alpha053', 'Alpha054', 'Alpha056', 'Alpha068', 'Alpha085']
-
-unique_stock_ids = df_us['Ticker'].unique()
-unique_dates = df_us['Date'].unique()
-num_stocks = len(df_us['Ticker'].unique())
-num_days = len(df_us['Date'].unique())
-num_ASU_features = 34
-reshaped_data = np.zeros((num_stocks, num_days, num_ASU_features))
-
-for i, stock_id in enumerate(df_us['Ticker'].unique()):
+def process_one_stock(args):
+    """
+    args: (i, stock_id, df_us, unique_dates, alphas)
+    1) 選擇該股票資料
+    2) 做 Talib + alpha 計算
+    3) 組出 shape=(num_days, num_ASU_features) 的陣列
+    4) 回傳 (i, array)
+    """
+    i, stock_id, df_us, unique_dates, alphas = args
+    
+    # 1) 取出該股票資料
     stock_data = df_us[df_us['Ticker'] == stock_id].copy()
-
+    
+    # 2) Talib計算
     stock_data = calculate_returns(stock_data)
     stock_data['MA20'] = talib.SMA(stock_data['Close'], timeperiod=20)
     stock_data['MA60'] = talib.SMA(stock_data['Close'], timeperiod=60)
-    stock_data['RSI'] = talib.RSI(stock_data['Close'], timeperiod=14)
+    stock_data['RSI']  = talib.RSI(stock_data['Close'], timeperiod=14)
     macd, signal, hist = talib.MACD(stock_data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
-    stock_data['MACD'] = macd
+    stock_data['MACD']        = macd
     stock_data['MACD_Signal'] = signal
-    stock_data['MACD_Hist'] = hist
+    stock_data['MACD_Hist']   = hist
     k, d = talib.STOCH(stock_data['High'], stock_data['Low'], stock_data['Close'])
     stock_data['K'] = k
     stock_data['D'] = d
     upper_band, middle_band, lower_band = talib.BBANDS(stock_data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2)
-    stock_data['BBands_Upper'] = upper_band
+    stock_data['BBands_Upper']  = upper_band
     stock_data['BBands_Middle'] = middle_band
-    stock_data['BBands_Lower'] = lower_band
+    stock_data['BBands_Lower']  = lower_band
 
+    # 3) 計算 alpha
     for alpha in alphas:
         calc_function = globals()[f'calculate_{alpha.lower()}']
         stock_data[alpha] = calc_function(stock_data)
-
+    
+    # 4) 組出 shape=(num_days, num_ASU_features) 的暫存
+    num_days = len(unique_dates)
+    num_ASU_features = 34
+    per_stock_array = np.zeros((num_days, num_ASU_features))
+    
+    # 依每個 unique_date 填值
+    drop_cols = ['Date','Ticker','Adj Close','Returns','MACD','MACD_Hist']
+    used_cols = stock_data.columns.drop(drop_cols)
+    
     for j, date in enumerate(unique_dates):
         day_data = stock_data[stock_data['Date'] == date]
         if not day_data.empty:
-            reshaped_data[i, j, :] = day_data[stock_data.columns.drop(['Date', 'Ticker', 'Adj Close', 'Returns', 'MACD', 'MACD_Hist'])].values
-for i in range(reshaped_data.shape[0]):
-    for j in range(reshaped_data.shape[1]):
-        if (reshaped_data[i, j, 0] == 0):
-            reshaped_data[i, j, :] = reshaped_data[i, j-1, :]
-output_file = 'stocks_data.npy'
-np.save(output_file, reshaped_data)
+            per_stock_array[j, :] = day_data[used_cols].values
+    
+    # 前向填補
+    for j in range(1, per_stock_array.shape[0]):
+        if per_stock_array[j, 0] == 0:
+            per_stock_array[j, :] = per_stock_array[j-1, :]
+    
+    return (i, per_stock_array)
 
-returns = np.zeros((num_stocks, num_days))
-for i in range(1, num_days):
-    returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
-output_file_ror = 'ror.npy'
-np.save(output_file_ror, returns)
 
-correlation_matrix = np.corrcoef(returns[:, :1000])
-output_file_correlation = 'industry_classification.npy'
-np.save(output_file_correlation, correlation_matrix)
+
+if __name__ == '__main__':
+    unique_dates = pd.bdate_range(start='2000-01-03', end='2023-12-31') # business day
+    unique_dates = unique_dates.to_pydatetime()
+    unique_dates = np.array(unique_dates)
+
+    djia_tickers = ['MMM','AXP','AMGN','AAPL','BA','CAT','CVX','CSCO','KO','HPQ',
+                    'GS','HD','HON','IBM','INTC','JNJ','JPM','MCD','MRK','MSFT',
+                    'NKE','PFE','PG','CRM','TRV','UNH','VZ','V','WBA','DIS']
+    df_us = pd.DataFrame()
+    for ticker in djia_tickers:
+        print("Downloading:", ticker)
+        try:
+            sample_data = yf.download(ticker, start='2000-01-03', end='2000-01-04', progress=False)
+            if sample_data.empty or sample_data.index[0] != pd.Timestamp('2000-01-03'):
+                print("Skipping:", ticker, "due to no data on 2000-01-03.")
+                continue
+
+            stock_data = yf.download(ticker, start='2000-01-03', end='2023-12-31', auto_adjust=False, progress=False)
+            if stock_data.empty:
+                print("Skipping:", ticker, "due to empty DataFrame.")
+                continue
+
+            # Reset index so 'Date' becomes a normal column
+            stock_data.reset_index(inplace=True)
+            stock_data.columns = stock_data.columns.droplevel(level=1) # (Open, MMM) -> Open
+            stock_data['Ticker'] = ticker
+            df_us = pd.concat([df_us, stock_data], ignore_index=True)
+
+        except Exception as e:
+            print(f"Error downloading {ticker}: {e}")
+            continue
+    
+    # 排序 + MinMaxScaler
+    df_us['Date'] = pd.to_datetime(df_us['Date'])
+    df_us = df_us.sort_values(by=['Ticker','Date'])
+
+    # cols_to_normalize = ['Open','High','Low','Close','Adj Close','Volume']
+    # scaler = MinMaxScaler()
+    # df_us[cols_to_normalize] = scaler.fit_transform(df_us[cols_to_normalize])
+    
+    # alpha list
+    alphas = ['Alpha001','Alpha002','Alpha003','Alpha004','Alpha006','Alpha012','Alpha019',
+              'Alpha033','Alpha038','Alpha040','Alpha044','Alpha045','Alpha046','Alpha051',
+              'Alpha052','Alpha053','Alpha054','Alpha056','Alpha068','Alpha085']
+    
+    unique_stock_ids = df_us['Ticker'].unique()
+    # unique_dates = df_us['Date'].unique()
+    num_stocks = len(unique_stock_ids)
+    num_days   = len(unique_dates)
+    num_ASU_features = 34
+    
+    # 使用多核心平行化
+    tasks = []
+    for i, stock_id in enumerate(unique_stock_ids):
+        tasks.append((i, stock_id, df_us, unique_dates, alphas))
+    
+    reshaped_data = np.zeros((num_stocks, num_days, num_ASU_features))
+    
+    pool = mp.Pool(processes=mp.cpu_count())
+    results = pool.map(process_one_stock, tasks)
+    pool.close()
+    pool.join()
+    
+    # 將 results 填入 reshaped_data
+    for (i, per_stock_arr) in results:
+        reshaped_data[i, :, :] = per_stock_arr
+    
+    output_file = 'stocks_data.npy'
+    np.save(output_file, reshaped_data)
+
+    returns = np.zeros((num_stocks, num_days))
+    for i in range(1, num_days):
+        returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+    np.save('ror.npy', returns)
+
+    correlation_matrix = np.corrcoef(returns[:, :1000])
+    np.save('industry_classification.npy', correlation_matrix)
