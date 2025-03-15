@@ -15,10 +15,15 @@ def verify_data(file_path):
     print("\n")
 
 
-stocks_data_file_path = r"data\DJIA\stocks_data.npy"
-market_data_file_path = r"data\DJIA\market_data.npy"
-ror_file_path = r"data\DJIA\ror.npy"
-industry_classification_file_path = r"data\DJIA\industry_classification.npy"
+# stocks_data_file_path = r"data\DJIA\stocks_data.npy"
+# market_data_file_path = r"data\DJIA\market_data.npy"
+# ror_file_path = r"data\DJIA\ror.npy"
+# industry_classification_file_path = r"data\DJIA\industry_classification.npy"
+
+stocks_data_file_path = r"data\TWII\stocks_data.npy"
+market_data_file_path = r"data\TWII\market_data.npy"
+ror_file_path = r"data\TWII\ror.npy"
+industry_classification_file_path = r"data\TWII\industry_classification.npy"
 
 
 verify_data(stocks_data_file_path)

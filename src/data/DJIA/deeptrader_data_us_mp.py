@@ -213,10 +213,6 @@ def process_one_stock(args):
 
 
 if __name__ == '__main__':
-    unique_dates = pd.bdate_range(start='2000-01-03', end='2023-12-31') # business day
-    unique_dates = unique_dates.to_pydatetime()
-    unique_dates = np.array(unique_dates)
-
     djia_tickers = ['MMM','AXP','AMGN','AAPL','BA','CAT','CVX','CSCO','KO','HPQ',
                     'GS','HD','HON','IBM','INTC','JNJ','JPM','MCD','MRK','MSFT',
                     'NKE','PFE','PG','CRM','TRV','UNH','VZ','V','WBA','DIS']
@@ -251,6 +247,10 @@ if __name__ == '__main__':
     # cols_to_normalize = ['Open','High','Low','Close','Adj Close','Volume']
     # scaler = MinMaxScaler()
     # df_us[cols_to_normalize] = scaler.fit_transform(df_us[cols_to_normalize])
+
+    unique_dates = pd.bdate_range(start='2000-01-03', end='2023-12-31') # business day
+    unique_dates = unique_dates.to_pydatetime()
+    unique_dates = np.array(unique_dates)
     
     # alpha list
     alphas = ['Alpha001','Alpha002','Alpha003','Alpha004','Alpha006','Alpha012','Alpha019',

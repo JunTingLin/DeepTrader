@@ -153,26 +153,31 @@ def calculate_alpha101(df):
     alpha101 = (df['Close'] - df['Open']) / ((df['High'] - df['Low']) + 0.001)
     return alpha101
 
-toptw = pd.read_excel(r'0050.xlsx')
+toptw = pd.read_excel('0050.xlsx')
 toptw_stocks = [str(symbol) + '.TW' for symbol in toptw['Symbol']]
 df_tw = pd.DataFrame()
 
 for ticker in toptw_stocks:
     sample_data = yf.download(ticker, start='2000-01-04', end='2000-01-05')
     if not sample_data.empty and sample_data.index[0] == pd.Timestamp('2000-01-04'):
-        stock_data = yf.download(ticker, start='2000-01-04', end='2024-03-01')
+        stock_data = yf.download(ticker, start='2000-01-04', end='2024-03-01', auto_adjust=False)
+        stock_data.reset_index(inplace=True)
+        stock_data.columns = stock_data.columns.droplevel(level=1)
         stock_data['Ticker'] = ticker
         print(ticker)
         df_tw = pd.concat([df_tw, stock_data])
-df_tw = df_tw.reset_index()
+
 
 df_tw['Date'] = pd.to_datetime(df_tw['Date'])
 df_tw = df_tw.sort_values(by=['Ticker', 'Date'])
-df_tw[['Open', 'Volume']] = df_tw[['Open', 'Volume']].replace(0, np.nan)
-df_tw[['Open', 'Volume']] = df_tw.groupby('Ticker')[['Open', 'Volume']].apply(lambda x: x.fillna(method='ffill'))
-cols_to_normalize = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
-scaler = MinMaxScaler()
-df_tw[cols_to_normalize] = scaler.fit_transform(df_tw[cols_to_normalize])
+
+
+# cols_to_normalize = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+# scaler = MinMaxScaler()
+# df_tw[cols_to_normalize] = scaler.fit_transform(df_tw[cols_to_normalize])
+
+# df_tw[['Open', 'Volume']] = df_tw[['Open', 'Volume']].replace(0, np.nan)
+# df_tw[['Open', 'Volume']] = df_tw.groupby('Ticker')[['Open', 'Volume']].apply(lambda x: x.fillna(method='ffill'))
 
 alphas = ['Alpha001', 'Alpha002', 'Alpha003', 'Alpha004', 'Alpha006', 'Alpha012', 'Alpha019', 
           'Alpha033', 'Alpha038', 'Alpha040', 'Alpha044', 'Alpha045', 'Alpha046', 'Alpha051', 
@@ -185,7 +190,9 @@ num_days = len(df_tw['Date'].unique())
 num_ASU_features = 34
 reshaped_data = np.zeros((num_stocks, num_days, num_ASU_features))
 for i, stock_id in enumerate(df_tw['Ticker'].unique()):
+    print(stock_data)
     stock_data = df_tw[df_tw['Ticker'] == stock_id].copy()
+    print(stock_data)
     stock_data = calculate_returns(stock_data)
     stock_data['MA20'] = talib.SMA(stock_data['Close'], timeperiod=20)
     stock_data['MA60'] = talib.SMA(stock_data['Close'], timeperiod=60)
