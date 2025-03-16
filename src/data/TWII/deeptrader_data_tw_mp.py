@@ -288,6 +288,7 @@ if __name__ == '__main__':
     returns = np.zeros((num_stocks, num_days))
     for i in range(1, num_days):
         returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+    returns = np.nan_to_num(returns, nan=0, posinf=0, neginf=0)
     np.save('ror.npy', returns)
     
     # Calculate correlation matrix
