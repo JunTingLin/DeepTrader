@@ -76,7 +76,7 @@ class RLActor(nn.Module):
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
         # force rho to 0.5
-        rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
+        # rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
         return weights, rho, scores_p, rho_log_p
 
 
@@ -226,6 +226,7 @@ class RLAgent():
 
             weights, rho, _, _ \
                 = self.actor(x_a, x_m, masks, deterministic=True)
+            rho_record.append(np.mean(rho.detach().cpu().numpy())) 
             next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
 
             agent_wealth = np.concatenate((agent_wealth, info['total_value'][..., None]), axis=-1)
@@ -234,7 +235,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth
+        return agent_wealth, rho_record
 
     def clip_grad_norms(self, param_groups, max_norm=math.inf):
         """

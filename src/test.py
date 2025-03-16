@@ -79,7 +79,7 @@ def test(func_args):
         logger=None
         )
     
-    PREFIX = r"outputs\0316\043521"
+    PREFIX = r"outputs\0302\014736"
     best_model_path = os.path.join(PREFIX, 'model_file')
     model_sort = sorted(
         [x for x in os.listdir(best_model_path) if "best_cr" in x],
@@ -95,12 +95,14 @@ def test(func_args):
     agent = RLAgent(env, actor, func_args)
 
     try:
-        agent_wealth = agent.test()
+        agent_wealth, rho_record = agent.test()
         print("agent_wealth: ", agent_wealth)
         print("agent_wealth.shape: ", agent_wealth.shape)
+        print("rho_record: ", rho_record)
+        print("rho_record type: ", type(rho_record))
         # np.save("agent_wealth.npy", agent_wealth)
         npy_save_dir = os.path.join(PREFIX, 'npy_file')
-        np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
+        # np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
 
         metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
         print("APR:", metrics['APR'])
