@@ -55,13 +55,13 @@ def load_agent_wealth():
     """
     
     # Merge wealth series for each strategy
-    w_MSU_dynamic = merge_agent_wealth_series(r"..\outputs_2\0304\000154\npy_file\agent_wealth_test_cycle*.npy")
-    w_MSU_rho0    = merge_agent_wealth_series(r"..\outputs_2\0304\023512\npy_file\agent_wealth_test_cycle*.npy")
-    w_MSU_rho05   = merge_agent_wealth_series(r"..\outputs_2\0304\023629\npy_file\agent_wealth_test_cycle*.npy")
-    w_MSU_rho1    = merge_agent_wealth_series(r"..\outputs_2\0304\023707\npy_file\agent_wealth_test_cycle*.npy")
-    wo_MSU_rho0   = merge_agent_wealth_series(r"..\outputs_2\0304\033635\npy_file\agent_wealth_test_cycle*.npy")
-    wo_MSU_rho05  = merge_agent_wealth_series(r"..\outputs_2\0304\033659\npy_file\agent_wealth_test_cycle*.npy")
-    wo_MSU_rho1   = merge_agent_wealth_series(r"..\outputs_2\0304\033717\npy_file\agent_wealth_test_cycle*.npy")
+    w_MSU_dynamic = merge_agent_wealth_series(r"..\outputs_2\0313\011248\npy_file\agent_wealth_test_cycle*.npy")
+    w_MSU_rho0    = merge_agent_wealth_series(r"..\outputs_2\0313\011442\npy_file\agent_wealth_test_cycle*.npy")
+    w_MSU_rho05   = merge_agent_wealth_series(r"..\outputs_2\0313\123219\npy_file\agent_wealth_test_cycle*.npy")
+    w_MSU_rho1    = merge_agent_wealth_series(r"..\outputs_2\0313\123607\npy_file\agent_wealth_test_cycle*.npy")
+    wo_MSU_rho0   = merge_agent_wealth_series(r"..\outputs_2\0313\193311\npy_file\agent_wealth_test_cycle*.npy")
+    wo_MSU_rho05  = merge_agent_wealth_series(r"..\outputs_2\0313\193329\npy_file\agent_wealth_test_cycle*.npy")
+    wo_MSU_rho1   = merge_agent_wealth_series(r"..\outputs_2\0314\004042\npy_file\agent_wealth_test_cycle*.npy")
 
     return {
         'w_MSU_dynamic': w_MSU_dynamic,

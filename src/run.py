@@ -65,13 +65,28 @@ def run(func_args):
     logger.addHandler(fhlr)
 
     if func_args.market == 'DJIA':
+        logger.info('using DJIA data')
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load( data_prefix + 'ror.npy')
         market_history = np.load(data_prefix + 'market_data.npy')
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
+        train_idx = func_args.train_idx
         val_idx = func_args.val_idx
         test_idx = func_args.test_idx
+        test_idx_end = func_args.test_idx_end
+        allow_short = True
+    elif func_args.market == 'TWII':
+        logger.info('using TWII data')
+        stocks_data = np.load(data_prefix + 'stocks_data.npy')
+        rate_of_return = np.load( data_prefix + 'ror.npy')
+        market_history = np.load(data_prefix + 'market_data.npy')
+        assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
+        A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
+        train_idx = func_args.train_idx
+        val_idx = func_args.val_idx
+        test_idx = func_args.test_idx
+        test_idx_end = func_args.test_idx_end
         allow_short = True
     elif func_args.market == 'HSI':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
@@ -81,7 +96,6 @@ def run(func_args):
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
         test_idx = 4211
         allow_short = True
-
     elif func_args.market == 'CSI100':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load(data_prefix + 'ror.npy')
@@ -90,11 +104,23 @@ def run(func_args):
         market_history = None
         allow_short = False
 
-    env = PortfolioEnv(assets_data=stocks_data, market_data=market_history, rtns_data=rate_of_return,
-                        in_features=func_args.in_features, val_idx=val_idx, test_idx=test_idx,
-                        batch_size=func_args.batch_size, window_len=func_args.window_len, trade_len=func_args.trade_len,
-                        max_steps=func_args.max_steps, norm_type=func_args.norm_type,
-                        allow_short=allow_short)
+    env = PortfolioEnv(
+        assets_data=stocks_data,
+        market_data=market_history,
+        rtns_data=rate_of_return,
+        in_features=func_args.in_features,
+        train_idx=train_idx,
+        val_idx=val_idx,
+        test_idx=test_idx,
+        test_idx_end=test_idx_end,
+        batch_size=func_args.batch_size,
+        window_len=func_args.window_len,
+        trade_len=func_args.trade_len,
+        max_steps=func_args.max_steps,
+        norm_type=func_args.norm_type,
+        allow_short=allow_short,
+        logger=logger
+        )
 
     supports = [A]
     actor = RLActor(supports, func_args).to(func_args.device)
