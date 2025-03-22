@@ -79,7 +79,7 @@ def test(func_args):
         logger=None
         )
     
-    PREFIX = r"outputs\0302\014736"
+    PREFIX = r"outputs\0319\204051"
     best_model_path = os.path.join(PREFIX, 'model_file')
     model_sort = sorted(
         [x for x in os.listdir(best_model_path) if "best_cr" in x],
@@ -102,7 +102,7 @@ def test(func_args):
         print("rho_record type: ", type(rho_record))
         # np.save("agent_wealth.npy", agent_wealth)
         npy_save_dir = os.path.join(PREFIX, 'npy_file')
-        # np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
+        np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
 
         metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
         print("APR:", metrics['APR'])

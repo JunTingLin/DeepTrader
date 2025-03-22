@@ -18,8 +18,8 @@
     "theta": 0.15,
     "sigma": 0.5,
     "in_features": [
-        34,
-        27
+        5,
+        4
     ],
     "num_assets": 28,
     "G": 4,
@@ -29,12 +29,12 @@
     "momentum": 0.8,
     "norm_type": "standard",
     "epochs": 1500,
-    "market": "DJIA",
+    "market": "TWII",
     "device": "cuda",
     "relation_file": "industry_classification.npy",
     "trade_len": 21,
     "train_idx": 0,
-    "val_idx": 2043,
-    "test_idx": 4151,
+    "val_idx": 2086,
+    "test_idx": 4174,
     "test_idx_end": 6260
 }

@@ -24,39 +24,39 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_w_MSU_dynamic = np.load(r'..\outputs\0316\043319\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_rho1    = np.load(r'..\outputs\0316\043510\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_rho0    = np.load(r'..\outputs\0316\043521\npy_file\agent_wealth_val.npy').flatten()
-    # val_w_MSU_rho05   = np.load(r'..\outputs\0302\015336\npy_file\agent_wealth_val.npy').flatten()
-    # val_wo_MSU_rho1   = np.load(r'..\outputs\0303\031459\npy_file\agent_wealth_val.npy').flatten()
-    # val_wo_MSU_rho0   = np.load(r'..\outputs\0303\031632\npy_file\agent_wealth_val.npy').flatten()
-    # val_wo_MSU_rho05  = np.load(r'..\outputs\0303\031710\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_dynamic = np.load(r'..\outputs\0317\025143\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho1    = np.load(r'..\outputs\0317\025206\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho0    = np.load(r'..\outputs\0317\025242\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_rho05   = np.load(r'..\outputs\0319\144237\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho1   = np.load(r'..\outputs\0319\144329\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho0   = np.load(r'..\outputs\0319\204039\npy_file\agent_wealth_val.npy').flatten()
+    val_wo_MSU_rho05  = np.load(r'..\outputs\0319\204051\npy_file\agent_wealth_val.npy').flatten()
 
     # Test data
-    test_w_MSU_dynamic = np.load(r'..\outputs\0316\043319\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_rho1    = np.load(r'..\outputs\0316\043510\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_rho0    = np.load(r'..\outputs\0316\043521\npy_file\agent_wealth_test.npy').flatten()
-    # test_w_MSU_rho05   = np.load(r'..\outputs\0302\015336\npy_file\agent_wealth_test.npy').flatten()
-    # test_wo_MSU_rho1   = np.load(r'..\outputs\0303\031459\npy_file\agent_wealth_test.npy').flatten()
-    # test_wo_MSU_rho0   = np.load(r'..\outputs\0303\031632\npy_file\agent_wealth_test.npy').flatten()
-    # test_wo_MSU_rho05  = np.load(r'..\outputs\0303\031710\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_dynamic = np.load(r'..\outputs\0317\025143\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho1    = np.load(r'..\outputs\0317\025206\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho0    = np.load(r'..\outputs\0317\025242\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_rho05   = np.load(r'..\outputs\0319\144237\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho1   = np.load(r'..\outputs\0319\144329\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho0   = np.load(r'..\outputs\0319\204039\npy_file\agent_wealth_test.npy').flatten()
+    test_wo_MSU_rho05  = np.load(r'..\outputs\0319\204051\npy_file\agent_wealth_test.npy').flatten()
 
     return {
         'val_w_MSU_dynamic': val_w_MSU_dynamic,
         'val_w_MSU_rho0': val_w_MSU_rho0,
-        # 'val_w_MSU_rho05': val_w_MSU_rho05,
+        'val_w_MSU_rho05': val_w_MSU_rho05,
         'val_w_MSU_rho1': val_w_MSU_rho1,
-        # 'val_wo_MSU_rho0': val_wo_MSU_rho0,
-        # 'val_wo_MSU_rho05': val_wo_MSU_rho05,
-        # 'val_wo_MSU_rho1': val_wo_MSU_rho1,
+        'val_wo_MSU_rho0': val_wo_MSU_rho0,
+        'val_wo_MSU_rho05': val_wo_MSU_rho05,
+        'val_wo_MSU_rho1': val_wo_MSU_rho1,
 
         'test_w_MSU_dynamic': test_w_MSU_dynamic,
         'test_w_MSU_rho0': test_w_MSU_rho0,
-        # 'test_w_MSU_rho05': test_w_MSU_rho05,
+        'test_w_MSU_rho05': test_w_MSU_rho05,
         'test_w_MSU_rho1': test_w_MSU_rho1,
-        # 'test_wo_MSU_rho0': test_wo_MSU_rho0,
-        # 'test_wo_MSU_rho05': test_wo_MSU_rho05,
-        # 'test_wo_MSU_rho1': test_wo_MSU_rho1
+        'test_wo_MSU_rho0': test_wo_MSU_rho0,
+        'test_wo_MSU_rho05': test_wo_MSU_rho05,
+        'test_wo_MSU_rho1': test_wo_MSU_rho1
     }
 
 
@@ -64,17 +64,17 @@ def get_business_day_segments():
     """
     Generate full business day date range from START_DATE to END_DATE,
     and split into:
-      - Training: indices 0 to 2108 (2109 days)
-      - Validation: indices 2109 to 4129 (2021 days)
-      - Testing: indices 4130 to 6259 (2130 days)
+      - Training: indices 0 to 2085 (2086 days)
+      - Validation: indices 2086 to 4173 (2088 days)
+      - Testing: indices 4174 to 6259 (2086 days)
     """
     full_days = pd.bdate_range(start=START_DATE, end=END_DATE)
     total_days = len(full_days)
     print(f"Total business days: {total_days}")
     
-    train_days = full_days[0:2109]
-    val_days   = full_days[2109:4130]
-    test_days  = full_days[4130:6260]
+    train_days = full_days[0:2086]
+    val_days   = full_days[2086:4174]
+    test_days  = full_days[4174:6260]
     
     print(f"Training days: {len(train_days)}")
     print(f"Validation days: {len(val_days)}")
@@ -131,7 +131,7 @@ def process_data():
     3. Load the agent wealth data arrays (val_w_MSU_dynamic, test_w_MSU_dynamic, etc.), which cover the 
        respective validation and testing periods.
     4. Create DataFrames (df_val and df_test) with the sample dates as index and columns for each 
-       agent series and 'DowJones'.
+       agent series and '0050.TW'.
     """
     full_days, train_days, val_days, test_days = get_business_day_segments()
     
@@ -180,13 +180,13 @@ def process_data():
             agent_test = agent_test / agent_test[0]
             test_data[key] = agent_test
     
-    # Create a validation DataFrame with sample dates as index and include TWII as 'DowJones'
+    # Create a validation DataFrame with sample dates as index and include TWII as '0050.TW'
     df_val = pd.DataFrame(val_data, index=val_sample_dates)
-    df_val['DowJones'] = twii_series_val.values
+    df_val['0050.TW'] = twii_series_val.values
     
-    # Create a testing DataFrame with sample dates as index and include TWII as 'DowJones'
+    # Create a testing DataFrame with sample dates as index and include TWII as '0050.TW'
     df_test = pd.DataFrame(test_data, index=test_sample_dates)
-    df_test['DowJones'] = twii_series_test.values
+    df_test['0050.TW'] = twii_series_test.values
     
     return df_val, df_test, full_days, train_days, val_days, test_days
 
@@ -206,26 +206,26 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     plt.axvspan(test_days[0], test_days[-1], facecolor='gray', alpha=0.5, label='Testing Period')
     
     # Plot TWII wealth for validation and testing
-    plt.plot(df_val.index, df_val['DowJones'], color='r', linestyle='-', marker='o', label='TWII')
-    plt.plot(df_test.index, df_test['DowJones'], color='r', linestyle='-', marker='o', label=None)
+    plt.plot(df_val.index, df_val['0050.TW'], color='r', linestyle='-', marker='o', label='TWII')
+    plt.plot(df_test.index, df_test['0050.TW'], color='r', linestyle='-', marker='o', label=None)
     
     # Plot agent wealth for validation segment
     plt.plot(df_val.index, df_val['val_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
     plt.plot(df_val.index, df_val['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
-    # plt.plot(df_val.index, df_val['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
+    plt.plot(df_val.index, df_val['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
     plt.plot(df_val.index, df_val['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
-    # plt.plot(df_val.index, df_val['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
-    # plt.plot(df_val.index, df_val['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
-    # plt.plot(df_val.index, df_val['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
+    plt.plot(df_val.index, df_val['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
+    plt.plot(df_val.index, df_val['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
+    plt.plot(df_val.index, df_val['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
     
     # Plot agent wealth for testing segment
     plt.plot(df_test.index, df_test['test_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label=None)
     plt.plot(df_test.index, df_test['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
     plt.plot(df_test.index, df_test['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
+    plt.plot(df_test.index, df_test['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)
@@ -264,26 +264,26 @@ def plot_yearly_results(df_val, df_test, val_days, test_days):
     plt.axvspan(test_days[0], test_days[-1], facecolor='gray', alpha=0.5, label='Testing Period')
     
     # Plot TWII yearly rebased for validation and testing
-    plt.plot(df_val_yearly.index, df_val_yearly['DowJones'], color='r', linestyle='-', marker='o', label='TWII')
-    plt.plot(df_test_yearly.index, df_test_yearly['DowJones'], color='r', linestyle='-', marker='o', label=None)
+    plt.plot(df_val_yearly.index, df_val_yearly['0050.TW'], color='r', linestyle='-', marker='o', label='TWII')
+    plt.plot(df_test_yearly.index, df_test_yearly['0050.TW'], color='r', linestyle='-', marker='o', label=None)
     
     # Plot agent yearly rebased for validation
     plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
     plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
-    # plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
     plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
-    # plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
-    # plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
-    # plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
     
     # Plot agent yearly rebased for testing
     plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label=None)
     plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
     plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth (Yearly Rebased)", fontsize=14)
@@ -305,7 +305,7 @@ def calculate_periodic_returns_df(df, period):
     returns = resampled.pct_change().dropna()
     return returns
 
-def calculate_win_rate_df(returns_df, benchmark_column='DowJones'):
+def calculate_win_rate_df(returns_df, benchmark_column='0050.TW'):
     """
     Calculate win rate for each column (except the benchmark) as the ratio of periods
     where the column's return is higher than the benchmark's return.
@@ -359,7 +359,7 @@ def main():
     print("\nPeriodic Returns and Win Rates (Validation):")
     for period in period_codes:
         returns_val = calculate_periodic_returns_df(df_val, period)
-        win_rate_val = calculate_win_rate_df(returns_val, benchmark_column='DowJones')
+        win_rate_val = calculate_win_rate_df(returns_val, benchmark_column='0050.TW')
         print(f"\nValidation Period: {period}")
         if period == 'YE':
             print("Returns:")
@@ -371,7 +371,7 @@ def main():
     print("\nPeriodic Returns and Win Rates (Testing):")
     for period in period_codes:
         returns_test = calculate_periodic_returns_df(df_test, period)
-        win_rate_test = calculate_win_rate_df(returns_test, benchmark_column='DowJones')
+        win_rate_test = calculate_win_rate_df(returns_test, benchmark_column='0050.TW')
         print(f"\nTesting Period: {period}")
         if period == 'YE':
             print("Returns:")
