@@ -79,7 +79,7 @@ def test(func_args):
         logger=None
         )
     
-    PREFIX = r"outputs\0322\144851"
+    PREFIX = r"outputs\0327\115202"
     best_model_path = os.path.join(PREFIX, 'model_file')
     model_sort = sorted(
         [x for x in os.listdir(best_model_path) if "best_cr" in x],
