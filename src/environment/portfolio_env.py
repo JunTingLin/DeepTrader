@@ -16,6 +16,7 @@ class DataGenerator():
                  market_data,
                  in_features,
                  train_idx,
+                 train_idx_end,
                  val_idx,
                  test_idx,
                  test_idx_end,
@@ -33,6 +34,7 @@ class DataGenerator():
         self.assets_features = in_features[0]
         self.market_features = in_features[1]
         self.train_idx = train_idx
+        self.train_idx_end = train_idx_end
         self.val_idx = val_idx
         self.test_idx = test_idx
         self.test_idx_end = test_idx_end
@@ -57,10 +59,9 @@ class DataGenerator():
 
         
 
-        # self.order_set = np.arange(2483, self.val_idx - 2 * trade_len)
-        self.train_set_len = self.val_idx - self.train_idx
+        self.train_set_len = self.train_idx_end - self.train_idx
         lower_bound = max(self.train_idx, 5 * (self.window_len + 1) - 1)
-        self.order_set = np.arange(lower_bound, self.val_idx - 6 * self.trade_len)
+        self.order_set = np.arange(lower_bound, self.train_idx_end - 6 * self.trade_len)
         # self.order_set = np.arange(self.train_idx, self.val_idx)
         if logger is not None:
             self.logger.info(f"train_set_len: {self.train_set_len}, order_set_len: {len(self.order_set)}")
@@ -103,7 +104,8 @@ class DataGenerator():
             # 修改此處：當 cursor 大於或等於 test_idx_end 則結束
             done = (self.cursor >= self.test_idx_end)
         else:
-            done = ((self.cursor >= self.val_idx).any() or (self.step_cnt >= self.max_steps))
+            # 修改：使用 train_idx_end 作為訓練模式的終點
+            done = ((self.cursor >= self.train_idx_end).any() or (self.step_cnt >= self.max_steps))
         self.step_cnt += 1
 
         obs, obs_normed = obs.astype(np.float32), obs_normed.astype(np.float32)
@@ -161,7 +163,8 @@ class DataGenerator():
             # 修改此處：用 test_idx_end 判斷
             done = (self.cursor >= self.test_idx_end)
         else:
-            done = (self.cursor >= self.val_idx).any()
+            # 修改：訓練模式以 train_idx_end 為結束條件
+            done = (self.cursor >= self.train_idx_end).any()
         assert not np.isnan(obs + obs_normed).any()
 
         obs, obs_normed = obs.astype(np.float32), obs_normed.astype(np.float32)
@@ -282,13 +285,14 @@ class DataGenerator():
     def roll_update(self):
         # 每次更新向後移動 trade_len 天
         self.train_idx += self.trade_len
+        self.train_idx_end += self.trade_len
         self.val_idx += self.trade_len
         self.test_idx += self.trade_len
         self.test_idx_end += self.trade_len
 
         self.train_set_len = self.val_idx - self.train_idx
         lower_bound = max(self.train_idx, 5*(self.window_len+1)-1)
-        self.order_set = np.arange(lower_bound, self.val_idx - 6 * self.trade_len)
+        self.order_set = np.arange(lower_bound, self.train_idx_end - 6 * self.trade_len)
         # self.order_set = np.arange(self.train_idx, self.val_idx)
         self.logger.info(f"train_set_len: {self.train_set_len}, order_set_len: {len(self.order_set)}")
 
@@ -421,6 +425,7 @@ class PortfolioEnv(object):
                  rtns_data,
                  in_features,
                  train_idx,
+                train_idx_end,
                  val_idx,
                  test_idx,
                  test_idx_end,
@@ -451,7 +456,8 @@ class PortfolioEnv(object):
         self.logger = logger
 
         self.src = DataGenerator(assets_data=assets_data, rtns_data=rtns_data, market_data=market_data,
-                                 in_features=in_features, train_idx=train_idx, val_idx=val_idx, test_idx=test_idx, test_idx_end=test_idx_end,
+                                 in_features=in_features, train_idx=train_idx, train_idx_end=train_idx_end,
+                                 val_idx=val_idx, test_idx=test_idx, test_idx_end=test_idx_end,
                                  batch_size=batch_size, max_steps=max_steps, norm_type=norm_type,
                                  window_len=window_len, trade_len=trade_len, allow_short=allow_short,
                                  logger=logger)

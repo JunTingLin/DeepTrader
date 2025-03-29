@@ -47,7 +47,7 @@ def load_agent_wealth():
         'val_w_MSU_rho05': val_w_MSU_rho05,
         'val_w_MSU_rho1': val_w_MSU_rho1,
         'val_wo_MSU_rho0': val_wo_MSU_rho0,
-        # 'val_wo_MSU_rho05': val_wo_MSU_rho05,
+        'val_wo_MSU_rho05': val_wo_MSU_rho05,
         'val_wo_MSU_rho1': val_wo_MSU_rho1,
 
         'test_w_MSU_dynamic': test_w_MSU_dynamic,
@@ -55,7 +55,7 @@ def load_agent_wealth():
         'test_w_MSU_rho05': test_w_MSU_rho05,
         'test_w_MSU_rho1': test_w_MSU_rho1,
         'test_wo_MSU_rho0': test_wo_MSU_rho0,
-        # 'test_wo_MSU_rho05': test_wo_MSU_rho05,
+        'test_wo_MSU_rho05': test_wo_MSU_rho05,
         'test_wo_MSU_rho1': test_wo_MSU_rho1
     }
 

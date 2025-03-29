@@ -72,6 +72,7 @@ def run(func_args):
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
         train_idx = func_args.train_idx
+        train_idx_end = func_args.train_idx_end
         val_idx = func_args.val_idx
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end
@@ -84,6 +85,7 @@ def run(func_args):
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
         train_idx = func_args.train_idx
+        train_idx_end = func_args.train_idx_end
         val_idx = func_args.val_idx
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end
@@ -110,6 +112,7 @@ def run(func_args):
         rtns_data=rate_of_return,
         in_features=func_args.in_features,
         train_idx=train_idx,
+        train_idx_end=train_idx_end,
         val_idx=val_idx,
         test_idx=test_idx,
         test_idx_end=test_idx_end,
