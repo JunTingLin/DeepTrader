@@ -33,9 +33,6 @@
     "device": "cuda",
     "relation_file": "industry_classification.npy",
     "trade_len": 21,
-    "train_idx": 0,
-    "train_idx_end": 2043,
     "val_idx": 2043,
-    "test_idx": 4151,
-    "test_idx_end": 6260
+    "test_idx": 4151
 }

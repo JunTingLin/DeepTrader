@@ -11,7 +11,7 @@ from tqdm import *
 from utils.parse_config import ConfigParser
 from utils.functions import *
 from agent import *
-from environment.portfolio_env import PortfolioEnv
+from environment.portfolio_env_origin import PortfolioEnv
 
 
 def test(func_args):
@@ -28,23 +28,8 @@ def test(func_args):
         market_history = np.load(data_prefix + 'market_data.npy')
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        train_idx = func_args.train_idx
-        train_idx_end = func_args.train_idx_end
         val_idx = func_args.val_idx
         test_idx = func_args.test_idx
-        test_idx_end = func_args.test_idx_end
-        allow_short = True
-    elif func_args.market == 'TWII':
-        stocks_data = np.load(data_prefix + 'stocks_data.npy')
-        rate_of_return = np.load( data_prefix + 'ror.npy')
-        market_history = np.load(data_prefix + 'market_data.npy')
-        assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
-        A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        train_idx = func_args.train_idx
-        train_idx_end = func_args.train_idx_end
-        val_idx = func_args.val_idx
-        test_idx = func_args.test_idx
-        test_idx_end = func_args.test_idx_end
         allow_short = True
     elif func_args.market == 'HSI':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
@@ -63,26 +48,13 @@ def test(func_args):
         market_history = None
         allow_short = False
 
-    env = PortfolioEnv(
-        assets_data=stocks_data,
-        market_data=market_history, 
-        rtns_data=rate_of_return,
-        in_features=func_args.in_features,
-        train_idx=train_idx,
-        train_idx_end=train_idx_end,
-        val_idx=val_idx,
-        test_idx=test_idx,
-        test_idx_end=test_idx_end,
-        batch_size=func_args.batch_size,
-        window_len=func_args.window_len,
-        trade_len=func_args.trade_len,
-        max_steps=func_args.max_steps,
-        norm_type=func_args.norm_type,
-        allow_short=allow_short,
-        logger=None
-        )
+    env = PortfolioEnv(assets_data=stocks_data, market_data=market_history, rtns_data=rate_of_return,
+                        in_features=func_args.in_features, val_idx=val_idx, test_idx=test_idx,
+                        batch_size=func_args.batch_size, window_len=func_args.window_len, trade_len=func_args.trade_len,
+                        max_steps=func_args.max_steps, norm_type=func_args.norm_type,
+                        allow_short=allow_short)
     
-    PREFIX = r"outputs\0402\004810"
+    PREFIX = r"outputs\0401\233718"
     best_model_path = os.path.join(PREFIX, 'model_file')
     model_sort = sorted(
         [x for x in os.listdir(best_model_path) if "best_cr" in x],
@@ -103,7 +75,6 @@ def test(func_args):
         print("agent_wealth.shape: ", agent_wealth.shape)
         print("rho_record: ", rho_record)
         print("rho_record type: ", type(rho_record))
-        # np.save("agent_wealth.npy", agent_wealth)
         npy_save_dir = os.path.join(PREFIX, 'npy_file')
         np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
 
@@ -114,7 +85,6 @@ def test(func_args):
         print("ASR:", metrics['ASR'])
         print("SoR:", metrics['DDR'])
         print("CR:", metrics['CR'])
-
     
     except KeyboardInterrupt:
         pass
@@ -141,7 +111,7 @@ if __name__ == '__main__':
             options = json.load(f)
             args = ConfigParser(options)
     else:
-        with open('./hyper.json') as f:
+        with open('./hyper_origin.json') as f:
             options = json.load(f)
             args = ConfigParser(options)
     args.update(opts)
