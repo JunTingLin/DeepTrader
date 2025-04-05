@@ -37,6 +37,8 @@ def run(func_args):
         os.makedirs(img_dir)
     if not os.path.isdir(model_save_dir):
         os.mkdir(model_save_dir)
+    if not os.path.isdir(npy_save_dir):
+        os.mkdir(npy_save_dir)
 
     hyper = copy.deepcopy(func_args.__dict__)
     print(hyper)
@@ -103,14 +105,15 @@ def run(func_args):
         max_cr = 0
         for epoch in range(func_args.epochs):
             epoch_return = 0
+            epoch_loss = 0
             for j in tqdm(range(mini_batch_num)):
                 episode_return, avg_rho, avg_mdd, episode_loss = agent.train_episode()
                 epoch_return += episode_return
                 epoch_loss += episode_loss
             avg_train_return = epoch_return / mini_batch_num
             avg_epoch_loss = epoch_loss / mini_batch_num
-            logger.warning('[%s]round %d, avg train return %.4f, avg rho %.4f, avg mdd %.4f' %
-                            (start_time, epoch, avg_train_return, avg_rho, avg_mdd))
+            logger.warning('[%s]round %d, avg train return %.4f, avg rho %.4f, avg mdd %.4f, avg loss %.4f' %
+                            (start_time, epoch, avg_train_return, avg_rho, avg_mdd, avg_epoch_loss))
             
             writer.add_scalar('Train/Loss', avg_epoch_loss, global_step=epoch)
             writer.add_scalar('Train/Return', avg_train_return, global_step=epoch)

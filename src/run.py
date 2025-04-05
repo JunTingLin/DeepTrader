@@ -158,6 +158,7 @@ def run(func_args):
             writer.add_scalar('Test/ASR', metrics['ASR'], global_step=epoch)
             writer.add_scalar('Test/SoR', metrics['DDR'], global_step=epoch)
             writer.add_scalar('Test/CR', metrics['CR'], global_step=epoch)
+            writer.flush() # flush the writer
 
             if metrics['CR'] > max_cr:
                 print('New Best CR Policy!!!!')

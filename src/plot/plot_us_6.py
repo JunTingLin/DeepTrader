@@ -24,14 +24,14 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_1 = np.load(r'..\outputs\0329\025533\npy_file\agent_wealth_val.npy').flatten()
-    val_2 = np.load(r'..\outputs\0329\025559\npy_file\agent_wealth_val.npy').flatten()
-    val_3 = np.load(r'..\outputs\0329\025753\npy_file\agent_wealth_val.npy').flatten()
+    val_1 = np.load(r'..\outputs\0403\031352\npy_file\agent_wealth_val.npy').flatten()
+    val_2 = np.load(r'..\outputs\0403\031430\npy_file\agent_wealth_val.npy').flatten()
+    val_3 = np.load(r'..\outputs\0403\031453\npy_file\agent_wealth_val.npy').flatten()
 
     # Test data
-    test_1 = np.load(r'..\outputs\0329\025533\npy_file\agent_wealth_test.npy').flatten()
-    test_2 = np.load(r'..\outputs\0329\025559\npy_file\agent_wealth_test.npy').flatten()
-    test_3 = np.load(r'..\outputs\0329\025753\npy_file\agent_wealth_test.npy').flatten()
+    test_1 = np.load(r'..\outputs\0403\031352\npy_file\agent_wealth_test.npy').flatten()
+    test_2 = np.load(r'..\outputs\0403\031430\npy_file\agent_wealth_test.npy').flatten()
+    test_3 = np.load(r'..\outputs\0403\031453\npy_file\agent_wealth_test.npy').flatten()
 
     return {
         'val_1': val_1,
