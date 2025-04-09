@@ -13,8 +13,8 @@ from utils.functions import calculate_metrics # ../utils/functions.py
 # -------------------------------
 TRADE_MODE = "M"    # "M": Monthly mode (12 trading periods per year)
 TRADE_LEN = 21      # Sampling interval: 21 business days per sample
-START_DATE = "2000-01-01"
-END_DATE = "2023-12-31"
+START_DATE = "2015-01-01"
+END_DATE = "2025-03-31"
 
 # -------------------------------
 # Data Loading Functions
@@ -24,39 +24,39 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_w_MSU_dynamic = np.load(r'..\outputs\0322\144709\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_rho1    = np.load(r'..\outputs\0322\144834\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_rho0    = np.load(r'..\outputs\0322\144851\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_rho05   = np.load(r'..\outputs\0323\025248\npy_file\agent_wealth_val.npy').flatten()
-    val_wo_MSU_rho1   = np.load(r'..\outputs\0323\025309\npy_file\agent_wealth_val.npy').flatten()
-    val_wo_MSU_rho0   = np.load(r'..\outputs\0323\025325\npy_file\agent_wealth_val.npy').flatten()
-    val_wo_MSU_rho05  = np.load(r'..\outputs\0323\131211\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_dynamic = np.load(r'..\outputs\0407\161814\npy_file\agent_wealth_val.npy').flatten()
+    # val_w_MSU_rho1    = np.load(r'..\outputs\0322\144834\npy_file\agent_wealth_val.npy').flatten()
+    # val_w_MSU_rho0    = np.load(r'..\outputs\0322\144851\npy_file\agent_wealth_val.npy').flatten()
+    # val_w_MSU_rho05   = np.load(r'..\outputs\0323\025248\npy_file\agent_wealth_val.npy').flatten()
+    # val_wo_MSU_rho1   = np.load(r'..\outputs\0323\025309\npy_file\agent_wealth_val.npy').flatten()
+    # val_wo_MSU_rho0   = np.load(r'..\outputs\0323\025325\npy_file\agent_wealth_val.npy').flatten()
+    # val_wo_MSU_rho05  = np.load(r'..\outputs\0323\131211\npy_file\agent_wealth_val.npy').flatten()
 
     # Test data
-    test_w_MSU_dynamic = np.load(r'..\outputs\0322\144709\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_rho1    = np.load(r'..\outputs\0322\144834\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_rho0    = np.load(r'..\outputs\0322\144851\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_rho05   = np.load(r'..\outputs\0323\025248\npy_file\agent_wealth_test.npy').flatten()
-    test_wo_MSU_rho1   = np.load(r'..\outputs\0323\025309\npy_file\agent_wealth_test.npy').flatten()
-    test_wo_MSU_rho0   = np.load(r'..\outputs\0323\025325\npy_file\agent_wealth_test.npy').flatten()
-    test_wo_MSU_rho05  = np.load(r'..\outputs\0323\131211\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_dynamic = np.load(r'..\outputs\0407\161814\npy_file\agent_wealth_test.npy').flatten()
+    # test_w_MSU_rho1    = np.load(r'..\outputs\0322\144834\npy_file\agent_wealth_test.npy').flatten()
+    # test_w_MSU_rho0    = np.load(r'..\outputs\0322\144851\npy_file\agent_wealth_test.npy').flatten()
+    # test_w_MSU_rho05   = np.load(r'..\outputs\0323\025248\npy_file\agent_wealth_test.npy').flatten()
+    # test_wo_MSU_rho1   = np.load(r'..\outputs\0323\025309\npy_file\agent_wealth_test.npy').flatten()
+    # test_wo_MSU_rho0   = np.load(r'..\outputs\0323\025325\npy_file\agent_wealth_test.npy').flatten()
+    # test_wo_MSU_rho05  = np.load(r'..\outputs\0323\131211\npy_file\agent_wealth_test.npy').flatten()
 
     return {
         'val_w_MSU_dynamic': val_w_MSU_dynamic,
-        'val_w_MSU_rho0': val_w_MSU_rho0,
-        'val_w_MSU_rho05': val_w_MSU_rho05,
-        'val_w_MSU_rho1': val_w_MSU_rho1,
-        'val_wo_MSU_rho0': val_wo_MSU_rho0,
-        'val_wo_MSU_rho05': val_wo_MSU_rho05,
-        'val_wo_MSU_rho1': val_wo_MSU_rho1,
+        # 'val_w_MSU_rho0': val_w_MSU_rho0,
+        # 'val_w_MSU_rho05': val_w_MSU_rho05,
+        # 'val_w_MSU_rho1': val_w_MSU_rho1,
+        # 'val_wo_MSU_rho0': val_wo_MSU_rho0,
+        # 'val_wo_MSU_rho05': val_wo_MSU_rho05,
+        # 'val_wo_MSU_rho1': val_wo_MSU_rho1,
 
         'test_w_MSU_dynamic': test_w_MSU_dynamic,
-        'test_w_MSU_rho0': test_w_MSU_rho0,
-        'test_w_MSU_rho05': test_w_MSU_rho05,
-        'test_w_MSU_rho1': test_w_MSU_rho1,
-        'test_wo_MSU_rho0': test_wo_MSU_rho0,
-        'test_wo_MSU_rho05': test_wo_MSU_rho05,
-        'test_wo_MSU_rho1': test_wo_MSU_rho1
+        # 'test_w_MSU_rho0': test_w_MSU_rho0,
+        # 'test_w_MSU_rho05': test_w_MSU_rho05,
+        # 'test_w_MSU_rho1': test_w_MSU_rho1,
+        # 'test_wo_MSU_rho0': test_wo_MSU_rho0,
+        # 'test_wo_MSU_rho05': test_wo_MSU_rho05,
+        # 'test_wo_MSU_rho1': test_wo_MSU_rho1
     }
 
 
@@ -64,17 +64,17 @@ def get_business_day_segments():
     """
     Generate full business day date range from START_DATE to END_DATE,
     and split into:
-      - Training: indices 0 to 2085 (2086 days)
-      - Validation: indices 2086 to 4173 (2088 days)
-      - Testing: indices 4174 to 6259 (2086 days)
+      - Training: indices 0 to 1303 (1304 days)
+      - Validation: indices 1304 to 2086 (783 days)
+      - Testing: indices 2087 to 2672 (586 days)
     """
     full_days = pd.bdate_range(start=START_DATE, end=END_DATE)
     total_days = len(full_days)
     print(f"Total business days: {total_days}")
     
-    train_days = full_days[0:2086]
-    val_days   = full_days[2086:4174]
-    test_days  = full_days[4174:6260]
+    train_days = full_days[0:1304]
+    val_days   = full_days[1304:2087]
+    test_days  = full_days[2087:2673]
     
     print(f"Training days: {len(train_days)}")
     print(f"Validation days: {len(val_days)}")
@@ -88,7 +88,8 @@ def get_twii_data(full_days, file_path="^TWII.csv"):
     reindex to the full business day range, and fill missing values.
     """
     df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
-    full_days = pd.DatetimeIndex(full_days)
+    df.index = df.index.tz_localize(None)
+    full_days = pd.DatetimeIndex(full_days).tz_localize(None)
     df = df.loc[full_days[0]:full_days[-1]]
     df = df.reindex(full_days)
     df.replace(0, np.nan, inplace=True)
@@ -211,21 +212,21 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     
     # Plot agent wealth for validation segment
     plt.plot(df_val.index, df_val['val_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
-    plt.plot(df_val.index, df_val['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
-    plt.plot(df_val.index, df_val['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
-    plt.plot(df_val.index, df_val['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
-    plt.plot(df_val.index, df_val['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
-    plt.plot(df_val.index, df_val['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
-    plt.plot(df_val.index, df_val['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
+    # plt.plot(df_val.index, df_val['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
+    # plt.plot(df_val.index, df_val['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
+    # plt.plot(df_val.index, df_val['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
+    # plt.plot(df_val.index, df_val['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
+    # plt.plot(df_val.index, df_val['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
+    # plt.plot(df_val.index, df_val['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
     
     # Plot agent wealth for testing segment
     plt.plot(df_test.index, df_test['test_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)
@@ -269,21 +270,21 @@ def plot_yearly_results(df_val, df_test, val_days, test_days):
     
     # Plot agent yearly rebased for validation
     plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)')
-    plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
-    plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
-    plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
-    plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
-    plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
-    plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=0)')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=0.5)')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=1)')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0)')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=0.5)')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label='DeepTrader (w/o MSU & ρ=1)')
     
     # Plot agent yearly rebased for testing
     plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_dynamic'], color='b', linestyle='-', marker='o', label=None)
-    plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
-    plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
-    plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
-    plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho0'], color='darkblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho05'], color='c', linestyle='-.', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_w_MSU_rho1'], color='steelblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho0'], color='limegreen', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho05'], color='g', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_wo_MSU_rho1'], color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth (Yearly Rebased)", fontsize=14)
