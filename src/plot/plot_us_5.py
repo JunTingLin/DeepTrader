@@ -68,17 +68,17 @@ def get_business_day_segments():
     """
     Generate full business day date range from START_DATE to END_DATE,
     and split into:
-      - Training: indices 0 to 2085 (2086 days)
-      - Validation: indices 2086 to 4173 (2088 days)
-      - Testing: indices 4174 to 6259 (2086 days)
+      - Training: indices 0 to 2042 (2043 days)
+      - Validation: indices 2043 to 4150 (2108 days)
+      - Testing: indices 4151 to 6259 (2109 days)
     """
     full_days = pd.bdate_range(start=START_DATE, end=END_DATE)
     total_days = len(full_days)
     print(f"Total business days: {total_days}")
     
-    train_days = full_days[0:2086]
-    val_days   = full_days[2086:4174]
-    test_days  = full_days[4174:6260]
+    train_days = full_days[0:2043]
+    val_days   = full_days[2043:4151]
+    test_days  = full_days[4151:6260]
     
     print(f"Training days: {len(train_days)}")
     print(f"Validation days: {len(val_days)}")

@@ -6,7 +6,7 @@ from scipy.stats import pearsonr
 # Step 1: Load data and fill NaN/Inf
 # ------------------------------
 # Load data from .npy file; adjust the path as needed
-data = np.load("data\DJIA\stocks_data.npy")  # data shape: [num_stocks, num_days, num_ASU_features]
+data = np.load("data/DJIA/stocks_data.npy")  # data shape: [num_stocks, num_days, num_ASU_features]
 
 # Convert Inf to NaN
 data[np.isinf(data)] = np.nan
@@ -58,9 +58,25 @@ def get_segment_avg(data, start, end, target_days):
     segment_avg = np.mean(segment, axis=0)
     return segment_avg
 
+def normalize_timeseries(ts):
+    """
+    Normalize the time series (z-score normalization) along the time axis for each feature.
+    ts: shape (target_days, num_features)
+    Returns: normalized time series with mean=0 and std=1 for each feature.
+    """
+    # Compute mean and std for each feature (axis=0: over time)
+    mean = np.mean(ts, axis=0)
+    std = np.std(ts, axis=0)
+    # Avoid division by zero: if std==0, replace it with 1
+    std_fixed = np.where(std == 0, 1, std)
+    normalized_ts = (ts - mean) / std_fixed
+    return normalized_ts
+
 # Get validation averaged time series (only take first target_days)
 val_name, val_start, val_end, _ = validation_segment
 validation_avg = get_segment_avg(data, val_start, val_end, target_days)
+# Normalize validation time series
+validation_avg_norm = normalize_timeseries(validation_avg)
 
 # ------------------------------
 # Step 4: Compute correlation matrix and plot heatmap for each training segment
@@ -71,6 +87,8 @@ for seg in segments:
     seg_name, start_idx, end_idx, _ = seg
     # Get averaged time series for the train segment (shape: [target_days, num_features])
     train_avg = get_segment_avg(data, start_idx, end_idx, target_days) #(1043, 5)
+    # Normalize training time series
+    train_avg_norm = normalize_timeseries(train_avg)
     
     # Initialize correlation matrix of shape (num_features, num_features)
     corr_matrix = np.zeros((num_features, num_features))
@@ -80,7 +98,7 @@ for seg in segments:
         for j in range(num_features):
             # Compute Pearson correlation coefficient between two time series arrays of length target_days
             # pearsonr returns a tuple: (correlation, p-value); we use the correlation coefficient.
-            corr, _ = pearsonr(train_avg[:, i], validation_avg[:, j])
+            corr, _ = pearsonr(train_avg_norm[:, i], validation_avg_norm[:, j])
             corr_matrix[i, j] = corr
 
     # ------------------------------
@@ -95,7 +113,7 @@ for seg in segments:
     plt.xticks(ticks=np.arange(num_features), labels=np.arange(num_features))
     plt.yticks(ticks=np.arange(num_features), labels=np.arange(num_features))
     
-    plt.title(f"Correlation Heatmap: {seg_name} vs {val_name}")
+    plt.title(f"Correlation Heatmap (Normalized): {seg_name} vs {val_name}")
     plt.xlabel("Validation Feature Index")
     plt.ylabel("Training Feature Index")
     plt.tight_layout()
