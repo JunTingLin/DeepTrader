@@ -204,10 +204,15 @@ def process_one_stock(args):
             per_stock_array[j, :] = day_data[used_cols].values
     
     # 前向填補
-    for j in range(1, per_stock_array.shape[0]):
-        if per_stock_array[j, 0] == 0:
-            per_stock_array[j, :] = per_stock_array[j-1, :]
-    
+    # for j in range(1, per_stock_array.shape[0]):
+    #     if per_stock_array[j, 0] == 0:
+    #         per_stock_array[j, :] = per_stock_array[j-1, :]
+    df = pd.DataFrame(per_stock_array)
+    df.replace(0, np.nan, inplace=True)
+    df.ffill(inplace=True)
+    df.bfill(inplace=True)
+    per_stock_array[:] = df.values
+
     return (i, per_stock_array)
 
 
@@ -279,13 +284,13 @@ if __name__ == '__main__':
     for (i, per_stock_arr) in results:
         reshaped_data[i, :, :] = per_stock_arr
     
-    output_file = 'stocks_data.npy'
+    output_file = r'feature33-fill/stocks_data.npy'
     np.save(output_file, reshaped_data)
 
     returns = np.zeros((num_stocks, num_days))
     for i in range(1, num_days):
         returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
-    np.save('ror.npy', returns)
+    np.save(r'feature33-fill/ror.npy', returns)
 
     correlation_matrix = np.corrcoef(returns[:, :1000])
-    np.save('industry_classification.npy', correlation_matrix)
+    np.save(r'feature33-fill/industry_classification.npy', correlation_matrix)

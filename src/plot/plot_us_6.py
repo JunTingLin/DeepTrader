@@ -24,14 +24,14 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_1 = np.load(r'..\outputs\0412\004036\npy_file\agent_wealth_val.npy').flatten()
-    val_2 = np.load(r'..\outputs\0412\004116\npy_file\agent_wealth_val.npy').flatten()
-    val_3 = np.load(r'..\outputs\0412\004127\npy_file\agent_wealth_val.npy').flatten()
+    val_1 = np.load(r'..\outputs\0406\025134\npy_file\agent_wealth_val.npy').flatten()
+    val_2 = np.load(r'..\outputs\0406\132606\npy_file\agent_wealth_val.npy').flatten()
+    val_3 = np.load(r'..\outputs\0406\132624\npy_file\agent_wealth_val.npy').flatten()
 
     # Test data
-    test_1 = np.load(r'..\outputs\0412\004036\npy_file\agent_wealth_test.npy').flatten()
-    test_2 = np.load(r'..\outputs\0412\004116\npy_file\agent_wealth_test.npy').flatten()
-    test_3 = np.load(r'..\outputs\0412\004127\npy_file\agent_wealth_test.npy').flatten()
+    test_1 = np.load(r'..\outputs\0406\025134\npy_file\agent_wealth_test.npy').flatten()
+    test_2 = np.load(r'..\outputs\0406\132606\npy_file\agent_wealth_test.npy').flatten()
+    test_3 = np.load(r'..\outputs\0406\132624\npy_file\agent_wealth_test.npy').flatten()
 
     return {
         'val_1': val_1,
@@ -48,21 +48,23 @@ def get_business_day_segments():
     """
     Generate full business day date range from START_DATE to END_DATE,
     and split into:
-      - Training: indices 0 to 3129
-      - Validation: indices 3130 to 4173 (1044 days)
+      - Training: indices 0 to 2085 (2086 days)
+      - Validation: indices 2086 to 4173 (2088 days)
       - Testing: indices 4174 to 6259 (2086 days)
     """
     full_days = pd.bdate_range(start=START_DATE, end=END_DATE)
     total_days = len(full_days)
     print(f"Total business days: {total_days}")
     
-    train_days = full_days[0:3130]
-    val_days   = full_days[3130:4174]
+    train_days = full_days[0:2086]
+    val_days   = full_days[2086:4174]
     test_days  = full_days[4174:6260]
     
     print(f"Training days: {len(train_days)}")
     print(f"Validation days: {len(val_days)}")
     print(f"Test days: {len(test_days)}")
+    
+    return full_days, train_days, val_days, test_days
     
     return full_days, train_days, val_days, test_days
 

@@ -24,8 +24,8 @@ class DataGenerator():
                  norm_type='div-last',
                  window_len=20,
                  trade_len=7,
-
                  allow_short=True,
+                 logger=None,
                  ):
 
         self.assets_features = in_features[0]
@@ -39,8 +39,8 @@ class DataGenerator():
         self.norm_type = norm_type
         self.window_len = window_len
         self.trade_len = trade_len
-
         self.allow_short = allow_short
+        self.logger = logger
 
         self.__org_assets_data = assets_data.copy()[:, :, :in_features[0]]
         self.__ror_data = rtns_data
@@ -55,7 +55,10 @@ class DataGenerator():
 
         # self.order_set = np.arange(2483, self.val_idx - 2 * trade_len)
         self.order_set = np.arange(5 * (self.window_len + 1) - 1, self.val_idx - 6 * trade_len)
+        if logger is not None:
+            self.logger.info(f"train_set_len: {self.train_set_len}, order_set_len: {len(self.order_set)}")
         self.tmp_order = np.array([])
+        
 
         # ==== Sample ====
         self.__sample_p = np.arange(1, len(self.order_set) + 1) / len(self.order_set)
@@ -396,8 +399,8 @@ class PortfolioEnv(object):
                  norm_type='div-last',
                  is_norm=True,
                  allow_short=True,
-
                  assets_name=None,
+                 logger=None
                  ):
 
         self.window_len = window_len
@@ -409,12 +412,14 @@ class PortfolioEnv(object):
         self.val_idx = val_idx
         self.test_idx = test_idx
         self.allow_short = allow_short
+        self.logger = logger
 
 
         self.src = DataGenerator(assets_data=assets_data, rtns_data=rtns_data, market_data=market_data,
                                  in_features=in_features, val_idx=val_idx, test_idx=test_idx,
                                  batch_size=batch_size, max_steps=max_steps, norm_type=norm_type,
-                                 window_len=window_len, trade_len=trade_len, allow_short=allow_short)
+                                 window_len=window_len, trade_len=trade_len, allow_short=allow_short,
+                                 logger=logger)
 
         self.sim = PortfolioSim(num_assets=self.num_assets, fee=fee, time_cost=time_cost, allow_short=allow_short)
 

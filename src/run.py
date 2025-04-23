@@ -19,6 +19,7 @@ def run(func_args):
     if func_args.seed != -1:
         setup_seed(func_args.seed)
 
+    # data_prefix = './data/' + func_args.market + '/feature33' + '/'
     data_prefix = './data/' + func_args.market + '/'
     matrix_path = data_prefix + func_args.relation_file
 
@@ -184,7 +185,7 @@ if __name__ == '__main__':
     parser.add_argument('--window_len', type=int)
     parser.add_argument('--G', type=int)
     parser.add_argument('--batch_size', type=int)
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', type=int, default=4000)
     parser.add_argument('--lr', type=float)
     parser.add_argument('--gamma', type=float)
     parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false')

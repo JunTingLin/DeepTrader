@@ -18,6 +18,7 @@ def test(func_args):
     if func_args.seed != -1:
         setup_seed(func_args.seed)
 
+    # data_prefix = './data/' + func_args.market + '/feature33' + '/'
     data_prefix = './data/' + func_args.market + '/'
     matrix_path = data_prefix + func_args.relation_file
 
@@ -82,7 +83,7 @@ def test(func_args):
         logger=None
         )
     
-    PREFIX = r"outputs\0412\004127"
+    PREFIX = r"outputs\0420\215527"
     best_model_path = os.path.join(PREFIX, 'model_file')
     model_sort = sorted(
         [x for x in os.listdir(best_model_path) if "best_cr" in x],

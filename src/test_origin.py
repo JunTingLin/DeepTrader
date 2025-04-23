@@ -54,7 +54,7 @@ def test(func_args):
                         max_steps=func_args.max_steps, norm_type=func_args.norm_type,
                         allow_short=allow_short)
     
-    PREFIX = r"outputs\0406\024920"
+    PREFIX = r"outputs\0416\235007"
     best_model_path = os.path.join(PREFIX, 'model_file')
     model_sort = sorted(
         [x for x in os.listdir(best_model_path) if "best_cr" in x],

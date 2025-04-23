@@ -24,43 +24,43 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_w_MSU_dynamic_1 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_dynamic_2 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_dynamic_3 = np.load(r'..\outputs\0404\032436\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_dynamic_4 = np.load(r'..\outputs\0404\032444\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_dynamic_5 = np.load(r'..\outputs\0409\105300\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_dynamic_6 = np.load(r'..\outputs\0409\105416\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_dynamic_7 = np.load(r'..\outputs\0409\215035\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_dynamic_8 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_dynamic_1 = np.load(r'..\outputs\0420\215428\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_dynamic_2 = np.load(r'..\outputs\0420\215504\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_dynamic_3 = np.load(r'..\outputs\0420\215527\npy_file\agent_wealth_val.npy').flatten()
+    # val_w_MSU_dynamic_4 = np.load(r'..\outputs\0404\032444\npy_file\agent_wealth_val.npy').flatten()
+    # val_w_MSU_dynamic_5 = np.load(r'..\outputs\0409\105300\npy_file\agent_wealth_val.npy').flatten()
+    # val_w_MSU_dynamic_6 = np.load(r'..\outputs\0409\105416\npy_file\agent_wealth_val.npy').flatten()
+    # val_w_MSU_dynamic_7 = np.load(r'..\outputs\0409\215035\npy_file\agent_wealth_val.npy').flatten()
+    # val_w_MSU_dynamic_8 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_val.npy').flatten()
 
     # Test data
-    test_w_MSU_dynamic_1 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_dynamic_2 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_dynamic_3 = np.load(r'..\outputs\0404\032436\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_dynamic_4 = np.load(r'..\outputs\0404\032444\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_dynamic_5 = np.load(r'..\outputs\0409\105300\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_dynamic_6 = np.load(r'..\outputs\0409\105416\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_dynamic_7 = np.load(r'..\outputs\0409\215035\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_dynamic_8 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_dynamic_1 = np.load(r'..\outputs\0420\215428\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_dynamic_2 = np.load(r'..\outputs\0420\215504\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_dynamic_3 = np.load(r'..\outputs\0420\215527\npy_file\agent_wealth_test.npy').flatten()
+    # test_w_MSU_dynamic_4 = np.load(r'..\outputs\0404\032444\npy_file\agent_wealth_test.npy').flatten()
+    # test_w_MSU_dynamic_5 = np.load(r'..\outputs\0409\105300\npy_file\agent_wealth_test.npy').flatten()
+    # test_w_MSU_dynamic_6 = np.load(r'..\outputs\0409\105416\npy_file\agent_wealth_test.npy').flatten()
+    # test_w_MSU_dynamic_7 = np.load(r'..\outputs\0409\215035\npy_file\agent_wealth_test.npy').flatten()
+    # test_w_MSU_dynamic_8 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_test.npy').flatten()
 
     return {
         'val_w_MSU_dynamic_1': val_w_MSU_dynamic_1,
         'val_w_MSU_dynamic_2': val_w_MSU_dynamic_2,
         'val_w_MSU_dynamic_3': val_w_MSU_dynamic_3,
-        'val_w_MSU_dynamic_4': val_w_MSU_dynamic_4,
-        'val_w_MSU_dynamic_5': val_w_MSU_dynamic_5,
-        'val_w_MSU_dynamic_6': val_w_MSU_dynamic_6,
-        'val_w_MSU_dynamic_7': val_w_MSU_dynamic_7,
-        'val_w_MSU_dynamic_8': val_w_MSU_dynamic_8,
+        # 'val_w_MSU_dynamic_4': val_w_MSU_dynamic_4,
+        # 'val_w_MSU_dynamic_5': val_w_MSU_dynamic_5,
+        # 'val_w_MSU_dynamic_6': val_w_MSU_dynamic_6,
+        # 'val_w_MSU_dynamic_7': val_w_MSU_dynamic_7,
+        # 'val_w_MSU_dynamic_8': val_w_MSU_dynamic_8,
 
         'test_w_MSU_dynamic_1': test_w_MSU_dynamic_1,
         'test_w_MSU_dynamic_2': test_w_MSU_dynamic_2,
         'test_w_MSU_dynamic_3': test_w_MSU_dynamic_3,
-        'test_w_MSU_dynamic_4': test_w_MSU_dynamic_4,
-        'test_w_MSU_dynamic_5': test_w_MSU_dynamic_5,
-        'test_w_MSU_dynamic_6': test_w_MSU_dynamic_6,
-        'test_w_MSU_dynamic_7': test_w_MSU_dynamic_7,
-        'test_w_MSU_dynamic_8': test_w_MSU_dynamic_8,
+        # 'test_w_MSU_dynamic_4': test_w_MSU_dynamic_4,
+        # 'test_w_MSU_dynamic_5': test_w_MSU_dynamic_5,
+        # 'test_w_MSU_dynamic_6': test_w_MSU_dynamic_6,
+        # 'test_w_MSU_dynamic_7': test_w_MSU_dynamic_7,
+        # 'test_w_MSU_dynamic_8': test_w_MSU_dynamic_8,
     }
 
 
@@ -68,17 +68,17 @@ def get_business_day_segments():
     """
     Generate full business day date range from START_DATE to END_DATE,
     and split into:
-      - Training: indices 0 to 2042 (2043 days)
-      - Validation: indices 2043 to 4150 (2108 days)
-      - Testing: indices 4151 to 6259 (2109 days)
+      - Training: indices 2086 to 3129 (1044 days)四年
+      - Validation: indices 3130 to 4173 (1044 days)四年
+      - Testing: indices 4174 to 6259 (2086 days)八年
     """
     full_days = pd.bdate_range(start=START_DATE, end=END_DATE)
     total_days = len(full_days)
     print(f"Total business days: {total_days}")
     
-    train_days = full_days[0:2043]
-    val_days   = full_days[2043:4151]
-    test_days  = full_days[4151:6260]
+    train_days = full_days[2086:3130]
+    val_days   = full_days[3130:4174]
+    test_days  = full_days[4174:6260]
     
     print(f"Training days: {len(train_days)}")
     print(f"Validation days: {len(val_days)}")
@@ -217,21 +217,21 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     plt.plot(df_val.index, df_val['val_w_MSU_dynamic_1'], color='b', linestyle='-', marker='o', label=None)
     plt.plot(df_val.index, df_val['val_w_MSU_dynamic_2'], color='darkblue', linestyle='-', marker='o', label=None)
     plt.plot(df_val.index, df_val['val_w_MSU_dynamic_3'], color='c', linestyle='-.', marker='o', label=None)
-    plt.plot(df_val.index, df_val['val_w_MSU_dynamic_4'], color='steelblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_val.index, df_val['val_w_MSU_dynamic_5'], color='blue', linestyle='-', marker='o', label=None)
-    plt.plot(df_val.index, df_val['val_w_MSU_dynamic_6'], color='deepskyblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_val.index, df_val['val_w_MSU_dynamic_7'], color='lightblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_val.index, df_val['val_w_MSU_dynamic_8'], color='lightsteelblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_val.index, df_val['val_w_MSU_dynamic_4'], color='steelblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_val.index, df_val['val_w_MSU_dynamic_5'], color='blue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_val.index, df_val['val_w_MSU_dynamic_6'], color='deepskyblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_val.index, df_val['val_w_MSU_dynamic_7'], color='lightblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_val.index, df_val['val_w_MSU_dynamic_8'], color='lightsteelblue', linestyle='-', marker='o', label=None)
     
     # Plot agent wealth for testing segment
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_1'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT1')
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_2'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT2')
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_3'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT3')
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_4'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT4')
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_5'], color='blue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT5')
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_6'], color='deepskyblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT6')
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_7'], color='lightblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT7')
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_8'], color='lightsteelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT8')
+    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_1'], color='b', linestyle='-', marker='o', label='seed=42 epochs=100')
+    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_2'], color='darkblue', linestyle='-', marker='o', label='seed=24 epochs=100')
+    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_3'], color='c', linestyle='-.', marker='o', label='seed=4000 epochs=100')
+    # plt.plot(df_test.index, df_test['test_w_MSU_dynamic_4'], color='steelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT4')
+    # plt.plot(df_test.index, df_test['test_w_MSU_dynamic_5'], color='blue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT5')
+    # plt.plot(df_test.index, df_test['test_w_MSU_dynamic_6'], color='deepskyblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT6')
+    # plt.plot(df_test.index, df_test['test_w_MSU_dynamic_7'], color='lightblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT7')
+    # plt.plot(df_test.index, df_test['test_w_MSU_dynamic_8'], color='lightsteelblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-DT8')
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)

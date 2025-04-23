@@ -94,7 +94,7 @@ def run(func_args):
                         in_features=func_args.in_features, val_idx=val_idx, test_idx=test_idx,
                         batch_size=func_args.batch_size, window_len=func_args.window_len, trade_len=func_args.trade_len,
                         max_steps=func_args.max_steps, norm_type=func_args.norm_type,
-                        allow_short=allow_short)
+                        allow_short=allow_short, logger=logger)
 
     supports = [A]
     actor = RLActor(supports, func_args).to(func_args.device)
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--window_len', type=int)
     parser.add_argument('--G', type=int)
     parser.add_argument('--batch_size', type=int)
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', type=int, default=-1)
     parser.add_argument('--lr', type=float)
     parser.add_argument('--gamma', type=float)
     parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false')
