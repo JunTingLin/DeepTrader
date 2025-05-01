@@ -133,6 +133,7 @@ def run(func_args):
     mini_batch_num = int(np.ceil(len(env.src.order_set) / func_args.batch_size))
     try:
         max_cr = 0
+        start_checkpoint_epoch = int(func_args.epochs * 0.8)
         for epoch in range(func_args.epochs):
             epoch_return = 0
             epoch_loss = 0
@@ -161,7 +162,7 @@ def run(func_args):
             writer.add_scalar('Test/CR', metrics['CR'], global_step=epoch)
             writer.flush() # flush the writer
 
-            if metrics['CR'] > max_cr:
+            if epoch >= start_checkpoint_epoch and metrics['CR'] > max_cr:
                 print('New Best CR Policy!!!!')
                 max_cr = metrics['CR']
                 torch.save(actor, os.path.join(model_save_dir, 'best_cr-'+str(epoch)+'.pkl'))
@@ -185,7 +186,7 @@ if __name__ == '__main__':
     parser.add_argument('--window_len', type=int)
     parser.add_argument('--G', type=int)
     parser.add_argument('--batch_size', type=int)
-    parser.add_argument('--seed', type=int, default=4000)
+    parser.add_argument('--seed', type=int, default=-1)
     parser.add_argument('--lr', type=float)
     parser.add_argument('--gamma', type=float)
     parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false')

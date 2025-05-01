@@ -183,61 +183,61 @@ class SAGCN(nn.Module):
         return x.squeeze(-1).permute(0, 2, 1)
 
 
-class LiteTCN(nn.Module):
-    def __init__(self, in_features, hidden_size, num_layers, kernel_size=2, dropout=0.4):
-        super(LiteTCN, self).__init__()
-        self.num_layers = num_layers
-        self.tcns = nn.ModuleList()
-        self.bns = nn.ModuleList()
-        self.dropouts = nn.ModuleList()
+# class LiteTCN(nn.Module):
+#     def __init__(self, in_features, hidden_size, num_layers, kernel_size=2, dropout=0.4):
+#         super(LiteTCN, self).__init__()
+#         self.num_layers = num_layers
+#         self.tcns = nn.ModuleList()
+#         self.bns = nn.ModuleList()
+#         self.dropouts = nn.ModuleList()
 
-        self.start_conv = nn.Conv2d(in_features, hidden_size, kernel_size=1)
-        self.end_conv = nn.Conv2d(hidden_size, 1, kernel_size=1)
+#         self.start_conv = nn.Conv2d(in_features, hidden_size, kernel_size=1)
+#         self.end_conv = nn.Conv2d(hidden_size, 1, kernel_size=1)
 
-        receptive_field = 1
-        additional_scope = kernel_size - 1
-        dilation = 1
-        for l in range(num_layers):
-            tcn_sequence = nn.Sequential(nn.Conv2d(in_channels=hidden_size,
-                                                   out_channels=hidden_size,
-                                                   kernel_size=kernel_size,
-                                                   dilation=dilation),
-                                         nn.BatchNorm1d(hidden_size),
-                                         nn.ReLU(),
-                                         nn.Dropout(dropout),
-                                         )
+#         receptive_field = 1
+#         additional_scope = kernel_size - 1
+#         dilation = 1
+#         for l in range(num_layers):
+#             tcn_sequence = nn.Sequential(nn.Conv2d(in_channels=hidden_size,
+#                                                    out_channels=hidden_size,
+#                                                    kernel_size=kernel_size,
+#                                                    dilation=dilation),
+#                                          nn.BatchNorm1d(hidden_size),
+#                                          nn.ReLU(),
+#                                          nn.Dropout(dropout),
+#                                          )
 
-            self.tcns.append(tcn_sequence)
+#             self.tcns.append(tcn_sequence)
 
-            self.bns.append(nn.BatchNorm1d(hidden_size))
+#             self.bns.append(nn.BatchNorm1d(hidden_size))
 
-            dilation *= 2
-            receptive_field += additional_scope
-            additional_scope *= 2
-        self.receptive_field = receptive_field
+#             dilation *= 2
+#             receptive_field += additional_scope
+#             additional_scope *= 2
+#         self.receptive_field = receptive_field
 
-    def forward(self, X):
-        X = X.permute(0, 2, 1)
-        in_len = X.shape[2]
-        if in_len < self.receptive_field:
-            x = nn.functional.pad(X, (self.receptive_field - in_len, 0))
-        else:
-            x = X
+#     def forward(self, X):
+#         X = X.permute(0, 2, 1)
+#         in_len = X.shape[2]
+#         if in_len < self.receptive_field:
+#             x = nn.functional.pad(X, (self.receptive_field - in_len, 0))
+#         else:
+#             x = X
 
-        x = self.start_conv(x)
+#         x = self.start_conv(x)
 
-        for i in range(self.num_layers):
-            residual = x
-            assert not torch.isnan(x).any()
-            x = self.tcns[i](x)
-            assert not torch.isnan(x).any()
-            x = x + residual[:, :, -x.shape[-1]:]
+#         for i in range(self.num_layers):
+#             residual = x
+#             assert not torch.isnan(x).any()
+#             x = self.tcns[i](x)
+#             assert not torch.isnan(x).any()
+#             x = x + residual[:, :, -x.shape[-1]:]
 
-            x = self.bns[i](x)
-        assert not torch.isnan(x).any()
-        x = self.end_conv(x)
+#             x = self.bns[i](x)
+#         assert not torch.isnan(x).any()
+#         x = self.end_conv(x)
 
-        return torch.sigmoid(x.squeeze())
+#         return torch.sigmoid(x.squeeze())
 
 
 class ASU(nn.Module):

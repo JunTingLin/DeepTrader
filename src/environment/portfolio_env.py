@@ -135,8 +135,10 @@ class DataGenerator():
             #     self.tmp_order = np.random.permutation(self.order_set).copy()
             # self.cursor = self.tmp_order[:min(self.batch_size, len(self.tmp_order))]
             # self.tmp_order = self.tmp_order[min(self.batch_size, len(self.tmp_order)):]
+
             # 若剩餘索引不足一個完整 batch，就丟棄（drop_last）並重新生成全新的隨機順序
             if len(self.tmp_order) < self.batch_size:
+                # self.tmp_order = self.order_set.copy()
                 self.tmp_order = np.random.permutation(self.order_set).copy()
             self.cursor = self.tmp_order[:self.batch_size]
             self.tmp_order = self.tmp_order[self.batch_size:]
