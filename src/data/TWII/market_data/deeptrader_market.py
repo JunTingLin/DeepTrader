@@ -81,6 +81,7 @@ def rename_columns_with_prefix(df, prefix):
 
 # Read TWII index data
 twii_df = pd.read_csv('^TWII.csv', parse_dates=['Date'])
+twii_df['Date'] = twii_df['Date'].dt.tz_localize(None)
 # Drop Volume column as it contains mostly zeros
 if 'Volume' in twii_df.columns:
     twii_df = twii_df.drop(columns=['Volume'])
