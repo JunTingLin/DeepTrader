@@ -4,6 +4,8 @@ import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 import talib
 import multiprocessing as mp
+from curl_cffi import requests as curl_requests
+
 
 def calculate_returns(df):
     df['Returns'] = df['Close'].pct_change()
@@ -219,14 +221,16 @@ if __name__ == '__main__':
     toptw_stocks = [str(symbol) + '.TW' for symbol in toptw['Symbol']]
     df_tw = pd.DataFrame()
     count = 0
+
+    session = curl_requests.Session(impersonate="chrome")
     
     # Download data for each stock
     for ticker in toptw_stocks:
         print("Downloading:", ticker)
         try:
-            sample_data = yf.download(ticker, start='2000-01-04', end='2000-01-05', progress=False)
+            sample_data = yf.download(ticker, start='2000-01-04', end='2000-01-05', progress=False, session=session)
             if not sample_data.empty and sample_data.index[0] == pd.Timestamp('2000-01-04'):
-                stock_data = yf.download(ticker, start='2000-01-04', end='2024-03-01', auto_adjust=False, progress=False)
+                stock_data = yf.download(ticker, start='2000-01-04', end='2024-03-01', auto_adjust=False, progress=False, session=session)
                 count += 1
                 if stock_data.empty:
                     print("Skipping:", ticker, "due to empty DataFrame.")
