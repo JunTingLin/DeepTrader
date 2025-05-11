@@ -21,7 +21,7 @@
         5,
         4
     ],
-    "num_assets": 28,
+    "num_assets": 49,
     "G": 4,
     "num_rounds": 80000,
     "max_grad_norm": 100.0,
@@ -29,13 +29,13 @@
     "momentum": 0.8,
     "norm_type": "standard",
     "epochs": 1500,
-    "market": "DJIA",
+    "market": "TWII",
     "device": "cuda",
     "relation_file": "industry_classification.npy",
     "trade_len": 21,
     "train_idx": 0,
-    "train_idx_end": 2086 ,
-    "val_idx": 2086 ,
-    "test_idx": 4174,
-    "test_idx_end": 6260
+    "train_idx_end": 1304,
+    "val_idx": 1304,
+    "test_idx": 2087,
+    "test_idx_end": 2672
 }
