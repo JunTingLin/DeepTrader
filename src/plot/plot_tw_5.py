@@ -83,9 +83,12 @@ def get_twii_data(full_days, file_path="^TWII.csv"):
     Load TWII data from a local CSV file, filter for full_days, 
     reindex to the full business day range, and fill missing values.
     """
-    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
-    df.index = df.index.tz_localize(None)
+    df = pd.read_csv(file_path)
+    df['Date'] = df['Date'].str.split(' ').str[0]
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.set_index('Date', inplace=True)
     full_days = pd.DatetimeIndex(full_days).tz_localize(None)
+    
     df = df.loc[full_days[0]:full_days[-1]]
     df = df.reindex(full_days)
     df.replace(0, np.nan, inplace=True)
@@ -210,17 +213,17 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     plt.plot(df_val.index, df_val['val_w_MSU_dynamic_1'], color='b', linestyle='-', marker='o', label='seed=42 epochs=100')
     plt.plot(df_val.index, df_val['val_w_MSU_dynamic_2'], color='darkblue', linestyle='-', marker='o', label='seed=24 epochs=100')
     plt.plot(df_val.index, df_val['val_w_MSU_dynamic_3'], color='c', linestyle='-.', marker='o', label='seed=4000 epochs=100')
-    plt.plot(df_val.index, df_val['val_w_MSU_dynamic_4'], color='steelblue', linestyle='-', marker='o', label='seed=1234 epochs=100')
-    plt.plot(df_val.index, df_val['val_w_MSU_dynamic_5'], color='limegreen', linestyle='-', marker='o', label='seed=4321 epochs=100')
-    plt.plot(df_val.index, df_val['val_w_MSU_dynamic_6'], color='deepskyblue', linestyle='-', marker='o', label='seed=1 epochs=100')
+    # plt.plot(df_val.index, df_val['val_w_MSU_dynamic_4'], color='steelblue', linestyle='-', marker='o', label='seed=1234 epochs=100')
+    # plt.plot(df_val.index, df_val['val_w_MSU_dynamic_5'], color='limegreen', linestyle='-', marker='o', label='seed=4321 epochs=100')
+    # plt.plot(df_val.index, df_val['val_w_MSU_dynamic_6'], color='deepskyblue', linestyle='-', marker='o', label='seed=1 epochs=100')
     
     # Plot agent wealth for testing segment
     plt.plot(df_test.index, df_test['test_w_MSU_dynamic_1'], color='b', linestyle='-', marker='o', label=None)
     plt.plot(df_test.index, df_test['test_w_MSU_dynamic_2'], color='darkblue', linestyle='-', marker='o', label=None)
     plt.plot(df_test.index, df_test['test_w_MSU_dynamic_3'], color='c', linestyle='-.', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_4'], color='steelblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_5'], color='limegreen', linestyle='-', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_w_MSU_dynamic_6'], color='deepskyblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_w_MSU_dynamic_4'], color='steelblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_w_MSU_dynamic_5'], color='limegreen', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_w_MSU_dynamic_6'], color='deepskyblue', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)

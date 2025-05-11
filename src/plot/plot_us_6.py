@@ -24,23 +24,35 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_1 = np.load(r'..\outputs\0406\025134\npy_file\agent_wealth_val.npy').flatten()
-    val_2 = np.load(r'..\outputs\0406\132606\npy_file\agent_wealth_val.npy').flatten()
-    val_3 = np.load(r'..\outputs\0406\132624\npy_file\agent_wealth_val.npy').flatten()
+    val_1 = np.load(r'..\outputs\0507\102728\npy_file\agent_wealth_val.npy').flatten()
+    val_2 = np.load(r'..\outputs\0507\102748\npy_file\agent_wealth_val.npy').flatten()
+    val_3 = np.load(r'..\outputs\0507\102809\npy_file\agent_wealth_val.npy').flatten()
+    val_4 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_val.npy').flatten()
+    val_5 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_val.npy').flatten()
+    val_6 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_val.npy').flatten()
 
     # Test data
-    test_1 = np.load(r'..\outputs\0406\025134\npy_file\agent_wealth_test.npy').flatten()
-    test_2 = np.load(r'..\outputs\0406\132606\npy_file\agent_wealth_test.npy').flatten()
-    test_3 = np.load(r'..\outputs\0406\132624\npy_file\agent_wealth_test.npy').flatten()
+    test_1 = np.load(r'..\outputs\0507\102728\npy_file\agent_wealth_test.npy').flatten()
+    test_2 = np.load(r'..\outputs\0507\102748\npy_file\agent_wealth_test.npy').flatten()
+    test_3 = np.load(r'..\outputs\0507\102809\npy_file\agent_wealth_test.npy').flatten()
+    test_4 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_test.npy').flatten()
+    test_5 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_test.npy').flatten()
+    test_6 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_test.npy').flatten()
 
     return {
         'val_1': val_1,
         'val_2': val_2,
         'val_3': val_3,
+        'val_4': val_4,
+        'val_5': val_5,
+        'val_6': val_6,
 
         'test_1': test_1,
         'test_2': test_2,
         'test_3': test_3,
+        'test_4': test_4,
+        'test_5': test_5,
+        'test_6': test_6
     }
 
 
@@ -65,16 +77,19 @@ def get_business_day_segments():
     print(f"Test days: {len(test_days)}")
     
     return full_days, train_days, val_days, test_days
-    
-    return full_days, train_days, val_days, test_days
+
 
 def get_djia_data(full_days, file_path="^DJI.csv"):
     """
     Load DJIA data from a local CSV file, filter for full_days, 
     reindex to the full business day range, and fill missing values.
     """
-    df = pd.read_csv(file_path, parse_dates=["Date"], index_col="Date")
-    full_days = pd.DatetimeIndex(full_days)
+    df = pd.read_csv(file_path)
+    df['Date'] = df['Date'].str.split(' ').str[0]
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.set_index('Date', inplace=True)
+    full_days = pd.DatetimeIndex(full_days).tz_localize(None)
+
     df = df.loc[full_days[0]:full_days[-1]]
     df = df.reindex(full_days)
     df.replace(0, np.nan, inplace=True)
@@ -196,14 +211,20 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     plt.plot(df_test.index, df_test['DowJones'], color='r', linestyle='-', marker='o', label=None)
     
     # Plot agent wealth for validation segment
-    plt.plot(df_val.index, df_val['val_1'], color='b', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-[0, 2086)')
-    plt.plot(df_val.index, df_val['val_2'], color='darkblue', linestyle='-', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-[521, 2609)')
-    plt.plot(df_val.index, df_val['val_3'], color='c', linestyle='-.', marker='o', label='DeepTrader (w/ MSU & ρ=Dynamic)-[1043, 3130)')
+    plt.plot(df_val.index, df_val['val_1'], color='b', linestyle='-', marker='o', label='No Seed')
+    plt.plot(df_val.index, df_val['val_2'], color='darkblue', linestyle='-', marker='o', label='No Seed')
+    plt.plot(df_val.index, df_val['val_3'], color='c', linestyle='-.', marker='o', label='No Seed')
+    # plt.plot(df_val.index, df_val['val_4'], color='limegreen', linestyle='-', marker='o', label='No Seed')
+    # plt.plot(df_val.index, df_val['val_5'], color='g', linestyle='-', marker='o', label='No Seed')
+    # plt.plot(df_val.index, df_val['val_6'], color='lawngreen', linestyle='-', marker='o', label='No Seed')
     
     # Plot agent wealth for testing segment
     plt.plot(df_test.index, df_test['test_1'], color='b', linestyle='-', marker='o', label=None)
     plt.plot(df_test.index, df_test['test_2'], color='darkblue', linestyle='-', marker='o', label=None)
     plt.plot(df_test.index, df_test['test_3'], color='c', linestyle='-.', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_4'], color='limegreen', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_5'], color='g', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_6'], color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)
