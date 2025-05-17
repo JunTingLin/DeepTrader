@@ -154,6 +154,60 @@ def calculate_alpha101(df):
     alpha101 = (df['Close'] - df['Open']) / ((df['High'] - df['Low']) + 0.001)
     return alpha101
 
+def fill_technical_indicators(df):
+    """
+    Fill NaN and Inf values in technical indicators.
+    
+    Args:
+        df: DataFrame with technical indicators
+        
+    Returns:
+        DataFrame with filled technical indicators
+    """
+    # List of technical indicators to clean
+    indicators = [
+        'MA20', 'MA60', 'RSI', 'MACD', 'MACD_Signal', 'MACD_Hist',
+        'K', 'D', 'BBands_Upper', 'BBands_Middle', 'BBands_Lower'
+    ]
+    
+    # Process each indicator
+    for col in indicators:
+        if col in df.columns:
+            # Replace inf with NaN first
+            df[col] = df[col].replace([np.inf, -np.inf], np.nan)
+            
+            # First use backward fill to handle beginning NaN values
+            # (e.g., first 19 days for MA20)
+            df[col] = df[col].fillna(method='bfill')
+            
+            # Then use forward fill to handle any remaining NaN values
+            df[col] = df[col].fillna(method='ffill')
+            
+            # Final fallback to 0 for any remaining NaNs
+            df[col] = df[col].fillna(0)
+    
+    return df
+
+def clean_alpha_factor(alpha_series):
+    """
+    Clean any alpha factor series by:
+    1. Replacing inf values
+    2. Handling NaN values with backward and forward filling
+    """
+    # Replace infinities with NaN
+    result = alpha_series.replace([np.inf, -np.inf], np.nan)
+    
+    # Backward fill first (for beginning NaNs from rolling windows)
+    result = result.fillna(method='bfill')
+    
+    # Forward fill any remaining NaNs
+    result = result.fillna(method='ffill')
+    
+    # Final fallback to 0 for any truly missing values
+    result = result.fillna(0)
+    
+    return result
+
 def process_one_stock(args):
     """
     args: (i, stock_id, df_us, unique_dates, alphas)
@@ -166,6 +220,31 @@ def process_one_stock(args):
     
     # 1) 取出該股票資料
     stock_data = df_us[df_us['Ticker'] == stock_id].copy()
+
+    # Extract stock data
+    stock_data = df_us[df_us['Ticker'] == stock_id].copy()
+    # Align with unique_dates and fill missing values
+    # Create a DataFrame with all unique_dates
+    dates_df = pd.DataFrame({'Date': unique_dates})
+    # Merge with stock data
+    aligned_data = pd.merge(dates_df, stock_data, on='Date', how='left')
+
+    # Fill Ticker column
+    aligned_data['Ticker'].fillna(stock_id, inplace=True)
+    # Forward fill OHLCV data
+    for col in ['Open', 'High', 'Low', 'Close', 'Volume', 'Adj Close']:
+        if col in aligned_data.columns:
+            # Forward fill
+            aligned_data[col] = aligned_data[col].fillna(method='ffill')
+            # Backward fill (for the beginning of the series)
+            aligned_data[col] = aligned_data[col].fillna(method='bfill')
+            # Replace any remaining NaN with 0
+            aligned_data[col] = aligned_data[col].fillna(0)
+            # Replace inf with 0
+            aligned_data[col] = aligned_data[col].replace([np.inf, -np.inf], 0)
+    
+    # Use the aligned data for further processing
+    stock_data = aligned_data
     
     # 2) Talib計算
     stock_data = calculate_returns(stock_data)
@@ -184,10 +263,18 @@ def process_one_stock(args):
     stock_data['BBands_Middle'] = middle_band
     stock_data['BBands_Lower']  = lower_band
 
+    # Fill NaN and Inf in technical indicators
+    stock_data = fill_technical_indicators(stock_data)
+
     # 3) 計算 alpha
     for alpha in alphas:
         calc_function = globals()[f'calculate_{alpha.lower()}']
         stock_data[alpha] = calc_function(stock_data)
+
+        # Apply the clean_alpha_factor function to each alpha
+        alpha_col = alpha
+        if alpha_col in stock_data.columns:
+            stock_data[alpha_col] = clean_alpha_factor(stock_data[alpha_col])
     
     # 4) 組出 shape=(num_days, num_ASU_features) 的暫存
     num_days = len(unique_dates)
@@ -202,11 +289,7 @@ def process_one_stock(args):
         day_data = stock_data[stock_data['Date'] == date]
         if not day_data.empty:
             per_stock_array[j, :] = day_data[used_cols].values
-    
-    # 前向填補
-    # for j in range(1, per_stock_array.shape[0]):
-    #     if per_stock_array[j, 0] == 0:
-    #         per_stock_array[j, :] = per_stock_array[j-1, :]
+
 
     return (i, per_stock_array)
 
