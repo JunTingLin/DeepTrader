@@ -284,13 +284,13 @@ if __name__ == '__main__':
     for (i, per_stock_arr) in results:
         reshaped_data[i, :, :] = per_stock_arr
     
-    output_file = r'feature33-fill/stocks_data.npy'
+    output_file = r'./stocks_data.npy'
     np.save(output_file, reshaped_data)
 
     returns = np.zeros((num_stocks, num_days))
     for i in range(1, num_days):
         returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
-    np.save(r'feature33-fill/ror.npy', returns)
+    np.save(r'./ror.npy', returns)
 
     correlation_matrix = np.corrcoef(returns[:, :1000])
-    np.save(r'feature33-fill/industry_classification.npy', correlation_matrix)
+    np.save(r'./industry_classification.npy', correlation_matrix)
