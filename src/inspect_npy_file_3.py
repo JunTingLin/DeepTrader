@@ -15,13 +15,23 @@ os.makedirs(output_dir, exist_ok=True)
 
 # Load data
 stocks_data = np.load(r"data\DJIA\feature33-fill\stocks_data.npy")
-stock_ror = np.load(r"data\DJIA\feature33-fill\ror.npy")
 market_data = np.load(r"data\DJIA\feature33-fill\market_data.npy")
 
 print(f"Loaded data shapes:")
 print(f"  stocks_data: {stocks_data.shape}")
-print(f"  stock_ror: {stock_ror.shape}")
 print(f"  market_data: {market_data.shape}")
+
+num_stocks = stocks_data.shape[0]
+num_days = stocks_data.shape[1]
+stock_ror = np.zeros((num_stocks, num_days))
+
+# Calculate the return for each stock
+for stock_idx in range(num_stocks):
+    for day in range(1, num_days):  # Starting from the second day
+        stock_ror[stock_idx, day] = (stocks_data[stock_idx, day, 0] - stocks_data[stock_idx, day-1, 0]) / stocks_data[stock_idx, day-1, 0]
+stock_ror = np.nan_to_num(stock_ror, nan=0, posinf=0, neginf=0)
+print(f"Calculated stock_ror with shape: {stock_ror.shape}")
+
 
 # Calculate DJI market returns (using index 9 which is DJI_Close)
 dji_close = market_data[:, 9]
