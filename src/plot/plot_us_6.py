@@ -24,35 +24,35 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_1 = np.load(r'..\outputs\0507\102728\npy_file\agent_wealth_val.npy').flatten()
-    val_2 = np.load(r'..\outputs\0507\102748\npy_file\agent_wealth_val.npy').flatten()
-    val_3 = np.load(r'..\outputs\0507\102809\npy_file\agent_wealth_val.npy').flatten()
-    val_4 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_val.npy').flatten()
-    val_5 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_val.npy').flatten()
-    val_6 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_val.npy').flatten()
+    val_1 = np.load(r'..\outputs\0518\033352\npy_file\agent_wealth_val.npy').flatten()
+    val_2 = np.load(r'..\outputs\0518\033532\npy_file\agent_wealth_val.npy').flatten()
+    val_3 = np.load(r'..\outputs\0518\033542\npy_file\agent_wealth_val.npy').flatten()
+    # val_4 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_val.npy').flatten()
+    # val_5 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_val.npy').flatten()
+    # val_6 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_val.npy').flatten()
 
     # Test data
-    test_1 = np.load(r'..\outputs\0507\102728\npy_file\agent_wealth_test.npy').flatten()
-    test_2 = np.load(r'..\outputs\0507\102748\npy_file\agent_wealth_test.npy').flatten()
-    test_3 = np.load(r'..\outputs\0507\102809\npy_file\agent_wealth_test.npy').flatten()
-    test_4 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_test.npy').flatten()
-    test_5 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_test.npy').flatten()
-    test_6 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_test.npy').flatten()
+    test_1 = np.load(r'..\outputs\0518\033352\npy_file\agent_wealth_test.npy').flatten()
+    test_2 = np.load(r'..\outputs\0518\033532\npy_file\agent_wealth_test.npy').flatten()
+    test_3 = np.load(r'..\outputs\0518\033542\npy_file\agent_wealth_test.npy').flatten()
+    # test_4 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_test.npy').flatten()
+    # test_5 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_test.npy').flatten()
+    # test_6 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_test.npy').flatten()
 
     return {
         'val_1': val_1,
         'val_2': val_2,
         'val_3': val_3,
-        'val_4': val_4,
-        'val_5': val_5,
-        'val_6': val_6,
+        # 'val_4': val_4,
+        # 'val_5': val_5,
+        # 'val_6': val_6,
 
         'test_1': test_1,
         'test_2': test_2,
         'test_3': test_3,
-        'test_4': test_4,
-        'test_5': test_5,
-        'test_6': test_6
+        # 'test_4': test_4,
+        # 'test_5': test_5,
+        # 'test_6': test_6
     }
 
 
