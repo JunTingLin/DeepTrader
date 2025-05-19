@@ -53,12 +53,7 @@ for stock_idx in range(stocks_data.shape[0]):
     
     try:
         # Prepare features and target
-        # For each day, concatenate stock-specific features with market features
-        X = np.zeros((stocks_data.shape[1], stocks_data.shape[2] + market_data.shape[1]))
-        
-        for day in range(stocks_data.shape[1]):
-            X[day] = np.concatenate([stocks_data[stock_idx, day], market_data[day]])
-        
+        X = stocks_data[stock_idx]
         y = stock_ror[stock_idx]
         
         # Skip day 0 (as return is 0)
