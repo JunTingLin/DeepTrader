@@ -28,7 +28,7 @@ stock_ror = np.zeros((num_stocks, num_days))
 # Calculate the return for each stock
 for stock_idx in range(num_stocks):
     for day in range(1, num_days):  # Starting from the second day
-        stock_ror[stock_idx, day] = (stocks_data[stock_idx, day, 0] - stocks_data[stock_idx, day-1, 0]) / stocks_data[stock_idx, day-1, 0]
+        stock_ror[stock_idx, day] = (stocks_data[stock_idx, day, 3] - stocks_data[stock_idx, day-1, 3]) / stocks_data[stock_idx, day-1, 3]
 stock_ror = np.nan_to_num(stock_ror, nan=0, posinf=0, neginf=0)
 print(f"Calculated stock_ror with shape: {stock_ror.shape}")
 
@@ -45,7 +45,6 @@ print(f"Calculated market_ror with shape: {market_ror.shape}")
 # Generate feature names for better interpretability
 stock_feature_names = [f"Stock_Feature_{i+1}" for i in range(stocks_data.shape[2])]
 market_feature_names = [f"Market_Feature_{i+1}" for i in range(market_data.shape[1])]
-all_feature_names = stock_feature_names + market_feature_names
 
 # Process each stock
 for stock_idx in range(stocks_data.shape[0]):
@@ -79,7 +78,7 @@ for stock_idx in range(stocks_data.shape[0]):
         
         # Create SHAP summary plot
         plt.figure(figsize=(12, 8))
-        shap.summary_plot(shap_values, X, feature_names=all_feature_names, show=False)
+        shap.summary_plot(shap_values, X, feature_names=stock_feature_names, show=False)
         plt.title(f"Stock {stock_idx+1} SHAP Feature Importance")
         plt.tight_layout()
         plt.savefig(f"{output_dir}/stock_{stock_idx+1}_shap_summary.png")
@@ -93,14 +92,14 @@ for stock_idx in range(stocks_data.shape[0]):
         for i, feature_idx in enumerate(top_features_idx):
             try:
                 plt.figure(figsize=(10, 6))
-                feature_name = all_feature_names[feature_idx]
+                feature_name = stock_feature_names[feature_idx]
                 
                 # Create partial dependence plot
                 shap.plots.partial_dependence(
                     feature_idx, 
                     model.predict, 
                     X,
-                    feature_names=all_feature_names,
+                    feature_names=stock_feature_names,
                     ice=False,
                     model_expected_value=True,
                     feature_expected_value=True,

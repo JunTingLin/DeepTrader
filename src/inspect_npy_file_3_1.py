@@ -22,7 +22,6 @@ num_market_feats = market_data.shape[1]
 # Feature names
 stock_feature_names = [f"Stock_Feature_{i+1}" for i in range(num_stock_feats)]
 market_feature_names = [f"Market_Feature_{i+1}" for i in range(num_market_feats)]
-all_feature_names = stock_feature_names + market_feature_names
 
 # Rolling window for future-average labeling
 window = 5
@@ -75,7 +74,7 @@ for stock_idx in range(num_stocks):
 
         # Summary plot
         plt.figure(figsize=(12, 8))
-        shap.summary_plot(shap_pos, X, feature_names=all_feature_names, show=False)
+        shap.summary_plot(shap_pos, X, feature_names=stock_feature_names, show=False)
         plt.title(f"Stock {stock_idx+1} SHAP (5-day avg up/down)")
         plt.tight_layout()
         plt.savefig(f"{output_dir}/stock_{stock_idx+1}_shap_summary.png")
@@ -85,13 +84,13 @@ for stock_idx in range(num_stocks):
         importance = np.abs(shap_pos).mean(axis=0)
         top_idx = importance.argsort()[-5:]
         for feature_idx in top_idx:
-            fname = all_feature_names[feature_idx]
+            fname = stock_feature_names[feature_idx]
             plt.figure(figsize=(10, 6))
             shap.plots.partial_dependence(
                 feature_idx,
                 lambda z: model.predict_proba(z)[:,1],
                 X,
-                feature_names=all_feature_names,
+                feature_names=stock_feature_names,
                 ice=False,
                 model_expected_value=True,
                 feature_expected_value=True,
