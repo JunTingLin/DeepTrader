@@ -153,8 +153,8 @@ def analyze_relation_matrix(relation_matrix, output_dir, logger):
 
 # Main function
 def main():
-    # DATA_PATH = r"data\DJIA\feature33"
-    DATA_PATH = r"data\DJIA"
+    DATA_PATH = r"data\DJIA\feature33-fill"
+    # DATA_PATH = r"data\DJIA"
 
     # Setup logger and output directory
     logger, output_dir = setup_logger()
