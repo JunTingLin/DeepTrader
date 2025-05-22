@@ -156,6 +156,8 @@ def main():
     DATA_PATH = r"data\DJIA\feature33-fill"
     # DATA_PATH = r"data\DJIA"
 
+    num_train_days = 2086  # train = [0:2086), test = [2086:6260)
+
     # Setup logger and output directory
     logger, output_dir = setup_logger()
     logger.info(f"Starting data analysis, source path: {DATA_PATH}")
@@ -179,14 +181,30 @@ def main():
         market_data = verify_data(market_data_path, logger)
         ror_data = verify_data(ror_data_path, logger)
         relation_matrix = verify_data(relation_matrix_path, logger)
+
+        # 切出 train / test
+        # stocks_data shape: (num_stocks, num_days, num_features)
+        stocks_data_train = stocks_data[:, :num_train_days, :]
+        stocks_data_test  = stocks_data[:, num_train_days:, :]
+
+        # market_data shape: (num_days, num_market_features)
+        market_data_train = market_data[:num_train_days, :]
+        market_data_test  = market_data[num_train_days:, :]
+
+        # ror_data shape: (num_days, ...)
+        ror_data_train = ror_data[:num_train_days]
+        ror_data_test  = ror_data[num_train_days:]
+
+        # relation_matrix 不含時間維度，不需切分
+        # relation_matrix_train = relation_matrix
         
         # Analyze stock data (averaged)
         logger.info("Analyzing stock features correlation (averaged)")
-        analyze_stocks_data(stocks_data, output_dir, logger)
+        analyze_stocks_data(stocks_data_train, output_dir, logger)
         
         # Analyze market data
         logger.info("Analyzing market features correlation")
-        analyze_market_data(market_data, output_dir, logger)
+        analyze_market_data(market_data_train, output_dir, logger)
         
         # Analyze relation matrix
         logger.info("Analyzing industry classification matrix")
