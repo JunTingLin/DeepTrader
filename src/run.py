@@ -19,7 +19,7 @@ def run(func_args):
     if func_args.seed != -1:
         setup_seed(func_args.seed)
 
-    data_prefix = './data/' + func_args.market + '/feature33-fill' + '/'
+    data_prefix = './data/' + func_args.market + '/feature33-mine' + '/'
     # data_prefix = './data/' + func_args.market + '/'
     matrix_path = data_prefix + func_args.relation_file
 
