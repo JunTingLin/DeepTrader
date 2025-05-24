@@ -204,14 +204,14 @@ def process_one_stock(args):
             per_stock_array[j, :] = day_data[used_cols].values
     
     # 前向填補
-    # for j in range(1, per_stock_array.shape[0]):
-    #     if per_stock_array[j, 0] == 0:
-    #         per_stock_array[j, :] = per_stock_array[j-1, :]
-    df = pd.DataFrame(per_stock_array)
-    df.replace(0, np.nan, inplace=True)
-    df.ffill(inplace=True)
-    df.bfill(inplace=True)
-    per_stock_array[:] = df.values
+    for j in range(1, per_stock_array.shape[0]):
+        if per_stock_array[j, 0] == 0:
+            per_stock_array[j, :] = per_stock_array[j-1, :]
+    # df = pd.DataFrame(per_stock_array)
+    # df.replace(0, np.nan, inplace=True)
+    # df.ffill(inplace=True)
+    # df.bfill(inplace=True)
+    # per_stock_array[:] = df.values
 
     return (i, per_stock_array)
 

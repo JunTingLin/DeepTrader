@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 # Create business day date range
-unique_dates = pd.bdate_range(start='2000-01-03', end='2023-12-31')  # Start from 2000-01-03 based on earliest TWII date
+unique_dates = pd.bdate_range(start='2015-01-01', end='2025-03-31')
 unique_dates = unique_dates.to_pydatetime()
 unique_dates = np.array(unique_dates)
 
@@ -137,7 +137,7 @@ for df in dfs[1:]:
 merged_df.sort_values(by='Date', inplace=True)
 
 # Set date range for the data
-merged_df = merged_df[(merged_df['Date'] >= '2000-01-04') & (merged_df['Date'] <= '2024-03-01')]
+merged_df = merged_df[(merged_df['Date'] >= '2015-01-05') & (merged_df['Date'] <= '2025-03-31')]
 merged_df = merged_df.reset_index(drop=True)
 
 # Reindex to ensure all business days are included

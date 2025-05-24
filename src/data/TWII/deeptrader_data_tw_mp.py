@@ -228,9 +228,9 @@ if __name__ == '__main__':
     for ticker in toptw_stocks:
         print("Downloading:", ticker)
         try:
-            sample_data = yf.download(ticker, start='2000-01-04', end='2000-01-05', progress=False, session=session)
-            if not sample_data.empty and sample_data.index[0] == pd.Timestamp('2000-01-04'):
-                stock_data = yf.download(ticker, start='2000-01-04', end='2024-03-01', auto_adjust=False, progress=False, session=session)
+            sample_data = yf.download(ticker, start='2015-01-05', end='2015-01-06', progress=False, session=session)
+            if not sample_data.empty and sample_data.index[0] == pd.Timestamp('2015-01-05'):
+                stock_data = yf.download(ticker, start='2015-01-05', end='2025-03-31', auto_adjust=False, progress=False, session=session)
                 count += 1
                 if stock_data.empty:
                     print("Skipping:", ticker, "due to empty DataFrame.")
@@ -250,7 +250,7 @@ if __name__ == '__main__':
     df_tw = df_tw.sort_values(by=['Ticker', 'Date'])
 
     # Create business date range
-    unique_dates = pd.bdate_range(start='2000-01-03', end='2023-12-31')
+    unique_dates = pd.bdate_range(start='2015-01-01', end='2025-03-31')
     unique_dates = unique_dates.to_pydatetime()
     unique_dates = np.array(unique_dates)
     
