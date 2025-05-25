@@ -24,18 +24,18 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_w_MSU_dynamic_1 = np.load(r'..\outputs\0523\012851\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_dynamic_2 = np.load(r'..\outputs\0523\120028\npy_file\agent_wealth_val.npy').flatten()
-    val_w_MSU_dynamic_3 = np.load(r'..\outputs\0523\181814\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_dynamic_1 = np.load(r'..\outputs\0525\025203\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_dynamic_2 = np.load(r'..\outputs\0525\120932\npy_file\agent_wealth_val.npy').flatten()
+    val_w_MSU_dynamic_3 = np.load(r'..\outputs\0525\172001\npy_file\agent_wealth_val.npy').flatten()
     val_w_MSU_dynamic_4 = np.load(r'..\outputs\0319\144237\npy_file\agent_wealth_val.npy').flatten()
     val_w_MSU_dynamic_5 = np.load(r'..\outputs\0319\144329\npy_file\agent_wealth_val.npy').flatten()
     val_w_MSU_dynamic_6 = np.load(r'..\outputs\0319\204039\npy_file\agent_wealth_val.npy').flatten()
     val_w_MSU_dynamic_7 = np.load(r'..\outputs\0319\204051\npy_file\agent_wealth_val.npy').flatten()
 
     # Test data
-    test_w_MSU_dynamic_1 = np.load(r'..\outputs\0523\012851\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_dynamic_2 = np.load(r'..\outputs\0523\120028\npy_file\agent_wealth_test.npy').flatten()
-    test_w_MSU_dynamic_3 = np.load(r'..\outputs\0523\181814\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_dynamic_1 = np.load(r'..\outputs\0525\025203\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_dynamic_2 = np.load(r'..\outputs\0525\120932\npy_file\agent_wealth_test.npy').flatten()
+    test_w_MSU_dynamic_3 = np.load(r'..\outputs\0525\172001\npy_file\agent_wealth_test.npy').flatten()
     test_w_MSU_dynamic_4 = np.load(r'..\outputs\0319\144237\npy_file\agent_wealth_test.npy').flatten()
     test_w_MSU_dynamic_5 = np.load(r'..\outputs\0319\144329\npy_file\agent_wealth_test.npy').flatten()
     test_w_MSU_dynamic_6 = np.load(r'..\outputs\0319\204039\npy_file\agent_wealth_test.npy').flatten()
