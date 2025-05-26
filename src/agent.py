@@ -23,12 +23,15 @@ class RLActor(nn.Module):
                        layers=args.num_blocks,
                        supports=supports,
                        spatial_bool=args.spatial_bool,
-                       addaptiveadj=args.addaptiveadj)
+                       addaptiveadj=args.addaptiveadj,
+                       num_assets=args.num_assets,
+                       transformer_asu_bool=args.transformer_asu_bool)
         print("msu_bool: ", args.msu_bool)
         if args.msu_bool:
             self.msu = MSU(in_features=args.in_features[1],
                            window_len=args.window_len,
-                           hidden_dim=args.hidden_dim)
+                           hidden_dim=args.hidden_dim,
+                           transformer_msu_bool=args.transformer_msu_bool)
         self.args = args
 
     def forward(self, x_a, x_m, masks=None, deterministic=False, logger=None, y=None):

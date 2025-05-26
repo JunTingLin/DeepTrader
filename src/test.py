@@ -134,6 +134,9 @@ if __name__ == '__main__':
     parser.add_argument('--no_msu', dest='msu_bool', action='store_false')
     parser.add_argument('--relation_file', type=str)
     parser.add_argument('--addaptiveadj', dest='addaptive_adj_bool', action='store_false')
+    parser.add_argument('--no_tfinasu', dest='transformer_asu_bool', action='store_false', default=None)
+    parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
+
 
     opts = parser.parse_args()
 

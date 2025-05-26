@@ -13,6 +13,8 @@
     "batch_size": 37,
     "use_gpu": true,
     "addaptiveadj":true,
+    "transformer_asu_bool": false,
+    "transformer_msu_bool": false,
     "trade_mode": "M",
     "fee": 0.001,
     "theta": 0.15,

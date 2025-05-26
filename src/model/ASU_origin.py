@@ -1,5 +1,4 @@
 import math
-from model.TE import TE
 
 import torch
 import torch.nn as nn
@@ -13,6 +12,7 @@ class nconv(nn.Module):
         x = torch.einsum('ncvl,vw->ncwl', (x, A))
         return x.contiguous()
 
+
 class linear(nn.Module):
     def __init__(self, c_in, c_out):
         super(linear, self).__init__()
@@ -20,6 +20,7 @@ class linear(nn.Module):
 
     def forward(self, x):
         return self.mlp(x)
+
 
 class GraphConvNet(nn.Module):
     def __init__(self, c_in, c_out, dropout, support_len=2, order=2):
@@ -44,6 +45,7 @@ class GraphConvNet(nn.Module):
         h = self.mlp(h)
         h = nn.functional.dropout(h, self.dropout, training=self.training)
         return h
+
 
 class SpatialAttentionLayer(nn.Module):
     def __init__(self, num_nodes, in_features, in_len):
@@ -71,8 +73,7 @@ class SpatialAttentionLayer(nn.Module):
 class SAGCN(nn.Module):
     def __init__(self, num_nodes, in_features, hidden_dim, window_len,
                  dropout=0.3, kernel_size=2, layers=4, supports=None,
-                 spatial_bool=True, addaptiveadj=True, aptinit=None, 
-                 transformer_asu_bool = True, num_assets=30):
+                 spatial_bool=True, addaptiveadj=True, aptinit=None):
 
         super(SAGCN, self).__init__()
         self.dropout = dropout
@@ -81,11 +82,10 @@ class SAGCN(nn.Module):
             self.gcn_bool = True
             self.spatialattn_bool = True
         else:
-            self.gcn_bool = True
+            self.gcn_bool = False
             self.spatialattn_bool = False
         self.addaptiveadj = addaptiveadj
-        self.transformer_asu_bool = transformer_asu_bool
-        self.num_assets = num_assets
+
         self.tcns = nn.ModuleList()
         self.gcns = nn.ModuleList()
         self.sans = nn.ModuleList()
@@ -94,7 +94,6 @@ class SAGCN(nn.Module):
 
         self.supports = supports
 
-        # pj modify
         self.start_conv = nn.Conv2d(in_features, hidden_dim, kernel_size=(1, 1))
 
         self.bn_start = nn.BatchNorm2d(hidden_dim)
@@ -110,6 +109,7 @@ class SAGCN(nn.Module):
                     self.supports = []
                 self.nodevec = nn.Parameter(torch.randn(num_nodes, 1), requires_grad=True)
                 self.supports_len += 1
+
             else:
                 raise NotImplementedError
 
@@ -132,11 +132,10 @@ class SAGCN(nn.Module):
                                                  kernel_size=(1, 1)))
 
             self.bns.append(nn.BatchNorm2d(hidden_dim))
-            
-            if self.gcn_bool and self.transformer_asu_bool == False:
+
+            if self.gcn_bool:
                 self.gcns.append(GraphConvNet(hidden_dim, hidden_dim, dropout, support_len=self.supports_len))
-                self.gcn_residual = nn.Conv2d(in_channels=hidden_dim + hidden_dim, out_channels=hidden_dim, kernel_size=(1, 1))
-            
+
             dilation *= 2
             a_s_records.append(additional_scope)
             receptive_field += additional_scope
@@ -147,19 +146,6 @@ class SAGCN(nn.Module):
             for i in range(layers):
                 self.sans.append(SpatialAttentionLayer(num_nodes, hidden_dim, receptive_field - a_s_records[i]))
                 receptive_field -= a_s_records[i]
-        '''
-        if self.transformer_asu_bool:
-            self.TE = nn.ModuleList()
-            self.TE.append(TE(image_size=(27,15),dim=128, depth=2, heads=4, mlp_dim=32, channels=128, dim_head=4, dropout=0.1, emb_dropout=0.1))
-            self.TE.append(TE(image_size=(27,13),dim=128, depth=2, heads=4, mlp_dim=32, channels=128, dim_head=4, dropout=0.1, emb_dropout=0.1))
-            self.TE.append(TE(image_size=(27,9),dim=128, depth=2, heads=4, mlp_dim=32, channels=128, dim_head=4, dropout=0.1, emb_dropout=0.1))
-            self.TE.append(TE(image_size=(27,1),dim=128, depth=2, heads=4, mlp_dim=32, channels=128, dim_head=4, dropout=0.1, emb_dropout=0.1))
-        '''
-        if self.transformer_asu_bool:
-            self.TE = nn.ModuleList()
-            image_sizes = [(num_assets, 15), (num_assets, 13), (num_assets, 9), (num_assets, 1)]
-            for i in range(layers):
-                self.TE.append(TE(image_size=image_sizes[i], dim=128, depth=2, heads=4, mlp_dim=32, channels=128, dim_head=4, dropout=0.1, emb_dropout=0.1))
 
     def forward(self, X):
         X = X.permute(0, 3, 1, 2)  # [batch, feature, stocks, length]
@@ -175,102 +161,92 @@ class SAGCN(nn.Module):
         if self.gcn_bool and self.addaptiveadj and self.supports is not None:
             adp_matrix = torch.softmax(torch.relu(torch.mm(self.nodevec, self.nodevec.t())), dim=0)
             new_supports = self.supports + [adp_matrix]
-        
-        if self.transformer_asu_bool:
-            for i in range(self.layers):
-                residual = self.residual_convs[i](x)
-                x = self.tcns[i](x)
-                if self.gcn_bool and self.supports is not None:
-                    x = self.TE[i](x)
-                if self.spatialattn_bool:
-                    attn_weights = self.sans[i](x)
-                    x = torch.einsum('bnm, bfml->bfnl', (attn_weights, x))
-                x = x + residual[:, :, :, -x.shape[3]:]
-                x = self.bns[i](x)
-        else:
-            for i in range(self.layers):
-                residual = self.residual_convs[i](x)
-                x = self.tcns[i](x)
-                if self.gcn_bool and self.supports is not None:
-                    if self.addaptiveadj:
-                        x = self.gcns[i](x, new_supports)
-                    else:
-                        x = self.gcns[i](x, self.supports)
 
-                if self.spatialattn_bool:
-                    attn_weights = self.sans[i](x)
-                    x = torch.einsum('bnm, bfml->bfnl', (attn_weights, x))
+        for i in range(self.layers):
+            residual = self.residual_convs[i](x)
+            x = self.tcns[i](x)
+            if self.gcn_bool and self.supports is not None:
+                if self.addaptiveadj:
+                    x = self.gcns[i](x, new_supports)
+                else:
+                    x = self.gcns[i](x, self.supports)
 
-                x = x + residual[:, :, :, -x.shape[3]:]
-                x = self.bns[i](x)
+            if self.spatialattn_bool:
+                attn_weights = self.sans[i](x)
+                x = torch.einsum('bnm, bfml->bfnl', (attn_weights, x))
+
+            x = x + residual[:, :, :, -x.shape[3]:]
+
+            x = self.bns[i](x)
 
         # (batch, num_nodes, hidden_dim)
         return x.squeeze(-1).permute(0, 2, 1)
-    
-class LiteTCN(nn.Module):
-    def __init__(self, in_features, hidden_size, num_layers, kernel_size=2, dropout=0.4):
-        super(LiteTCN, self).__init__()
-        self.num_layers = num_layers
-        self.tcns = nn.ModuleList()
-        self.bns = nn.ModuleList()
-        self.dropouts = nn.ModuleList()
 
-        self.start_conv = nn.Conv1d(in_features, hidden_size, kernel_size=1)
-        self.end_conv = nn.Conv1d(hidden_size, 1, kernel_size=1)
 
-        receptive_field = 1
-        additional_scope = kernel_size - 1
-        dilation = 1
-        for l in range(num_layers):
-            tcn_sequence = nn.Sequential(nn.Conv1d(in_channels=hidden_size,
-                                                   out_channels=hidden_size,
-                                                   kernel_size=kernel_size,
-                                                   dilation=dilation),
-                                         nn.BatchNorm1d(hidden_size),
-                                         nn.ReLU(),
-                                         nn.Dropout(dropout),
-                                         )
+# class LiteTCN(nn.Module):
+#     def __init__(self, in_features, hidden_size, num_layers, kernel_size=2, dropout=0.4):
+#         super(LiteTCN, self).__init__()
+#         self.num_layers = num_layers
+#         self.tcns = nn.ModuleList()
+#         self.bns = nn.ModuleList()
+#         self.dropouts = nn.ModuleList()
 
-            self.tcns.append(tcn_sequence)
+#         self.start_conv = nn.Conv2d(in_features, hidden_size, kernel_size=1)
+#         self.end_conv = nn.Conv2d(hidden_size, 1, kernel_size=1)
 
-            self.bns.append(nn.BatchNorm1d(hidden_size))
+#         receptive_field = 1
+#         additional_scope = kernel_size - 1
+#         dilation = 1
+#         for l in range(num_layers):
+#             tcn_sequence = nn.Sequential(nn.Conv2d(in_channels=hidden_size,
+#                                                    out_channels=hidden_size,
+#                                                    kernel_size=kernel_size,
+#                                                    dilation=dilation),
+#                                          nn.BatchNorm1d(hidden_size),
+#                                          nn.ReLU(),
+#                                          nn.Dropout(dropout),
+#                                          )
 
-            dilation *= 2
-            receptive_field += additional_scope
-            additional_scope *= 2
-        self.receptive_field = receptive_field
+#             self.tcns.append(tcn_sequence)
 
-    def forward(self, X):
-        X = X.permute(0, 2, 1)
-        in_len = X.shape[2]
-        if in_len < self.receptive_field:
-            x = nn.functional.pad(X, (self.receptive_field - in_len, 0))
-        else:
-            x = X
+#             self.bns.append(nn.BatchNorm1d(hidden_size))
 
-        x = self.start_conv(x)
+#             dilation *= 2
+#             receptive_field += additional_scope
+#             additional_scope *= 2
+#         self.receptive_field = receptive_field
 
-        for i in range(self.num_layers):
-            residual = x
-            assert not torch.isnan(x).any()
-            x = self.tcns[i](x)
-            assert not torch.isnan(x).any()
-            x = x + residual[:, :, -x.shape[-1]:]
+#     def forward(self, X):
+#         X = X.permute(0, 2, 1)
+#         in_len = X.shape[2]
+#         if in_len < self.receptive_field:
+#             x = nn.functional.pad(X, (self.receptive_field - in_len, 0))
+#         else:
+#             x = X
 
-            x = self.bns[i](x)
-        assert not torch.isnan(x).any()
-        x = self.end_conv(x)
+#         x = self.start_conv(x)
 
-        return torch.sigmoid(x.squeeze())
+#         for i in range(self.num_layers):
+#             residual = x
+#             assert not torch.isnan(x).any()
+#             x = self.tcns[i](x)
+#             assert not torch.isnan(x).any()
+#             x = x + residual[:, :, -x.shape[-1]:]
+
+#             x = self.bns[i](x)
+#         assert not torch.isnan(x).any()
+#         x = self.end_conv(x)
+
+#         return torch.sigmoid(x.squeeze())
+
 
 class ASU(nn.Module):
     def __init__(self, num_nodes, in_features, hidden_dim, window_len,
                  dropout=0.3, kernel_size=2, layers=4, supports=None,
-                 spatial_bool=True, addaptiveadj=True, aptinit=None,
-                 transformer_asu_bool=True, num_assets=30):
+                 spatial_bool=True, addaptiveadj=True, aptinit=None):
         super(ASU, self).__init__()
         self.sagcn = SAGCN(num_nodes, in_features, hidden_dim, window_len, dropout, kernel_size, layers,
-                           supports, spatial_bool, addaptiveadj, aptinit, transformer_asu_bool, num_assets)
+                           supports, spatial_bool, addaptiveadj, aptinit)
         self.linear1 = nn.Linear(hidden_dim, 1)
 
         self.bn1 = nn.BatchNorm1d(num_features=num_nodes)
@@ -278,8 +254,6 @@ class ASU(nn.Module):
 
         self.lstm = nn.LSTM(input_size=in_features, hidden_size=hidden_dim, )
         self.hidden_dim = hidden_dim
-        self.transformer_asu_bool = transformer_asu_bool
-        self.num_assets = num_assets
 
     def forward(self, inputs, mask):
         """
