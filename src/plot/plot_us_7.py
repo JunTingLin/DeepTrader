@@ -13,8 +13,8 @@ from utils.functions import calculate_metrics # ../utils/functions.py
 # -------------------------------
 TRADE_MODE = "M"    # "M": Monthly mode (12 trading periods per year)
 TRADE_LEN = 21      # Sampling interval: 21 business days per sample
-START_DATE = "2015-01-01"
-END_DATE = "2025-03-31"
+START_DATE = "2000-01-01"
+END_DATE = "2023-12-31"
 
 # -------------------------------
 # Data Loading Functions
@@ -24,35 +24,35 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_1 = np.load(r'..\outputs\0509\024819\npy_file\agent_wealth_val.npy').flatten()
-    val_2 = np.load(r'..\outputs\0509\024838\npy_file\agent_wealth_val.npy').flatten()
-    val_3 = np.load(r'..\outputs\0509\024846\npy_file\agent_wealth_val.npy').flatten()
-    val_4 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_val.npy').flatten()
-    val_5 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_val.npy').flatten()
-    val_6 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_val.npy').flatten()
+    val_1 = np.load(r'..\outputs\0526\205512\npy_file\agent_wealth_val.npy').flatten()
+    val_2 = np.load(r'..\outputs\0527\132456\npy_file\agent_wealth_val.npy').flatten()
+    val_3 = np.load(r'..\outputs\0528\230339\npy_file\agent_wealth_val.npy').flatten()
+    # val_4 = np.load(r'').flatten()
+    # val_5 = np.load(r'').flatten()
+    # val_6 = np.load(r'').flatten()
 
     # Test data
-    test_1 = np.load(r'..\outputs\0509\024819\npy_file\agent_wealth_test.npy').flatten()
-    test_2 = np.load(r'..\outputs\0509\024838\npy_file\agent_wealth_test.npy').flatten()
-    test_3 = np.load(r'..\outputs\0509\024846\npy_file\agent_wealth_test.npy').flatten()
-    test_4 = np.load(r'..\outputs\0409\215045\npy_file\agent_wealth_test.npy').flatten()
-    test_5 = np.load(r'..\outputs\0402\004810\npy_file\agent_wealth_test.npy').flatten()
-    test_6 = np.load(r'..\outputs\0404\032427\npy_file\agent_wealth_test.npy').flatten()
+    test_1 = np.load(r'..\outputs\0526\205512\npy_file\agent_wealth_test.npy').flatten()
+    test_2 = np.load(r'..\outputs\0527\132456\npy_file\agent_wealth_test.npy').flatten()
+    test_3 = np.load(r'..\outputs\0528\230339\npy_file\agent_wealth_test.npy').flatten()
+    # test_4 = np.load(r'').flatten()
+    # test_5 = np.load(r'').flatten()
+    # test_6 = np.load(r'').flatten()
 
     return {
         'val_1': val_1,
         'val_2': val_2,
         'val_3': val_3,
-        'val_4': val_4,
-        'val_5': val_5,
-        'val_6': val_6,
+        # 'val_4': val_4,
+        # 'val_5': val_5,
+        # 'val_6': val_6,
 
         'test_1': test_1,
         'test_2': test_2,
         'test_3': test_3,
-        'test_4': test_4,
-        'test_5': test_5,
-        'test_6': test_6
+        # 'test_4': test_4,
+        # 'test_5': test_5,
+        # 'test_6': test_6
     }
 
 
@@ -68,9 +68,9 @@ def get_business_day_segments():
     total_days = len(full_days)
     print(f"Total business days: {total_days}")
     
-    train_days = full_days[0:1304]
-    val_days   = full_days[1304:2087]
-    test_days  = full_days[2087:2673]
+    train_days = full_days[0:2086]
+    val_days   = full_days[2086:4174]
+    test_days  = full_days[4174:6260]
     
     print(f"Training days: {len(train_days)}")
     print(f"Validation days: {len(val_days)}")
@@ -129,7 +129,7 @@ def process_data():
     1. Generate full business days and split into training, validation, and testing segments.
     2. Download DJIA data for the full period, then extract the validation segment (indices 2043 to 4150)
        and test segment (indices 4151 to 6259), computing their cumulative wealth independently (starting at 1).
-    3. Load the agent wealth data arrays (val_w_MSU_dynamic, test_w_MSU_dynamic, etc.), which cover the 
+    3. Load the agent wealth data arrays, which cover the 
        respective validation and testing periods.
     4. Create DataFrames (df_val and df_test) with the sample dates as index and columns for each 
        agent series and 'DowJones'.
@@ -141,6 +141,7 @@ def process_data():
     
     # Extract validation segment: indices 2043 to 4150
     df_djia_val = df_djia_full.loc[val_days]
+    # Plot yearly rebased cumulative wealth
     djia_wealth_val = compute_cumulative_wealth(df_djia_val)
     
     # Extract testing segment: indices 4151 to 6259
@@ -211,20 +212,22 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     plt.plot(df_test.index, df_test['DowJones'], color='r', linestyle='-', marker='o', label=None)
     
     # Plot agent wealth for validation segment
-    plt.plot(df_val.index, df_val['val_1'], color='b', linestyle='-', marker='o', label='No Seed')
-    plt.plot(df_val.index, df_val['val_2'], color='darkblue', linestyle='-', marker='o', label='No Seed')
-    plt.plot(df_val.index, df_val['val_3'], color='c', linestyle='-.', marker='o', label='No Seed')
-    # plt.plot(df_val.index, df_val['val_4'], color='limegreen', linestyle='-', marker='o', label='No Seed')
-    # plt.plot(df_val.index, df_val['val_5'], color='g', linestyle='-', marker='o', label='No Seed')
-    # plt.plot(df_val.index, df_val['val_6'], color='lawngreen', linestyle='-', marker='o', label='No Seed')
+    plt.plot(df_val.index, df_val['val_1'], color='b', linestyle='-', marker='o', label='1')
+    plt.plot(df_val.index, df_val['val_2'], color='darkblue', linestyle='-', marker='o', label='2')
+    plt.plot(df_val.index, df_val['val_3'], color='c', linestyle='-.', marker='o', label='3')
+    # plt.plot(df_val.index, df_val['val_4'], color='steelblue', linestyle='-', marker='o', label='4')
+    # plt.plot(df_val.index, df_val['val_5'], color='limegreen', linestyle='-', marker='o', label='5')
+    # plt.plot(df_val.index, df_val['val_6'], color='g', linestyle='-', marker='o', label='6')
+    # plt.plot(df_val.index, df_val['val_7'], color='lawngreen', linestyle='-', marker='o', label='7')
     
     # Plot agent wealth for testing segment
     plt.plot(df_test.index, df_test['test_1'], color='b', linestyle='-', marker='o', label=None)
     plt.plot(df_test.index, df_test['test_2'], color='darkblue', linestyle='-', marker='o', label=None)
     plt.plot(df_test.index, df_test['test_3'], color='c', linestyle='-.', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_4'], color='limegreen', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_5'], color='g', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_6'], color='lawngreen', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_4'], color='steelblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_5'], color='limegreen', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_6'], color='g', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test.index, df_test['test_7'], color='lawngreen', linestyle='-', marker='o', label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)
@@ -234,6 +237,63 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     plt.tight_layout()
     plt.show()
 
+def plot_yearly_results(df_val, df_test, val_days, test_days):
+    """
+    Plot yearly rebased cumulative wealth. Each year's first value is rebased to 1.
+    Background shading is applied for the Validation and Testing periods.
+    """
+    def rebase_yearly_series(s):
+        rebased = s.copy()
+        for year, group in s.groupby(s.index.year):
+            rebased.loc[group.index] = group / group.iloc[0]
+        return rebased
+
+    # Create copies of the dataframes
+    df_val_yearly = df_val.copy()
+    df_test_yearly = df_test.copy()
+    
+    # Rebase each column yearly
+    for col in df_val_yearly.columns:
+        df_val_yearly[col] = rebase_yearly_series(df_val_yearly[col])
+    
+    for col in df_test_yearly.columns:
+        df_test_yearly[col] = rebase_yearly_series(df_test_yearly[col])
+    
+    plt.figure(figsize=(12, 6))
+    
+    # Background shading for validation and testing segments
+    plt.axvspan(val_days[0], val_days[-1], facecolor='gray', alpha=0.3, label='Validation Period')
+    plt.axvspan(test_days[0], test_days[-1], facecolor='gray', alpha=0.5, label='Testing Period')
+    
+    # Plot DJIA yearly rebased for validation and testing
+    plt.plot(df_val_yearly.index, df_val_yearly['DowJones'], color='r', linestyle='-', marker='o', label='DJIA')
+    plt.plot(df_test_yearly.index, df_test_yearly['DowJones'], color='r', linestyle='-', marker='o', label=None)
+    
+    # Plot agent yearly rebased for validation
+    plt.plot(df_val_yearly.index, df_val_yearly['val_1'], color='b', linestyle='-', marker='o', label='1')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_2'], color='darkblue', linestyle='-', marker='o', label='2')
+    plt.plot(df_val_yearly.index, df_val_yearly['val_3'], color='c', linestyle='-.', marker='o', label='3')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_4'], color='steelblue', linestyle='-', marker='o', label='4')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_5'], color='limegreen', linestyle='-', marker='o', label='5')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_6'], color='g', linestyle='-', marker='o', label='6')
+    # plt.plot(df_val_yearly.index, df_val_yearly['val_7'], color='lawngreen', linestyle='-', marker='o', label='7')
+    
+    # Plot agent yearly rebased for testing
+    plt.plot(df_test_yearly.index, df_test_yearly['test_1'], color='b', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_2'], color='darkblue', linestyle='-', marker='o', label=None)
+    plt.plot(df_test_yearly.index, df_test_yearly['test_3'], color='c', linestyle='-.', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_4'], color='steelblue', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_5'], color='limegreen', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_6'], color='g', linestyle='-', marker='o', label=None)
+    # plt.plot(df_test_yearly.index, df_test_yearly['test_7'], color='lawngreen', linestyle='-', marker='o', label=None)
+    
+    plt.xlabel("Date", fontsize=14)
+    plt.ylabel("Cumulative Wealth (Yearly Rebased)", fontsize=14)
+    plt.title("DeepTrader vs. DJIA (Yearly Rebased)", fontsize=16)
+    plt.grid(True)
+    plt.legend(fontsize=10, loc='upper center')
+    plt.tight_layout()
+    plt.show()
 
 # -------------------------------
 # Periodic Returns & Win Rate Functions
@@ -294,6 +354,7 @@ def main():
     
     # Plot cumulative wealth with background shading (Training vs Validation vs Testing)
     plot_results(df_val, df_test, train_days, val_days, test_days)
+    plot_yearly_results(df_val, df_test, val_days, test_days)
     
     # Compute periodic returns and win rates for validation period
     period_codes = ['ME', 'QE', '6ME', 'YE']

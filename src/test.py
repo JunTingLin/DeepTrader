@@ -18,8 +18,7 @@ def test(func_args):
     if func_args.seed != -1:
         setup_seed(func_args.seed)
 
-    data_prefix = './data/' + func_args.market + '/feature33-mine-fill' + '/'
-    # data_prefix = './data/' + func_args.market + '/'
+    data_prefix = func_args.data_prefix
     matrix_path = data_prefix + func_args.relation_file
 
 
@@ -83,7 +82,7 @@ def test(func_args):
         logger=None
         )
     
-    PREFIX = r"outputs\0525\172001"
+    PREFIX = r"outputs\0528\230339"
     best_model_path = os.path.join(PREFIX, 'model_file')
     model_sort = sorted(
         [x for x in os.listdir(best_model_path) if "best_cr" in x],
@@ -127,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('--window_len', type=int)
     parser.add_argument('--G', type=int)
     parser.add_argument('--batch_size', type=int)
-    parser.add_argument('--seed', type=int, default=-1)
+    parser.add_argument('--seed', type=int)
     parser.add_argument('--lr', type=float)
     parser.add_argument('--gamma', type=float)
     parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false')

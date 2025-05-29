@@ -19,8 +19,7 @@ def run(func_args):
     if func_args.seed != -1:
         setup_seed(func_args.seed)
 
-    data_prefix = './data/' + func_args.market + '/feature33-mine-fill' + '/'
-    # data_prefix = './data/' + func_args.market + '/'
+    data_prefix = func_args.data_prefix
     matrix_path = data_prefix + func_args.relation_file
 
     start_time = datetime.now().strftime('%m%d/%H%M%S')
@@ -133,7 +132,7 @@ def run(func_args):
     mini_batch_num = int(np.ceil(len(env.src.order_set) / func_args.batch_size))
     try:
         max_cr = 0
-        start_checkpoint_epoch = int(func_args.epochs * 0.8)
+        start_checkpoint_epoch = func_args.start_checkpoint_epoch
         for epoch in range(func_args.epochs):
             epoch_return = 0
             epoch_loss = 0
@@ -186,7 +185,7 @@ if __name__ == '__main__':
     parser.add_argument('--window_len', type=int)
     parser.add_argument('--G', type=int)
     parser.add_argument('--batch_size', type=int)
-    parser.add_argument('--seed', type=int, default=-1)
+    parser.add_argument('--seed', type=int)
     parser.add_argument('--lr', type=float)
     parser.add_argument('--gamma', type=float)
     parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false')

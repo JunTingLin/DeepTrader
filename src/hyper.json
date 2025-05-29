@@ -13,8 +13,8 @@
     "batch_size": 37,
     "use_gpu": true,
     "addaptiveadj":true,
-    "transformer_asu_bool": false,
-    "transformer_msu_bool": false,
+    "transformer_asu_bool": true,
+    "transformer_msu_bool": true,
     "trade_mode": "M",
     "fee": 0.001,
     "theta": 0.15,
@@ -31,7 +31,9 @@
     "momentum": 0.8,
     "norm_type": "standard",
     "epochs": 1500,
+    "start_checkpoint_epoch": 1200,
     "market": "TWII",
+    "data_prefix": "./data/TWII/feature33-mine/",
     "device": "cuda",
     "relation_file": "industry_classification.npy",
     "trade_len": 21,
@@ -39,5 +41,6 @@
     "train_idx_end": 1304,
     "val_idx": 1304,
     "test_idx": 2087,
-    "test_idx_end": 2673
+    "test_idx_end": 2673,
+    "seed": -1
 }
