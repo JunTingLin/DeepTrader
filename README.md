@@ -4,28 +4,28 @@
 
 ### DJIA
 
-+ data\DJIA\feature5
++ data/DJIA/feature5
     - ASU features: 5
     - MSU features: 4
     - num assets: 28
     - Interval: 
         - 2000/01/01 ~ 2023/12/31
         - indices 0 to 6259
-> 由 [data/DJIA/djia.ipynb](src\data\DJIA\djia.ipynb) 產生，腳本從Morris學長 [djia.ipynb](https://github.com/sapphirejade/DeepTrader/blob/main/src/data/DJIA/djia.ipynb)修改而來
+> 由 [data/DJIA/djia.ipynb](src/data/DJIA/djia.ipynb) 產生，腳本從Morris學長 [djia.ipynb](https://github.com/sapphirejade/DeepTrader/blob/main/src/data/DJIA/djia.ipynb)修改而來
 
-+ data\DJIA\feature33
++ data/DJIA/feature33
     - ASU features: 34
     - MSU features: 27
     - num assets: 28
     - Interval: 
         - 2000/01/01 ~ 2023/12/31
         - indices 0 to 6259
-> 由 [data/DJIA/deeptrader_data_us_mp](src\data\DJIA\deeptrader_data_us_mp.py) 產生，腳本從劉薇學姐修改而來
+> 由 [data/DJIA/deeptrader_data_us_mp](src/data/DJIA/deeptrader_data_us_mp.py) 產生，腳本從劉薇學姐修改而來
 
 > deeptrader_data_us.py 為單核版本，deeptrader_data_us_mp.py 為了加快而改成的多核心版本
 
 ### TWII
-+ data\TWII\feature5-mine
++ data/TWII/feature5-mine
     - ASU features: 5
     - MSU features: 4
     - num assets: 49
@@ -33,9 +33,9 @@
         - 2015/01/01 ~ 2025/03/31
         - indices 0 to 2672
 
-> 由 [data/TWII/TWII.ipynb](src\data\TWII\TWII.ipynb) 產生，腳本從Morris學長 [tw50.ipynb](https://github.com/sapphirejade/DeepTrader/blob/main/src/data/TW50/tw50.ipynb)修改而來
+> 由 [data/TWII/TWII.ipynb](src/data/TWII/TWII.ipynb) 產生，腳本從Morris學長 [tw50.ipynb](https://github.com/sapphirejade/DeepTrader/blob/main/src/data/TW50/tw50.ipynb)修改而來
 
-+ data\TWII\feature33
++ data/TWII/feature33
     - ASU features: 34
     - MSU features: 26
     - num assets: 28
@@ -43,7 +43,7 @@
         - 2000/01/01 ~ 2023/12/31
         - indices 0 to 6259
 
-+ data\TWII\feature33-mine
++ data/TWII/feature33-mine
     - ASU features: 34
     - MSU features: 26
     - num assets: 49
@@ -51,11 +51,11 @@
         - 2015/01/01 ~ 2025/03/31
         - indices 0 to 2672
 
-> 由 [data/TWII/deeptrader_data_tw_mp.py](src\data\TWII\deeptrader_data_tw_mp.py) 產生，腳本從劉薇學姐修改而來
+> 由 [data/TWII/deeptrader_data_tw_mp.py](src/data/TWII/deeptrader_data_tw_mp.py) 產生，腳本從劉薇學姐修改而來
 
 > deeptrader_data_tw.py 為單核版本，deeptrader_data_tw_mp.py 為了加快而改成的多核心版本
 
-💡 補充: 可使用[inspect_npy_file.py](src\inspect_npy_file.py)去觀察data(stocks_data.npy, market_data.npy, ror.npy, industry_classification.npy)的分布狀況、NaN 、Inf、0 counts
+💡 補充: 可使用[inspect_npy_file.py](src/inspect_npy_file.py)去觀察data(stocks_data.npy, market_data.npy, ror.npy, industry_classification.npy)的分布狀況、NaN 、Inf、0 counts
 
 ## 執行流程
 
@@ -89,7 +89,7 @@ pip install shap
 ```
 
 ### 2. 配置config
-在 [hyper.json](src\hyper.json)內設定train/val/test index 切分、數據集路徑、超參數等等。
+在 [hyper.json](src/hyper.json)內設定train/val/test index 切分、數據集路徑、超參數等等。
 
 關鍵參數
 + transformer_asu_bool
@@ -100,10 +100,10 @@ pip install shap
 + data_prefix: "data/DJIA/feature5" or "data/TWII/feature33-mine"
 + split index
 
-| training period       | validation period     | testing period        | train_idx | train_idx_end | val_idx | test_idx | test_idx_end |   |   |
-|-----------------------|-----------------------|-----------------------|-----------|---------------|---------|----------|--------------|---|---|
-| 2000/01/01~2007/12/31 | 2008/01/01~2015/12/31 | 2016/01/01~2023/12/31 | 0         | 2086          | 2086    | 4174     | 6260         |   |   |
-| 2015/01/01~2019/12/31 | 2020/01/01~2022/12/31 | 2023/01/01~2025/03/31 | 0         | 1304          | 1304    | 2087     | 2673         |   |   |
+| training period       | validation period     | testing period        | train_idx | train_idx_end | val_idx | test_idx | test_idx_end |
+|-----------------------|-----------------------|-----------------------|-----------|---------------|---------|----------|--------------|
+| 2000/01/01~2007/12/31 | 2008/01/01~2015/12/31 | 2016/01/01~2023/12/31 | 0         | 2086          | 2086    | 4174     | 6260         |
+| 2015/01/01~2019/12/31 | 2020/01/01~2022/12/31 | 2023/01/01~2025/03/31 | 0         | 1304          | 1304    | 2087     | 2673         |
 
 + seed: 隨機種子，`-1`代表不執行run.py中的`setup_seed`方法
 
@@ -121,7 +121,7 @@ python run.py -c hyper.json
 ### 4. Testing
 載入在 validation 階段存下的最佳模型，再呼叫 agent.test() 在 test_idx～test_idx_end 區間上做測試並輸出結果
 
-+ 需要修改test.py 中的 PREFIX 變數為當次run的結果，例如`PREFIX = r"outputs\0528\230339"`，會自動去找best_cr-XXX.pkl 最好的checkpoint去進行測試
++ 需要修改test.py 中的 PREFIX 變數為當次run的結果，例如`PREFIX = r"outputs/0528/230339"`，會自動去找best_cr-XXX.pkl 最好的checkpoint去進行測試
 
 ```
 python test.py -c hyper.json
@@ -140,7 +140,7 @@ python test.py -c hyper.json
 + 計算並印出各策略在驗證與測試期的主要績效指標（APR、AVOL、ASR、MDD、CR、DDR）
 
 ---
-+ 請在 [plot_us_7.py](src\plot\plot_us_7.py) 和 [plot_tw_5.py](src\plot\plot_tw_5.py) 中修改相應的常數START_DATE, END_DATE等等
++ 請在 [plot_us_7.py](src/plot/plot_us_7.py) 和 [plot_tw_5.py](src/plot/plot_tw_5.py) 中修改相應的常數START_DATE, END_DATE等等
 
 + 在`load_agent_wealth()`方法中替換要相互比較的 agent_wealth_val.npy 和 agent_wealth_test.npy
 
