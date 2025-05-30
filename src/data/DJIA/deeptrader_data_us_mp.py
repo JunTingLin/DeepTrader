@@ -191,12 +191,13 @@ def process_one_stock(args):
     
     # 4) 組出 shape=(num_days, num_ASU_features) 的暫存
     num_days = len(unique_dates)
-    num_ASU_features = 34
+    num_ASU_features = 5    # 34
     per_stock_array = np.zeros((num_days, num_ASU_features))
     
     # 依每個 unique_date 填值
     drop_cols = ['Date','Ticker','Adj Close','Returns','MACD','MACD_Hist']
-    used_cols = stock_data.columns.drop(drop_cols)
+    # used_cols = stock_data.columns.drop(drop_cols)
+    used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
     
     for j, date in enumerate(unique_dates):
         day_data = stock_data[stock_data['Date'] == date]
@@ -266,7 +267,7 @@ if __name__ == '__main__':
     # unique_dates = df_us['Date'].unique()
     num_stocks = len(unique_stock_ids)
     num_days   = len(unique_dates)
-    num_ASU_features = 34
+    num_ASU_features = 5    # 34
     
     # 使用多核心平行化
     tasks = []

@@ -121,10 +121,10 @@ def detailed_stats_ror(file_path):
         print("  No problematic data found in any stock.")
 
 # File paths
-stocks_data_file_path = r"data\TWII\feature5-mine-2\stocks_data.npy"
-market_data_file_path = r"data\TWII\feature5-mine-2\market_data.npy"
-ror_file_path = r"data\TWII\feature5-mine-2\ror.npy"
-industry_classification_file_path = r"data\TWII\feature5-mine-2\industry_classification.npy"
+stocks_data_file_path = r"data\DJIA\feature5-2\stocks_data.npy"
+market_data_file_path = r"data\DJIA\feature5-2\market_data.npy"
+ror_file_path = r"data\DJIA\feature5-2\ror.npy"
+industry_classification_file_path = r"data\DJIA\feature5-2\industry_classification.npy"
 
 # Run detailed statistics
 print("=" * 50)
