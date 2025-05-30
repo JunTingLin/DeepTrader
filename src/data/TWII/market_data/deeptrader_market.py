@@ -155,8 +155,11 @@ assert not merged_df_filled.isnull().any().any(), "There are still NaN in merged
 
 # Reshape and save data
 num_days = len(merged_df_filled['Date'].unique())
-num_MSU_features = merged_df_filled.shape[1] - 1
-reshaped_data = merged_df_filled.drop(columns='Date').to_numpy().reshape(num_days, num_MSU_features)
+used_cols = ['TWII_Open', 'TWII_High', 'TWII_Low', 'TWII_Close']
+selected_data = merged_df_filled[used_cols]
+reshaped_data = selected_data.to_numpy()
+# num_MSU_features = merged_df_filled.shape[1] - 1
+# reshaped_data = merged_df_filled.drop(columns='Date').to_numpy().reshape(num_days, num_MSU_features)
 
 output_file = 'market_data.npy'
 np.save(output_file, reshaped_data)

@@ -238,6 +238,7 @@ def process_one_stock(args):
     # Forward fill OHLCV data
     for col in ['Open', 'High', 'Low', 'Close', 'Volume', 'Adj Close']:
         if col in aligned_data.columns:
+            aligned_data[col].replace(0, np.nan, inplace=True)
             # Forward fill
             aligned_data[col] = aligned_data[col].fillna(method='ffill')
             # Backward fill (for the beginning of the series)
@@ -282,12 +283,13 @@ def process_one_stock(args):
     
     # 4) Create array for this stock
     num_days = len(unique_dates)
-    num_ASU_features = 34
+    num_ASU_features = 5    # 34
     per_stock_array = np.zeros((num_days, num_ASU_features))
     
     # Get columns to be used in the array
     drop_cols = ['Date', 'Ticker', 'Adj Close', 'Returns', 'MACD', 'MACD_Hist']
-    used_cols = stock_data.columns.drop(drop_cols)
+    # used_cols = stock_data.columns.drop(drop_cols)
+    used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
     
     # Fill data for each date
     for j, date in enumerate(unique_dates):
@@ -347,7 +349,7 @@ if __name__ == '__main__':
     # unique_dates = df_tw['Date'].unique()
     num_stocks = len(unique_stock_ids)
     num_days = len(unique_dates)
-    num_ASU_features = 34
+    num_ASU_features = 5    # 34
     
     # Prepare tasks for parallel processing
     tasks = []
