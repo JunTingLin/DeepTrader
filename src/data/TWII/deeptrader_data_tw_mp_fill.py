@@ -375,11 +375,13 @@ if __name__ == '__main__':
     
     # Calculate returns
     returns = np.zeros((num_stocks, num_days))
+    # for i in range(1, num_days):
+    #     returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
     for i in range(1, num_days):
-        returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+        returns[:, i] = (reshaped_data[:, i, 3] / reshaped_data[:, i, 0]) - 1
     returns = np.nan_to_num(returns, nan=0, posinf=0, neginf=0)
     np.save('ror.npy', returns)
     
-    # Calculate correlation matrix
-    correlation_matrix = np.corrcoef(returns[:, :1000])
+    # correlation_matrix = np.corrcoef(returns[:, :1000])
+    correlation_matrix = np.corrcoef(returns[:, :])
     np.save('industry_classification.npy', correlation_matrix)
