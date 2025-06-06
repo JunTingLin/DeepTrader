@@ -155,15 +155,6 @@ def calculate_alpha101(df):
     return alpha101
 
 def fill_technical_indicators(df):
-    """
-    Fill NaN and Inf values in technical indicators.
-    
-    Args:
-        df: DataFrame with technical indicators
-        
-    Returns:
-        DataFrame with filled technical indicators
-    """
     # List of technical indicators to clean
     indicators = [
         'MA20', 'MA60', 'RSI', 'MACD', 'MACD_Signal', 'MACD_Hist',
@@ -189,11 +180,6 @@ def fill_technical_indicators(df):
     return df
 
 def clean_alpha_factor(alpha_series):
-    """
-    Clean any alpha factor series by:
-    1. Replacing inf values
-    2. Handling NaN values with backward and forward filling
-    """
     # Replace infinities with NaN
     result = alpha_series.replace([np.inf, -np.inf], np.nan)
     
@@ -209,20 +195,11 @@ def clean_alpha_factor(alpha_series):
     return result
 
 def process_one_stock(args):
-    """
-    args: (i, stock_id, df_us, unique_dates, alphas)
-    1) 選擇該股票資料
-    2) 做 Talib + alpha 計算
-    3) 組出 shape=(num_days, num_ASU_features) 的陣列
-    4) 回傳 (i, array)
-    """
     i, stock_id, df_us, unique_dates, alphas = args
     
-    # 1) 取出該股票資料
+    # 1) Get data for this stock
     stock_data = df_us[df_us['Ticker'] == stock_id].copy()
 
-    # Extract stock data
-    stock_data = df_us[df_us['Ticker'] == stock_id].copy()
     # Align with unique_dates and fill missing values
     # Create a DataFrame with all unique_dates
     dates_df = pd.DataFrame({'Date': unique_dates})
@@ -247,7 +224,7 @@ def process_one_stock(args):
     # Use the aligned data for further processing
     stock_data = aligned_data
     
-    # 2) Talib計算
+    # 2) Calculate technical indicators
     stock_data = calculate_returns(stock_data)
     stock_data['MA20'] = talib.SMA(stock_data['Close'], timeperiod=20)
     stock_data['MA60'] = talib.SMA(stock_data['Close'], timeperiod=60)
@@ -267,7 +244,7 @@ def process_one_stock(args):
     # Fill NaN and Inf in technical indicators
     stock_data = fill_technical_indicators(stock_data)
 
-    # 3) 計算 alpha
+    # 3) Calculate alpha factors
     for alpha in alphas:
         calc_function = globals()[f'calculate_{alpha.lower()}']
         stock_data[alpha] = calc_function(stock_data)
@@ -277,16 +254,18 @@ def process_one_stock(args):
         if alpha_col in stock_data.columns:
             stock_data[alpha_col] = clean_alpha_factor(stock_data[alpha_col])
     
-    # 4) 組出 shape=(num_days, num_ASU_features) 的暫存
+    # 4) Create array for this stock
     num_days = len(unique_dates)
-    num_ASU_features = 5    # 34
+    num_ASU_features = 34    # change here 5 or 34
     per_stock_array = np.zeros((num_days, num_ASU_features))
     
-    # 依每個 unique_date 填值
+    # Get columns to be used in the array
     drop_cols = ['Date','Ticker','Adj Close','Returns','MACD','MACD_Hist']
-    # used_cols = stock_data.columns.drop(drop_cols)
-    used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+    # change here
+    used_cols = stock_data.columns.drop(drop_cols)
+    # used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
     
+    # Fill data for each date
     for j, date in enumerate(unique_dates):
         day_data = stock_data[stock_data['Date'] == date]
         if not day_data.empty:
@@ -296,13 +275,14 @@ def process_one_stock(args):
     return (i, per_stock_array)
 
 
-
 if __name__ == '__main__':
-    djia_tickers = ['MMM','AXP','AMGN','AAPL','BA','CAT','CVX','CSCO','KO','HPQ',
-                    'GS','HD','HON','IBM','INTC','JNJ','JPM','MCD','MRK','MSFT',
-                    'NKE','PFE','PG','CRM','TRV','UNH','VZ','V','WBA','DIS']
+    # Read DJIA top stocks
+    topdjia = pd.read_excel('DJIA.xlsx')
+    topdjia_stocks = [str(symbol) for symbol in topdjia['Symbol']]
     df_us = pd.DataFrame()
-    for ticker in djia_tickers:
+
+    # Download data for each stock
+    for ticker in topdjia_stocks:
         print("Downloading:", ticker)
         try:
             sample_data = yf.download(ticker, start='2000-01-03', end='2000-01-04', progress=False)
@@ -319,21 +299,19 @@ if __name__ == '__main__':
             stock_data.reset_index(inplace=True)
             stock_data.columns = stock_data.columns.droplevel(level=1) # (Open, MMM) -> Open
             stock_data['Ticker'] = ticker
+            print(f"Downloaded {ticker}")
             df_us = pd.concat([df_us, stock_data], ignore_index=True)
 
         except Exception as e:
             print(f"Error downloading {ticker}: {e}")
             continue
     
-    # 排序 + MinMaxScaler
+    # Process dates and sort data
     df_us['Date'] = pd.to_datetime(df_us['Date'])
     df_us = df_us.sort_values(by=['Ticker','Date'])
 
-    # cols_to_normalize = ['Open','High','Low','Close','Adj Close','Volume']
-    # scaler = MinMaxScaler()
-    # df_us[cols_to_normalize] = scaler.fit_transform(df_us[cols_to_normalize])
-
-    unique_dates = pd.bdate_range(start='2000-01-03', end='2023-12-31') # business day
+    # Create business date range
+    unique_dates = pd.bdate_range(start='2000-01-03', end='2023-12-31')
     unique_dates = unique_dates.to_pydatetime()
     unique_dates = np.array(unique_dates)
     
@@ -342,34 +320,42 @@ if __name__ == '__main__':
               'Alpha033','Alpha038','Alpha040','Alpha044','Alpha045','Alpha046','Alpha051',
               'Alpha052','Alpha053','Alpha054','Alpha056','Alpha068','Alpha085']
     
+    # Get dimensions for output array
     unique_stock_ids = df_us['Ticker'].unique()
     # unique_dates = df_us['Date'].unique()
     num_stocks = len(unique_stock_ids)
     num_days   = len(unique_dates)
-    num_ASU_features = 5    # 34
+    num_ASU_features = 34    # change here 5 or 34
     
-    # 使用多核心平行化
+    # Prepare tasks for parallel processing
     tasks = []
     for i, stock_id in enumerate(unique_stock_ids):
         tasks.append((i, stock_id, df_us, unique_dates, alphas))
     
+    # Initialize output array
     reshaped_data = np.zeros((num_stocks, num_days, num_ASU_features))
     
+    # Create multiprocessing pool
     pool = mp.Pool(processes=mp.cpu_count())
     results = pool.map(process_one_stock, tasks)
     pool.close()
     pool.join()
     
-    # 將 results 填入 reshaped_data
+    # Fill results into output array
     for (i, per_stock_arr) in results:
         reshaped_data[i, :, :] = per_stock_arr
     
+    # Save stocks data
     output_file = r'./stocks_data.npy'
     np.save(output_file, reshaped_data)
 
+    # Calculate returns
     returns = np.zeros((num_stocks, num_days))
+    # change here
     for i in range(1, num_days):
         returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+    # for i in range(1, num_days):
+        # returns[:, i] = (reshaped_data[:, i, 3] / reshaped_data[:, i, 0]) - 1
     np.save(r'./ror.npy', returns)
 
     correlation_matrix = np.corrcoef(returns[:, :1000])

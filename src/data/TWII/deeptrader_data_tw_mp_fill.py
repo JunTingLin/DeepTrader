@@ -4,8 +4,6 @@ import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 import talib
 import multiprocessing as mp
-from curl_cffi import requests as curl_requests
-
 
 def calculate_returns(df):
     df['Returns'] = df['Close'].pct_change()
@@ -156,17 +154,7 @@ def calculate_alpha101(df):
     alpha101 = (df['Close'] - df['Open']) / ((df['High'] - df['Low']) + 0.001)
     return alpha101
 
-
 def fill_technical_indicators(df):
-    """
-    Fill NaN and Inf values in technical indicators.
-    
-    Args:
-        df: DataFrame with technical indicators
-        
-    Returns:
-        DataFrame with filled technical indicators
-    """
     # List of technical indicators to clean
     indicators = [
         'MA20', 'MA60', 'RSI', 'MACD', 'MACD_Signal', 'MACD_Hist',
@@ -192,11 +180,6 @@ def fill_technical_indicators(df):
     return df
 
 def clean_alpha_factor(alpha_series):
-    """
-    Clean any alpha factor series by:
-    1. Replacing inf values
-    2. Handling NaN values with backward and forward filling
-    """
     # Replace infinities with NaN
     result = alpha_series.replace([np.inf, -np.inf], np.nan)
     
@@ -211,17 +194,7 @@ def clean_alpha_factor(alpha_series):
     
     return result
 
-
 def process_one_stock(args):
-    """
-    Process a single stock with all calculations
-    
-    args: (i, stock_id, df_tw, unique_dates, alphas)
-    1) Select data for this stock
-    2) Calculate Talib indicators + alphas
-    3) Create array with shape=(num_days, num_ASU_features)
-    4) Return (i, array)
-    """
     i, stock_id, df_tw, unique_dates, alphas = args
     
     # 1) Get data for this stock
@@ -283,11 +256,12 @@ def process_one_stock(args):
     
     # 4) Create array for this stock
     num_days = len(unique_dates)
-    num_ASU_features = 5    # 34
+    num_ASU_features = 5    # change here 5 or 34
     per_stock_array = np.zeros((num_days, num_ASU_features))
     
     # Get columns to be used in the array
     drop_cols = ['Date', 'Ticker', 'Adj Close', 'Returns', 'MACD', 'MACD_Hist']
+    # change here
     # used_cols = stock_data.columns.drop(drop_cols)
     used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
     
@@ -300,32 +274,34 @@ def process_one_stock(args):
     
     return (i, per_stock_array)
 
+
 if __name__ == '__main__':
     # Read Taiwan top stocks
     toptw = pd.read_excel('0050.xlsx')
     toptw_stocks = [str(symbol) + '.TW' for symbol in toptw['Symbol']]
     df_tw = pd.DataFrame()
-    count = 0
-
-    session = curl_requests.Session(impersonate="chrome")
     
     # Download data for each stock
     for ticker in toptw_stocks:
         print("Downloading:", ticker)
         try:
-            sample_data = yf.download(ticker, start='2015-01-05', end='2015-01-06', progress=False, session=session)
-            if not sample_data.empty and sample_data.index[0] == pd.Timestamp('2015-01-05'):
-                stock_data = yf.download(ticker, start='2015-01-05', end='2025-03-31', auto_adjust=False, progress=False, session=session)
-                count += 1
-                if stock_data.empty:
-                    print("Skipping:", ticker, "due to empty DataFrame.")
-                    continue
-                    
-                stock_data.reset_index(inplace=True)
-                stock_data.columns = stock_data.columns.droplevel(level=1)
-                stock_data['Ticker'] = ticker
-                print(f"Downloaded {ticker}")
-                df_tw = pd.concat([df_tw, stock_data], ignore_index=True)
+            sample_data = yf.download(ticker, start='2015-01-05', end='2015-01-06', progress=False)
+            if sample_data.empty or sample_data.index[0] != pd.Timestamp('2015-01-05'):
+                print("Skipping:", ticker, "due to missing data on 2015-01-05.")
+                continue
+
+            stock_data = yf.download(ticker, start='2015-01-05', end='2025-03-31', auto_adjust=False, progress=False)
+            if stock_data.empty:
+                print("Skipping:", ticker, "due to empty DataFrame.")
+                continue
+
+            # Reset index so 'Date' becomes a normal column
+            stock_data.reset_index(inplace=True)
+            stock_data.columns = stock_data.columns.droplevel(level=1)  # (Open, MMM) -> Open
+            stock_data['Ticker'] = ticker
+            print(f"Downloaded {ticker}")
+            df_tw = pd.concat([df_tw, stock_data], ignore_index=True)
+
         except Exception as e:
             print(f"Error downloading {ticker}: {e}")
             continue
@@ -339,7 +315,7 @@ if __name__ == '__main__':
     unique_dates = unique_dates.to_pydatetime()
     unique_dates = np.array(unique_dates)
     
-    # Define alpha factors
+    # alpha list
     alphas = ['Alpha001', 'Alpha002', 'Alpha003', 'Alpha004', 'Alpha006', 'Alpha012', 'Alpha019', 
               'Alpha033', 'Alpha038', 'Alpha040', 'Alpha044', 'Alpha045', 'Alpha046', 'Alpha051', 
               'Alpha052', 'Alpha053', 'Alpha054', 'Alpha056', 'Alpha068', 'Alpha085']
@@ -349,7 +325,7 @@ if __name__ == '__main__':
     # unique_dates = df_tw['Date'].unique()
     num_stocks = len(unique_stock_ids)
     num_days = len(unique_dates)
-    num_ASU_features = 5    # 34
+    num_ASU_features = 5    # change here 5 or 34
     
     # Prepare tasks for parallel processing
     tasks = []
@@ -375,13 +351,12 @@ if __name__ == '__main__':
     
     # Calculate returns
     returns = np.zeros((num_stocks, num_days))
-    # for i in range(1, num_days):
-    #     returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+    # change here
     for i in range(1, num_days):
-        returns[:, i] = (reshaped_data[:, i, 3] / reshaped_data[:, i, 0]) - 1
-    returns = np.nan_to_num(returns, nan=0, posinf=0, neginf=0)
+        returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+    # for i in range(1, num_days):
+    #     returns[:, i] = (reshaped_data[:, i, 3] / reshaped_data[:, i, 0]) - 1
     np.save('ror.npy', returns)
     
-    # correlation_matrix = np.corrcoef(returns[:, :1000])
-    correlation_matrix = np.corrcoef(returns[:, :])
+    correlation_matrix = np.corrcoef(returns[:, :1000])
     np.save('industry_classification.npy', correlation_matrix)

@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 
-unique_dates = pd.bdate_range(start='2000-01-01', end='2023-12-31') # business day
+# Create business day date range
+unique_dates = pd.bdate_range(start='2000-01-01', end='2023-12-31')
 unique_dates = unique_dates.to_pydatetime()
 unique_dates = np.array(unique_dates)
 
@@ -44,16 +45,17 @@ merged_df = merged_df.reindex(unique_dates_pd)
 merged_df = merged_df.reset_index()
 merged_df = merged_df.rename(columns={'index': 'Date'})
 
-# 填補缺失值
+# Fill in missing values
 merged_df_filled = merged_df.fillna(method='ffill').fillna(method='bfill')
 assert not merged_df_filled.isnull().any().any(), "There are still NaN in merged_df_filled"
 
 num_days = len(merged_df_filled['Date'].unique())
-used_cols = ['DJI_Open', 'DJI_High', 'DJI_Low', 'DJI_Close']
-selected_data = merged_df_filled[used_cols]
-reshaped_data_new = selected_data.to_numpy()
-# num_MSU_features = merged_df_filled.shape[1] - 1
-# reshaped_data_new = merged_df_filled.drop(columns='Date').to_numpy().reshape(num_days, num_MSU_features)
+# change here
+# used_cols = ['DJI_Open', 'DJI_High', 'DJI_Low', 'DJI_Close']
+# selected_data = merged_df_filled[used_cols]
+# reshaped_data_new = selected_data.to_numpy()
+num_MSU_features = merged_df_filled.shape[1] - 1
+reshaped_data_new = merged_df_filled.drop(columns='Date').to_numpy().reshape(num_days, num_MSU_features)
 
 output_file = 'market_data.npy'
 np.save(output_file, reshaped_data_new)

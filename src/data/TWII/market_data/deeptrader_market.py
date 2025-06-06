@@ -153,8 +153,8 @@ merged_df = merged_df.rename(columns={'index': 'Date'})
 merged_df_filled = merged_df.fillna(method='ffill').fillna(method='bfill')
 assert not merged_df_filled.isnull().any().any(), "There are still NaN in merged_df_filled"
 
-# Reshape and save data
 num_days = len(merged_df_filled['Date'].unique())
+# change here
 used_cols = ['TWII_Open', 'TWII_High', 'TWII_Low', 'TWII_Close']
 selected_data = merged_df_filled[used_cols]
 reshaped_data = selected_data.to_numpy()
