@@ -195,16 +195,16 @@ def clean_alpha_factor(alpha_series):
     return result
 
 def process_one_stock(args):
-    i, stock_id, df_tw, unique_dates, alphas = args
+    i, stock_id, df_tw, unique_dates, alphas, num_ASU_features = args
     
     # 1) Get data for this stock
-    stock_data = df_tw[df_tw['Ticker'] == stock_id].copy()
+    calc_data = df_tw[df_tw['Ticker'] == stock_id].copy()
 
     # Align with unique_dates and fill missing values
     # Create a DataFrame with all unique_dates
     dates_df = pd.DataFrame({'Date': unique_dates})
     # Merge with stock data
-    aligned_data = pd.merge(dates_df, stock_data, on='Date', how='left')
+    aligned_data = pd.merge(dates_df, calc_data, on='Date', how='left')
 
     # Fill Ticker column
     aligned_data['Ticker'].fillna(stock_id, inplace=True)
@@ -221,66 +221,73 @@ def process_one_stock(args):
             # Replace inf with 0
             aligned_data[col] = aligned_data[col].replace([np.inf, -np.inf], 0)
     
-    # Use the aligned data for further processing
-    stock_data = aligned_data
-    
+    clean_ohlcv = aligned_data[['Date', 'Ticker', 'Open', 'High', 'Low', 'Close', 'Volume']].copy()
+    calc_data = aligned_data.copy()
+
     # 2) Calculate technical indicators
-    stock_data = calculate_returns(stock_data)
-    stock_data['MA20'] = talib.SMA(stock_data['Close'], timeperiod=20)
-    stock_data['MA60'] = talib.SMA(stock_data['Close'], timeperiod=60)
-    stock_data['RSI'] = talib.RSI(stock_data['Close'], timeperiod=14)
-    macd, signal, hist = talib.MACD(stock_data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
-    stock_data['MACD'] = macd
-    stock_data['MACD_Signal'] = signal
-    stock_data['MACD_Hist'] = hist
-    k, d = talib.STOCH(stock_data['High'], stock_data['Low'], stock_data['Close'])
-    stock_data['K'] = k
-    stock_data['D'] = d
-    upper_band, middle_band, lower_band = talib.BBANDS(stock_data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2)
-    stock_data['BBands_Upper'] = upper_band
-    stock_data['BBands_Middle'] = middle_band
-    stock_data['BBands_Lower'] = lower_band
+    calc_data = calculate_returns(calc_data)
+    calc_data['MA20'] = talib.SMA(calc_data['Close'], timeperiod=20)
+    calc_data['MA60'] = talib.SMA(calc_data['Close'], timeperiod=60)
+    calc_data['RSI']  = talib.RSI(calc_data['Close'], timeperiod=14)
+    macd, signal, hist = talib.MACD(calc_data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
+    calc_data['MACD'] = macd
+    calc_data['MACD_Signal'] = signal
+    calc_data['MACD_Hist'] = hist
+    k, d = talib.STOCH(calc_data['High'], calc_data['Low'], calc_data['Close'])
+    calc_data['K'] = k
+    calc_data['D'] = d
+    upper_band, middle_band, lower_band = talib.BBANDS(calc_data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2)
+    calc_data['BBands_Upper'] = upper_band
+    calc_data['BBands_Middle'] = middle_band
+    calc_data['BBands_Lower'] = lower_band
 
     # Fill NaN and Inf in technical indicators
-    stock_data = fill_technical_indicators(stock_data)
+    calc_data = fill_technical_indicators(calc_data)
 
     # 3) Calculate alpha factors
     for alpha in alphas:
         calc_function = globals()[f'calculate_{alpha.lower()}']
-        stock_data[alpha] = calc_function(stock_data)
+        calc_data[alpha] = calc_function(calc_data)
 
         # Apply the clean_alpha_factor function to each alpha
         alpha_col = alpha
-        if alpha_col in stock_data.columns:
-            stock_data[alpha_col] = clean_alpha_factor(stock_data[alpha_col])
+        if alpha_col in calc_data.columns:
+            calc_data[alpha_col] = clean_alpha_factor(calc_data[alpha_col])
     
     # 4) Create array for this stock
     num_days = len(unique_dates)
-    num_ASU_features = 5    # change here 5 or 34
     per_stock_array = np.zeros((num_days, num_ASU_features))
-    
-    # Get columns to be used in the array
-    drop_cols = ['Date', 'Ticker', 'Adj Close', 'Returns', 'MACD', 'MACD_Hist']
-    # change here
-    # used_cols = stock_data.columns.drop(drop_cols)
-    used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+
+    if num_ASU_features == 5:
+        used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+        source_data = clean_ohlcv
+    else:
+        drop_cols = ['Date', 'Ticker', 'Adj Close', 'Returns', 'MACD', 'MACD_Hist', 
+                    'Open', 'High', 'Low', 'Close', 'Volume']  # Exclude OHLCV
+        tech_cols = calc_data.columns.drop(drop_cols)
+        ohlcv_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+        used_cols = ohlcv_cols + list(tech_cols)
+        source_data = clean_ohlcv.copy()
+        for col in tech_cols:
+            source_data[col] = calc_data[col]
     
     # Fill data for each date
     for j, date in enumerate(unique_dates):
-        day_data = stock_data[stock_data['Date'] == pd.Timestamp(date)]
+        day_data = source_data[source_data['Date'] == pd.Timestamp(date)]
         if not day_data.empty:
             per_stock_array[j, :] = day_data[used_cols].values
-    
-    
+
+
     return (i, per_stock_array)
 
 
 if __name__ == '__main__':
+    NUM_ASU_FEATURES = 5  # change here to 5 or 34
     # Read Taiwan top stocks
     toptw = pd.read_excel('0050.xlsx')
     toptw_stocks = [str(symbol) + '.TW' for symbol in toptw['Symbol']]
     df_tw = pd.DataFrame()
-    
+
     # Download data for each stock
     for ticker in toptw_stocks:
         print("Downloading:", ticker)
@@ -325,15 +332,14 @@ if __name__ == '__main__':
     # unique_dates = df_tw['Date'].unique()
     num_stocks = len(unique_stock_ids)
     num_days = len(unique_dates)
-    num_ASU_features = 5    # change here 5 or 34
     
     # Prepare tasks for parallel processing
     tasks = []
     for i, stock_id in enumerate(unique_stock_ids):
-        tasks.append((i, stock_id, df_tw, unique_dates, alphas))
+        tasks.append((i, stock_id, df_tw, unique_dates, alphas, NUM_ASU_FEATURES))
     
     # Initialize output array
-    reshaped_data = np.zeros((num_stocks, num_days, num_ASU_features))
+    reshaped_data = np.zeros((num_stocks, num_days, NUM_ASU_FEATURES))
     
     # Create multiprocessing pool
     pool = mp.Pool(processes=mp.cpu_count())
@@ -348,10 +354,9 @@ if __name__ == '__main__':
     # Save stocks data
     output_file = 'stocks_data.npy'
     np.save(output_file, reshaped_data)
-    
+
     # Calculate returns
     returns = np.zeros((num_stocks, num_days))
-    # change here
     for i in range(1, num_days):
         returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
     # for i in range(1, num_days):

@@ -195,7 +195,7 @@ def clean_alpha_factor(alpha_series):
     return result
 
 def process_one_stock(args):
-    i, stock_id, df_us, unique_dates, alphas, num_features = args
+    i, stock_id, df_us, unique_dates, alphas, num_ASU_features = args
     
     # 1) Get data for this stock
     calc_data = df_us[df_us['Ticker'] == stock_id].copy()
@@ -230,16 +230,16 @@ def process_one_stock(args):
     calc_data['MA60'] = talib.SMA(calc_data['Close'], timeperiod=60)
     calc_data['RSI']  = talib.RSI(calc_data['Close'], timeperiod=14)
     macd, signal, hist = talib.MACD(calc_data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
-    calc_data['MACD']        = macd
+    calc_data['MACD'] = macd
     calc_data['MACD_Signal'] = signal
-    calc_data['MACD_Hist']   = hist
+    calc_data['MACD_Hist'] = hist
     k, d = talib.STOCH(calc_data['High'], calc_data['Low'], calc_data['Close'])
     calc_data['K'] = k
     calc_data['D'] = d
     upper_band, middle_band, lower_band = talib.BBANDS(calc_data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2)
-    calc_data['BBands_Upper']  = upper_band
+    calc_data['BBands_Upper'] = upper_band
     calc_data['BBands_Middle'] = middle_band
-    calc_data['BBands_Lower']  = lower_band
+    calc_data['BBands_Lower'] = lower_band
 
     # Fill NaN and Inf in technical indicators
     calc_data = fill_technical_indicators(calc_data)
@@ -256,13 +256,7 @@ def process_one_stock(args):
     
     # 4) Create array for this stock
     num_days = len(unique_dates)
-    num_ASU_features = num_features
     per_stock_array = np.zeros((num_days, num_ASU_features))
-    
-    # Get columns to be used in the array
-    drop_cols = ['Date','Ticker','Adj Close','Returns','MACD','MACD_Hist']
-    # change here
-    used_cols = calc_data.columns.drop(drop_cols)
 
     if num_ASU_features == 5:
         used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
@@ -318,7 +312,7 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"Error downloading {ticker}: {e}")
             continue
-    
+
     # Process dates and sort data
     df_us['Date'] = pd.to_datetime(df_us['Date'])
     df_us = df_us.sort_values(by=['Ticker','Date'])
@@ -338,15 +332,14 @@ if __name__ == '__main__':
     # unique_dates = df_us['Date'].unique()
     num_stocks = len(unique_stock_ids)
     num_days   = len(unique_dates)
-    num_ASU_features = NUM_ASU_FEATURES
     
     # Prepare tasks for parallel processing
     tasks = []
     for i, stock_id in enumerate(unique_stock_ids):
-        tasks.append((i, stock_id, df_us, unique_dates, alphas, num_ASU_features))
+        tasks.append((i, stock_id, df_us, unique_dates, alphas, NUM_ASU_FEATURES))
     
     # Initialize output array
-    reshaped_data = np.zeros((num_stocks, num_days, num_ASU_features))
+    reshaped_data = np.zeros((num_stocks, num_days, NUM_ASU_FEATURES))
     
     # Create multiprocessing pool
     pool = mp.Pool(processes=mp.cpu_count())
@@ -364,11 +357,10 @@ if __name__ == '__main__':
 
     # Calculate returns
     returns = np.zeros((num_stocks, num_days))
-    # change here
-    # for i in range(1, num_days):
-        # returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
     for i in range(1, num_days):
-        returns[:, i] = (reshaped_data[:, i, 3] / reshaped_data[:, i, 0]) - 1
+        returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+    # for i in range(1, num_days):
+        # returns[:, i] = (reshaped_data[:, i, 3] / reshaped_data[:, i, 0]) - 1
     np.save(r'./ror.npy', returns)
 
     correlation_matrix = np.corrcoef(returns[:, :1000])
