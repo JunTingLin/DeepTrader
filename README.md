@@ -4,58 +4,133 @@
 
 ### DJIA
 
-+ data/DJIA/feature5
++ data/DJIA/feature5-Inter
     - ASU features: 5
     - MSU features: 4
     - num assets: 28
     - Interval: 
         - 2000/01/01 ~ 2023/12/31
         - indices 0 to 6259
-> 由 [data/DJIA/djia.ipynb](src/data/DJIA/djia.ipynb) 產生，腳本從Morris學長 [djia.ipynb](https://github.com/sapphirejade/DeepTrader/blob/main/src/data/DJIA/djia.ipynb)修改而來
+    - ror: Inter-day return
+    - adjacency matrix: ror[:, :1000]
 
-+ data/DJIA/feature33
++ data/DJIA/feature5-Intra
+    - ASU features: 5
+    - MSU features: 4
+    - num assets: 28
+    - Interval: 
+        - 2000/01/01 ~ 2023/12/31
+        - indices 0 to 6259
+    - ror: Intra-day return
+    - adjacency matrix: ror[:, :1000]
+
++ data/DJIA/feature34-Inter
     - ASU features: 34
     - MSU features: 27
     - num assets: 28
     - Interval: 
         - 2000/01/01 ~ 2023/12/31
         - indices 0 to 6259
-> 由 [data/DJIA/deeptrader_data_us_mp](src/data/DJIA/deeptrader_data_us_mp.py) 產生，腳本從劉薇學姐修改而來
+    - ror: Inter-day return
+    - adjacency matrix: ror[:, :1000]
 
-> deeptrader_data_us.py 為單核版本，deeptrader_data_us_mp.py 為了加快而改成的多核心版本
++ data/DJIA/feature34-Intra
+    - ASU features: 34
+    - MSU features: 27
+    - num assets: 28
+    - Interval: 
+        - 2000/01/01 ~ 2023/12/31
+        - indices 0 to 6259
+    - ror: Intra-day return
+    - adjacency matrix: ror[:, :1000]
+
 
 ### TWII
-+ data/TWII/feature5-mine
++ data/TWII/feature5-Inter
     - ASU features: 5
     - MSU features: 4
     - num assets: 49
     - Interval: 
         - 2015/01/01 ~ 2025/03/31
         - indices 0 to 2672
+    - ror: Inter-day return
+    - adjacency matrix: ror[:, :1000]
 
-> 由 [data/TWII/TWII.ipynb](src/data/TWII/TWII.ipynb) 產生，腳本從Morris學長 [tw50.ipynb](https://github.com/sapphirejade/DeepTrader/blob/main/src/data/TW50/tw50.ipynb)修改而來
-
-+ data/TWII/feature33
-    - ASU features: 34
-    - MSU features: 26
-    - num assets: 28
-    - Interval: 
-        - 2000/01/01 ~ 2023/12/31
-        - indices 0 to 6259
-
-+ data/TWII/feature33-mine
-    - ASU features: 34
-    - MSU features: 26
++ data/TWII/feature5-Intra
+    - ASU features: 5
+    - MSU features: 4
     - num assets: 49
     - Interval: 
         - 2015/01/01 ~ 2025/03/31
         - indices 0 to 2672
+    - ror: Intra-day return
+    - adjacency matrix: ror[:, :1000]
 
-> 由 [data/TWII/deeptrader_data_tw_mp.py](src/data/TWII/deeptrader_data_tw_mp.py) 產生，腳本從劉薇學姐修改而來
++ data/TWII/feature34-Inter
+    - ASU features: 34
+    - MSU features: 26
+    - num assets: 49
+    - Interval: 
+        - 2000/01/01 ~ 2023/12/31
+        - indices 0 to 6259
+    - ror: Inter-day return
+    - adjacency matrix: ror[:, :1000]
 
-> deeptrader_data_tw.py 為單核版本，deeptrader_data_tw_mp.py 為了加快而改成的多核心版本
++ data/TWII/feature34-Intra
+    - ASU features: 34
+    - MSU features: 26
+    - num assets: 49
+    - Interval: 
+        - 2000/01/01 ~ 2023/12/31
+        - indices 0 to 6259
+    - ror: Intra-day return
+    - adjacency matrix: ror[:, :1000]
 
-💡 補充: 可使用[inspect_npy_file.py](src/inspect_npy_file.py)去觀察data(stocks_data.npy, market_data.npy, ror.npy, industry_classification.npy)的分布狀況、NaN 、Inf、0 counts
+> 💡 補充: 可使用[inspect_npy_file.py](src/inspect_npy_file.py)去觀察data(stocks_data.npy, market_data.npy, ror.npy, industry_classification.npy)的分布狀況、NaN 、Inf、0 counts。或是參考[Notion v2 Raw Data 檢查](https://www.notion.so/v2-Raw-Data-20a4000d85638012852df4e9f02238bb?source=copy_link)
+
+> Intra-day return: (close-open)/open
+> Inter-day return: (opent-opent-1)/opent-1
+
+## 補值方式
+### 不同數據類型的補值策略
+📈 OHLCV 數據（價格、成交量）
+
++ 處理邏輯: 認為 0 值是異常的
++ 補值順序:
+    1. 0 → NaN - 將 0 值視為缺失值
+    2. ffill - 向前填充（用前一天的值）
+    3. bfill - 向後填充（處理序列開頭）
+    4. fillna(0) - 剩餘NaN填0
+    5. Inf → 0 - 無限值填0
+
+📊 技術指標（MA, RSI, MACD 等）
+
++ 處理邏輯: 滾動窗口計算會產生開頭的 NaN
++ 補值順序:
+    1. Inf → NaN - 先處理無限值
+    2. bfill - 向後填充（解決開頭 NaN，如 MA20 前 19 天）
+    3. ffill - 向前填充（處理中間的 NaN）
+    4. fillna(0) - 剩餘NaN填0
+
+🧮 Alpha 因子
++ 處理邏輯: 複雜計算產生的異常值
++ 補值順序:
+    1. Inf → NaN - 處理計算中的無限值
+    2. bfill - 向後填充（滾動窗口的開頭 NaN）
+    3. ffill - 向前填充
+    4. fillna(0) - 剩餘NaN填0
+
+🌍 市場數據
+
++ 處理邏輯: 相對簡單的時間序列數據
++ 補值順序:
+    1. ffill - 向前填充
+    2. bfill - 向後填充
+
+### 日期對齊策略
++ 使用 pd.bdate_range() 生成完整固定的business day 日期範圍
++ 通過 pd.merge() 和 reindex() 確保所有股票在所有交易日都有數據
++ 缺失的日期會通過補值策略填充
 
 ## 執行流程
 
