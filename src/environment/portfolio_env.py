@@ -191,14 +191,11 @@ class DataGenerator():
         for i, idx in enumerate(self.cursor):
             raw_states[i] = self.__assets_data[:, idx - (self.window_len + 1) * 5 + 1:idx + 1].copy()
             tmp_states = raw_states.reshape(raw_states.shape[0], raw_states.shape[1], self.window_len + 1, 5, -1)
-            assets_states[i, :, :, 0] = tmp_states[i, :, 1:, -1, 0] / tmp_states[i, :, :-1, -1, 0]
-            assets_states[i, :, :, 1] = np.nanmax(tmp_states[i, :, 1:, :, 1], axis=-1) / tmp_states[i, :, 1:, -1, 0]
-            assets_states[i, :, :, 2] = np.nanmin(tmp_states[i, :, 1:, :, 2], axis=-1) / tmp_states[i, :, 1:, -1, 0]
-            assets_states[i, :, :, 3] = np.nansum(tmp_states[i, :, 1:, :, 3], axis=-1)
-            assets_states[i, :, :, 4] = np.nanmean(tmp_states[i, :, 1:, :, 4], axis=-1)
-            # FIXME
-            if tmp_states.shape[-1] == 6:
-                assets_states[i, :, :, 5] = np.nanmean(tmp_states[i, :, 1:, :, 5], axis=-1)
+            
+            # 直接使用原始特徵，取每個窗口的最後一個子時間點
+            for feature_idx in range(self.assets_features):
+                assets_states[i, :, :, feature_idx] = tmp_states[i, :, 1:, -1, feature_idx]
+                
             if self.allow_short:
                 tmp_states = self.__market_data[idx - (self.window_len) * 5 + 1:idx + 1].reshape(self.window_len, 5, -1)
                 market_states[i] = np.mean(tmp_states, axis=1)
