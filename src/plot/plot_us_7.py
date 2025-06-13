@@ -18,43 +18,55 @@ END_DATE = "2023-12-31"
 WEALTH_MODE = 'inter'  # 'inter' or 'intra' for DJIA daily returns
 
 # -------------------------------
+# Experiment Configuration
+# -------------------------------
+# Define experiment IDs
+EXPERIMENT_IDS = [
+    r'0610\230544', 
+    r'0610\230614', 
+    r'0610\230725'
+]
+
+# -------------------------------
+# Plotting Style Configuration
+# -------------------------------
+AGENT_COLORS = ['b', 'darkblue', 'c', 'steelblue', 'limegreen', 'g', 'lawngreen', 'purple', 'orange', 'brown']
+AGENT_LINESTYLES = ['-', '-', '-.', '-', '-', '-', '-', '--', '--', ':']
+AGENT_MARKERS = ['o'] * 10  # Use 'o' marker for all agents
+AGENT_LABELS = ['Agent 1', 'Agent 2', 'Agent 3', 'Agent 4', 'Agent 5', 'Agent 6', 'Agent 7', 'Agent 8', 'Agent 9', 'Agent 10']
+
+
+# -------------------------------
 # Data Loading Functions
 # -------------------------------
 def load_agent_wealth():
     """
-    Load and flatten agent wealth arrays for validation and test.
+    Load and flatten agent wealth arrays for validation and test automatically.
+    Based on EXPERIMENT_IDS list containing full date/time paths.
     """
-    # Validation data
-    val_1 = np.load(r'..\outputs\0610\230544\npy_file\agent_wealth_val.npy').flatten()
-    val_2 = np.load(r'..\outputs\0610\230614\npy_file\agent_wealth_val.npy').flatten()
-    val_3 = np.load(r'..\outputs\0610\230725\npy_file\agent_wealth_val.npy').flatten()
-    # val_4 = np.load(r'').flatten()
-    # val_5 = np.load(r'').flatten()
-    # val_6 = np.load(r'').flatten()
-
-    # Test data
-    test_1 = np.load(r'..\outputs\0610\230544\npy_file\agent_wealth_test.npy').flatten()
-    test_2 = np.load(r'..\outputs\0610\230614\npy_file\agent_wealth_test.npy').flatten()
-    test_3 = np.load(r'..\outputs\0610\230725\npy_file\agent_wealth_test.npy').flatten()
-    # test_4 = np.load(r'').flatten()
-    # test_5 = np.load(r'').flatten()
-    # test_6 = np.load(r'').flatten()
-
-    return {
-        'val_1': val_1,
-        'val_2': val_2,
-        'val_3': val_3,
-        # 'val_4': val_4,
-        # 'val_5': val_5,
-        # 'val_6': val_6,
-
-        'test_1': test_1,
-        'test_2': test_2,
-        'test_3': test_3,
-        # 'test_4': test_4,
-        # 'test_5': test_5,
-        # 'test_6': test_6
-    }
+    agent_wealth = {}
+    
+    for i, exp_path in enumerate(EXPERIMENT_IDS, 1):
+        # Construct file paths using the full experiment path
+        val_path = rf'..\outputs\{exp_path}\npy_file\agent_wealth_val.npy'
+        test_path = rf'..\outputs\{exp_path}\npy_file\agent_wealth_test.npy'
+        
+        try:
+            # Load validation data
+            val_data = np.load(val_path).flatten()
+            agent_wealth[f'val_{i}'] = val_data
+            
+            # Load test data
+            test_data = np.load(test_path).flatten()
+            agent_wealth[f'test_{i}'] = test_data
+            
+            print(f"Successfully loaded experiment {exp_path} as agent {i}")
+            
+        except FileNotFoundError as e:
+            print(f"Warning: Could not load experiment {exp_path}: {e}")
+            continue
+    
+    return agent_wealth
 
 
 def get_business_day_segments():
@@ -78,7 +90,6 @@ def get_business_day_segments():
     print(f"Test days: {len(test_days)}")
     
     return full_days, train_days, val_days, test_days
-
 
 def get_djia_data(full_days, file_path="^DJI.csv"):
     """
@@ -147,7 +158,6 @@ def process_data():
     
     # Extract validation segment: indices 2043 to 4150
     df_djia_val = df_djia_full.loc[val_days]
-    # Plot yearly rebased cumulative wealth
     djia_wealth_val = compute_cumulative_wealth(df_djia_val)
     
     # Extract testing segment: indices 4151 to 6259
@@ -217,24 +227,23 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     plt.plot(df_val.index, df_val['DowJones'], color='r', linestyle='-', marker='o', label='DJIA')
     plt.plot(df_test.index, df_test['DowJones'], color='r', linestyle='-', marker='o', label=None)
     
-    # Plot agent wealth for validation segment
-    plt.plot(df_val.index, df_val['val_1'], color='b', linestyle='-', marker='o', label='1')
-    plt.plot(df_val.index, df_val['val_2'], color='darkblue', linestyle='-', marker='o', label='2')
-    plt.plot(df_val.index, df_val['val_3'], color='c', linestyle='-.', marker='o', label='3')
-    # plt.plot(df_val.index, df_val['val_4'], color='steelblue', linestyle='-', marker='o', label='4')
-    # plt.plot(df_val.index, df_val['val_5'], color='limegreen', linestyle='-', marker='o', label='5')
-    # plt.plot(df_val.index, df_val['val_6'], color='g', linestyle='-', marker='o', label='6')
-    # plt.plot(df_val.index, df_val['val_7'], color='lawngreen', linestyle='-', marker='o', label='7')
-    
-    # Plot agent wealth for testing segment
-    plt.plot(df_test.index, df_test['test_1'], color='b', linestyle='-', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_2'], color='darkblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_test.index, df_test['test_3'], color='c', linestyle='-.', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_4'], color='steelblue', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_5'], color='limegreen', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_6'], color='g', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test.index, df_test['test_7'], color='lawngreen', linestyle='-', marker='o', label=None)
-    
+    # Get agent columns (exclude 'DowJones')
+    val_agent_cols = [col for col in df_val.columns if col.startswith('val_')]
+    test_agent_cols = [col for col in df_test.columns if col.startswith('test_')]
+
+    # Plot agent wealth for validation and testing segments automatically
+    for i, (val_col, test_col) in enumerate(zip(val_agent_cols, test_agent_cols)):
+        color = AGENT_COLORS[i % len(AGENT_COLORS)]
+        linestyle = AGENT_LINESTYLES[i % len(AGENT_LINESTYLES)]
+        marker = AGENT_MARKERS[i % len(AGENT_MARKERS)]
+        label = AGENT_LABELS[i % len(AGENT_LABELS)]
+        
+        # Plot validation (with label) and testing (without label)
+        plt.plot(df_val.index, df_val[val_col], color=color, linestyle=linestyle, 
+                marker=marker, label=label)
+        plt.plot(df_test.index, df_test[test_col], color=color, linestyle=linestyle, 
+                marker=marker, label=None)
+
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth", fontsize=14)
     plt.title("DeepTrader vs. DJIA", fontsize=16)
@@ -275,23 +284,22 @@ def plot_yearly_results(df_val, df_test, val_days, test_days):
     plt.plot(df_val_yearly.index, df_val_yearly['DowJones'], color='r', linestyle='-', marker='o', label='DJIA')
     plt.plot(df_test_yearly.index, df_test_yearly['DowJones'], color='r', linestyle='-', marker='o', label=None)
     
-    # Plot agent yearly rebased for validation
-    plt.plot(df_val_yearly.index, df_val_yearly['val_1'], color='b', linestyle='-', marker='o', label='1')
-    plt.plot(df_val_yearly.index, df_val_yearly['val_2'], color='darkblue', linestyle='-', marker='o', label='2')
-    plt.plot(df_val_yearly.index, df_val_yearly['val_3'], color='c', linestyle='-.', marker='o', label='3')
-    # plt.plot(df_val_yearly.index, df_val_yearly['val_4'], color='steelblue', linestyle='-', marker='o', label='4')
-    # plt.plot(df_val_yearly.index, df_val_yearly['val_5'], color='limegreen', linestyle='-', marker='o', label='5')
-    # plt.plot(df_val_yearly.index, df_val_yearly['val_6'], color='g', linestyle='-', marker='o', label='6')
-    # plt.plot(df_val_yearly.index, df_val_yearly['val_7'], color='lawngreen', linestyle='-', marker='o', label='7')
+    # Get agent columns (exclude 'DowJones')
+    val_agent_cols = [col for col in df_val_yearly.columns if col.startswith('val_')]
+    test_agent_cols = [col for col in df_test_yearly.columns if col.startswith('test_')]
     
-    # Plot agent yearly rebased for testing
-    plt.plot(df_test_yearly.index, df_test_yearly['test_1'], color='b', linestyle='-', marker='o', label=None)
-    plt.plot(df_test_yearly.index, df_test_yearly['test_2'], color='darkblue', linestyle='-', marker='o', label=None)
-    plt.plot(df_test_yearly.index, df_test_yearly['test_3'], color='c', linestyle='-.', marker='o', label=None)
-    # plt.plot(df_test_yearly.index, df_test_yearly['test_4'], color='steelblue', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test_yearly.index, df_test_yearly['test_5'], color='limegreen', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test_yearly.index, df_test_yearly['test_6'], color='g', linestyle='-', marker='o', label=None)
-    # plt.plot(df_test_yearly.index, df_test_yearly['test_7'], color='lawngreen', linestyle='-', marker='o', label=None)
+    # Plot agent yearly rebased for validation and testing automatically
+    for i, (val_col, test_col) in enumerate(zip(val_agent_cols, test_agent_cols)):
+        color = AGENT_COLORS[i % len(AGENT_COLORS)]
+        linestyle = AGENT_LINESTYLES[i % len(AGENT_LINESTYLES)]
+        marker = AGENT_MARKERS[i % len(AGENT_MARKERS)]
+        label = AGENT_LABELS[i % len(AGENT_LABELS)]
+        
+        # Plot validation (with label) and testing (without label)
+        plt.plot(df_val_yearly.index, df_val_yearly[val_col], color=color, linestyle=linestyle, 
+                marker=marker, label=label)
+        plt.plot(df_test_yearly.index, df_test_yearly[test_col], color=color, linestyle=linestyle, 
+                marker=marker, label=None)
     
     plt.xlabel("Date", fontsize=14)
     plt.ylabel("Cumulative Wealth (Yearly Rebased)", fontsize=14)
