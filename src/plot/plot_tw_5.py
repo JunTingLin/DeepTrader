@@ -15,6 +15,7 @@ TRADE_MODE = "M"    # "M": Monthly mode (12 trading periods per year)
 TRADE_LEN = 21      # Sampling interval: 21 business days per sample
 START_DATE = "2015-01-01"
 END_DATE = "2025-03-31"
+WEALTH_MODE = 'inter' # 'inter' or 'intra' for TWII daily returns
 
 # -------------------------------
 # Data Loading Functions
@@ -24,17 +25,17 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_1 = np.load(r'..\outputs\0525\025203\npy_file\agent_wealth_val.npy').flatten()
-    val_2 = np.load(r'..\outputs\0525\120932\npy_file\agent_wealth_val.npy').flatten()
-    val_3 = np.load(r'..\outputs\0525\172001\npy_file\agent_wealth_val.npy').flatten()
+    val_1 = np.load(r'..\outputs\0530\221726\npy_file\agent_wealth_val.npy').flatten()
+    val_2 = np.load(r'..\outputs\0531\115808\npy_file\agent_wealth_val.npy').flatten()
+    val_3 = np.load(r'..\outputs\0531\170830\npy_file\agent_wealth_val.npy').flatten()
     # val_4 = np.load(r'').flatten()
     # val_5 = np.load(r'').flatten()
     # val_6 = np.load(r'').flatten()
 
     # Test data
-    test_1 = np.load(r'..\outputs\0525\025203\npy_file\agent_wealth_test.npy').flatten()
-    test_2 = np.load(r'..\outputs\0525\120932\npy_file\agent_wealth_test.npy').flatten()
-    test_3 = np.load(r'..\outputs\0525\172001\npy_file\agent_wealth_test.npy').flatten()
+    test_1 = np.load(r'..\outputs\0530\221726\npy_file\agent_wealth_test.npy').flatten()
+    test_2 = np.load(r'..\outputs\0531\115808\npy_file\agent_wealth_test.npy').flatten()
+    test_3 = np.load(r'..\outputs\0531\170830\npy_file\agent_wealth_test.npy').flatten()
     # test_4 = np.load(r'').flatten()
     # test_5 = np.load(r'').flatten()
     # test_6 = np.load(r'').flatten()
@@ -96,13 +97,18 @@ def get_twii_data(full_days, file_path="^TWII.csv"):
     df.bfill(inplace=True)
     return df
 
-def compute_cumulative_wealth(df_twii):
+def compute_cumulative_wealth(df_twii, wealth_mode=WEALTH_MODE):
     """
     Compute daily cumulative wealth using a Buy & Hold strategy from TWII Close prices.
     Rebase the series so that it starts at 1.
     """
-    twii_close = df_twii["Close"].copy()
-    daily_return = twii_close.pct_change().fillna(0.0)
+    if wealth_mode == 'inter':
+        djia_open = df_twii["Open"].copy()
+        daily_return = djia_open.pct_change().fillna(0.0)
+    elif wealth_mode == 'intra':
+        daily_return = ((df_twii["Close"] - df_twii["Open"]) / df_twii["Open"]).fillna(0.0)
+    else:
+        raise ValueError("Invalid wealth_mode. Use 'inter' or 'intra'.")
     wealth_daily = (1.0 + daily_return).cumprod()
     wealth_rebased = wealth_daily / wealth_daily.iloc[0]
     return wealth_rebased

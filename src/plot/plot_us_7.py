@@ -15,6 +15,7 @@ TRADE_MODE = "M"    # "M": Monthly mode (12 trading periods per year)
 TRADE_LEN = 21      # Sampling interval: 21 business days per sample
 START_DATE = "2000-01-01"
 END_DATE = "2023-12-31"
+WEALTH_MODE = 'inter'  # 'inter' or 'intra' for DJIA daily returns
 
 # -------------------------------
 # Data Loading Functions
@@ -24,17 +25,17 @@ def load_agent_wealth():
     Load and flatten agent wealth arrays for validation and test.
     """
     # Validation data
-    val_1 = np.load(r'..\outputs\0526\205512\npy_file\agent_wealth_val.npy').flatten()
-    val_2 = np.load(r'..\outputs\0527\132456\npy_file\agent_wealth_val.npy').flatten()
-    val_3 = np.load(r'..\outputs\0528\230339\npy_file\agent_wealth_val.npy').flatten()
+    val_1 = np.load(r'..\outputs\0610\230544\npy_file\agent_wealth_val.npy').flatten()
+    val_2 = np.load(r'..\outputs\0610\230614\npy_file\agent_wealth_val.npy').flatten()
+    val_3 = np.load(r'..\outputs\0610\230725\npy_file\agent_wealth_val.npy').flatten()
     # val_4 = np.load(r'').flatten()
     # val_5 = np.load(r'').flatten()
     # val_6 = np.load(r'').flatten()
 
     # Test data
-    test_1 = np.load(r'..\outputs\0526\205512\npy_file\agent_wealth_test.npy').flatten()
-    test_2 = np.load(r'..\outputs\0527\132456\npy_file\agent_wealth_test.npy').flatten()
-    test_3 = np.load(r'..\outputs\0528\230339\npy_file\agent_wealth_test.npy').flatten()
+    test_1 = np.load(r'..\outputs\0610\230544\npy_file\agent_wealth_test.npy').flatten()
+    test_2 = np.load(r'..\outputs\0610\230614\npy_file\agent_wealth_test.npy').flatten()
+    test_3 = np.load(r'..\outputs\0610\230725\npy_file\agent_wealth_test.npy').flatten()
     # test_4 = np.load(r'').flatten()
     # test_5 = np.load(r'').flatten()
     # test_6 = np.load(r'').flatten()
@@ -97,13 +98,18 @@ def get_djia_data(full_days, file_path="^DJI.csv"):
     df.bfill(inplace=True)
     return df
 
-def compute_cumulative_wealth(df_djia):
+def compute_cumulative_wealth(df_djia, wealth_mode=WEALTH_MODE):
     """
     Compute daily cumulative wealth using a Buy & Hold strategy from DJIA Close prices.
     Rebase the series so that it starts at 1.
     """
-    djia_close = df_djia["Close"].copy()
-    daily_return = djia_close.pct_change().fillna(0.0)
+    if wealth_mode == 'inter':
+        djia_open = df_djia["Open"].copy()
+        daily_return = djia_open.pct_change().fillna(0.0)
+    elif wealth_mode == 'intra':
+        daily_return = ((df_djia["Close"] - df_djia["Open"]) / df_djia["Open"]).fillna(0.0)
+    else:
+        raise ValueError("Invalid wealth_mode. Use 'inter' or 'intra'.")
     wealth_daily = (1.0 + daily_return).cumprod()
     wealth_rebased = wealth_daily / wealth_daily.iloc[0]
     return wealth_rebased
