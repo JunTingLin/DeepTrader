@@ -82,7 +82,7 @@ def test(func_args):
         logger=None
         )
     
-    PREFIX = r"outputs\0528\230339"
+    PREFIX = func_args.prefix
     best_model_path = os.path.join(PREFIX, 'model_file')
     model_sort = sorted(
         [x for x in os.listdir(best_model_path) if "best_cr" in x],
@@ -138,15 +138,18 @@ if __name__ == '__main__':
 
 
     opts = parser.parse_args()
+    PREFIX = r"outputs\0610\230725"
 
     if opts.config is not None:
         with open(opts.config) as f:
             options = json.load(f)
             args = ConfigParser(options)
     else:
-        with open('./hyper.json') as f:
+        hyper_json_path = os.path.join(PREFIX, 'log_file', 'hyper.json')
+        with open(hyper_json_path) as f:
             options = json.load(f)
             args = ConfigParser(options)
+    args.prefix = PREFIX
     args.update(opts)
 
     test(args)

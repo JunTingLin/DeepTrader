@@ -153,12 +153,12 @@ def run(func_args):
             logger.warning('agent_wealth: %s' % agent_wealth)
             logger.warning('agent_wealth shape: %s', agent_wealth.shape)
             metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
-            writer.add_scalar('Test/APR', metrics['APR'], global_step=epoch)
-            writer.add_scalar('Test/MDD', metrics['MDD'], global_step=epoch)
-            writer.add_scalar('Test/AVOL', metrics['AVOL'], global_step=epoch)
-            writer.add_scalar('Test/ASR', metrics['ASR'], global_step=epoch)
-            writer.add_scalar('Test/SoR', metrics['DDR'], global_step=epoch)
-            writer.add_scalar('Test/CR', metrics['CR'], global_step=epoch)
+            writer.add_scalar('Val/APR', metrics['APR'], global_step=epoch)
+            writer.add_scalar('Val/MDD', metrics['MDD'], global_step=epoch)
+            writer.add_scalar('Val/AVOL', metrics['AVOL'], global_step=epoch)
+            writer.add_scalar('Val/ASR', metrics['ASR'], global_step=epoch)
+            writer.add_scalar('Val/SoR', metrics['DDR'], global_step=epoch)
+            writer.add_scalar('Val/CR', metrics['CR'], global_step=epoch)
             writer.flush() # flush the writer
 
             if epoch >= start_checkpoint_epoch and metrics['CR'] > max_cr:

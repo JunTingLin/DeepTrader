@@ -198,9 +198,13 @@ python run.py -c hyper.json
 
 + 需要修改test.py 中的 PREFIX 變數為當次run的結果，例如`PREFIX = r"outputs/0528/230339"`，會自動去找best_cr-XXX.pkl 最好的checkpoint去進行測試
 
+
+~~python test.py -c hyper.json~~
 ```
-python test.py -c hyper.json
+python test.py
 ```
+> 改為自動從實驗outputs目錄下去抓取hyper.json
+
 
 + 執行後會打印基本的ASR、MDD、cumulative wealth等指標
 
