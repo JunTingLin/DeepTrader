@@ -22,9 +22,9 @@ WEALTH_MODE = 'inter' # 'inter' or 'intra' for TWII daily returns
 # -------------------------------
 # Define experiment IDs
 EXPERIMENT_IDS = [
-    r'0610\230544', 
-    r'0610\230614', 
-    r'0610\230725'
+    r'0615\053959', 
+    r'0615\054006', 
+    r'0615\054009'
 ]
 
 # -------------------------------
@@ -91,7 +91,7 @@ def get_business_day_segments():
     
     return full_days, train_days, val_days, test_days
 
-def get_twii_data(full_days, file_path="^TWII.csv"):
+def get_twii_data(full_days, file_path="0050.TW.csv"):
     """
     Load TWII data from a local CSV file, filter for full_days, 
     reindex to the full business day range, and fill missing values.
