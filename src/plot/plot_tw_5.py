@@ -337,7 +337,7 @@ def calculate_win_rate_df(returns_df, benchmark_column='0050.TW'):
 
 def compute_metrics_df(df, series_list):
     """
-    For each specified series in the DataFrame, compute performance metrics (APR, AVOL, ASR, MDD, CR, DDR)
+    For each specified series in the DataFrame, compute performance metrics (ARR, AVOL, ASR, MDD, CR, DDR)
     using calculate_metrics, and return a DataFrame where rows are metrics and columns are strategies.
     """
     metrics_dict = {}
@@ -345,7 +345,7 @@ def compute_metrics_df(df, series_list):
         wealth = df[col].values
         m = calculate_metrics(wealth.reshape(1, -1), TRADE_MODE)
         metrics_dict[col] = {
-            'APR': m['APR'][0, 0] if isinstance(m['APR'], np.ndarray) else m['APR'],
+            'ARR': m['ARR'][0, 0] if isinstance(m['ARR'], np.ndarray) else m['ARR'],
             'AVOL': m['AVOL'][0, 0] if isinstance(m['AVOL'], np.ndarray) else m['AVOL'],
             'ASR': m['ASR'][0, 0] if isinstance(m['ASR'], np.ndarray) else m['ASR'],
             'MDD': m['MDD'],

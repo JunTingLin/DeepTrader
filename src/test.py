@@ -108,7 +108,7 @@ def test(func_args):
         np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
 
         metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
-        print("APR:", metrics['APR'])
+        print("ARR:", metrics['ARR'])
         print("MDD:", metrics['MDD'])
         print("AVOL:", metrics['AVOL'])
         print("ASR:", metrics['ASR'])
@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
 
     opts = parser.parse_args()
-    PREFIX = r"outputs\0610\230725"
+    PREFIX = r"outputs\0615\054009"
 
     if opts.config is not None:
         with open(opts.config) as f:

@@ -35,22 +35,22 @@ def calculate_metrics(agent_wealth, trade_mode, MAR=0.):
     AT = np.mean(trade_ror, axis=-1, keepdims=True)
     VT = np.std(trade_ror, axis=-1, keepdims=True)
 
-    # APR = 平均報酬 × 年化因子
-    APR = AT * Ny
+    # ARR = 平均報酬 × 年化因子
+    ARR = AT * Ny
     AVOL = VT * math.sqrt(Ny)
-    ASR = APR / AVOL
+    ASR = ARR / AVOL
     drawdown = (np.maximum.accumulate(agent_wealth, axis=-1) - agent_wealth) /\
                      np.maximum.accumulate(agent_wealth, axis=-1)
     MDD = np.max(drawdown, axis=-1)
-    CR = APR / MDD
+    CR = ARR / MDD
 
     tmp1 = np.sum(((np.clip(MAR-trade_ror, 0., math.inf))**2), axis=-1) / \
            np.sum(np.clip(MAR-trade_ror, 0., math.inf)>0)
     downside_deviation = np.sqrt(tmp1)
-    DDR = APR / downside_deviation
+    DDR = ARR / downside_deviation
 
     metrics = {
-        'APR': APR,
+        'ARR': ARR,
         'AVOL': AVOL,
         'ASR': ASR,
         'MDD': MDD,

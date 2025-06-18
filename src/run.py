@@ -153,7 +153,7 @@ def run(func_args):
             logger.warning('agent_wealth: %s' % agent_wealth)
             logger.warning('agent_wealth shape: %s', agent_wealth.shape)
             metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
-            writer.add_scalar('Val/APR', metrics['APR'], global_step=epoch)
+            writer.add_scalar('Val/ARR', metrics['ARR'], global_step=epoch)
             writer.add_scalar('Val/MDD', metrics['MDD'], global_step=epoch)
             writer.add_scalar('Val/AVOL', metrics['AVOL'], global_step=epoch)
             writer.add_scalar('Val/ASR', metrics['ASR'], global_step=epoch)
@@ -171,7 +171,7 @@ def run(func_args):
                             'MDD: %.2f%%, CR: %.3f, DDR: %.3f'
                             % (
                                 epoch, max(agent_wealth[0]), min(agent_wealth[0]), np.mean(agent_wealth),
-                                agent_wealth[-1, -1], 100 * metrics['APR'], metrics['ASR'], metrics['AVOL'],
+                                agent_wealth[-1, -1], 100 * metrics['ARR'], metrics['ASR'], metrics['AVOL'],
                                 100 * metrics['MDD'], metrics['CR'], metrics['DDR']
                             ))
     except KeyboardInterrupt:
