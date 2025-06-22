@@ -5,8 +5,7 @@ import torch
 import torch.nn as nn
 from torch.distributions.normal import Normal
 
-from model.ASU import ASU
-from model.MSU import MSU
+from model.UnifiedTimesNet import UnifiedTimesNet
 
 EPS = 1e-20
 
@@ -14,35 +13,24 @@ EPS = 1e-20
 class RLActor(nn.Module):
     def __init__(self, supports, args):
         super(RLActor, self).__init__()
-        self.asu = ASU(num_nodes=args.num_assets,
-                       in_features=args.in_features[0],
-                       hidden_dim=args.hidden_dim,
-                       window_len=args.window_len,
-                       dropout=args.dropout,
-                       kernel_size=args.kernel_size,
-                       layers=args.num_blocks,
-                       supports=supports,
-                       spatial_bool=args.spatial_bool,
-                       addaptiveadj=args.addaptiveadj,
-                       num_assets=args.num_assets,
-                       transformer_asu_bool=args.transformer_asu_bool)
-        print("msu_bool: ", args.msu_bool)
-        if args.msu_bool:
-            self.msu = MSU(in_features=args.in_features[1],
-                           window_len=args.window_len,
-                           hidden_dim=args.hidden_dim,
-                           transformer_msu_bool=args.transformer_msu_bool)
+        print("Using Unified TimesNet model")
+        self.unified_model = UnifiedTimesNet(
+            num_assets=args.num_assets,
+            asset_features=args.in_features[0],
+            market_features=args.in_features[1],
+            seq_len=args.window_len,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.num_blocks,
+            dropout=args.dropout
+        )
         self.args = args
 
     def forward(self, x_a, x_m, masks=None, deterministic=False, logger=None, y=None):
-        scores = self.asu(x_a, masks)
-        if self.args.msu_bool:
-            res = self.msu(x_m)
-        else:
-            res = None
-        return self.__generator(scores, res, deterministic)
+        # Get predictions from unified model
+        scores, market_params = self.unified_model(x_a, x_m, masks)
+        return self.__generator(scores, market_params, deterministic)
 
-    def __generator(self, scores, res, deterministic=None):
+    def __generator(self, scores, market_params, deterministic=None):
         weights = np.zeros((scores.shape[0], 2 * scores.shape[1]))
 
         winner_scores = scores
@@ -50,23 +38,21 @@ class RLActor(nn.Module):
 
         scores_p = torch.softmax(scores, dim=-1)
 
-        # winners_log_p = torch.log_softmax(winner_scores, dim=-1)
         w_s, w_idx = torch.topk(winner_scores.detach(), self.args.G)
-
         long_ratio = torch.softmax(w_s, dim=-1)
 
         for i, indice in enumerate(w_idx):
             weights[i, indice.detach().cpu().numpy()] = long_ratio[i].cpu().numpy()
 
         l_s, l_idx = torch.topk(loser_scores.detach(), self.args.G)
-
         short_ratio = torch.softmax(l_s.detach(), dim=-1)
         for i, indice in enumerate(l_idx):
             weights[i, indice.detach().cpu().numpy() + scores.shape[1]] = short_ratio[i].cpu().numpy()
 
-        if self.args.msu_bool:
-            mu = res[..., 0]
-            sigma = torch.log(1 + torch.exp(res[..., 1]))
+        # Market exposure handling
+        if market_params is not None:
+            mu = market_params[..., 0]
+            sigma = torch.log(1 + torch.exp(market_params[..., 1]))
             if deterministic:
                 rho = torch.clamp(mu, 0.0, 1.0)
                 rho_log_p = None
@@ -78,8 +64,7 @@ class RLActor(nn.Module):
         else:
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
-        # force rho to 0.5
-        # rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
+            
         return weights, rho, scores_p, rho_log_p
 
 
