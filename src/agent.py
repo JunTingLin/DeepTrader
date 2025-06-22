@@ -5,7 +5,8 @@ import torch
 import torch.nn as nn
 from torch.distributions.normal import Normal
 
-from model.UnifiedTimesNet import UnifiedTimesNet
+from model.TimesNetASU import TimesNetASU
+from model.TimesNetMSU import TimesNetMSU
 
 EPS = 1e-20
 
@@ -13,21 +14,44 @@ EPS = 1e-20
 class RLActor(nn.Module):
     def __init__(self, supports, args):
         super(RLActor, self).__init__()
-        print("Using Unified TimesNet model")
-        self.unified_model = UnifiedTimesNet(
+        print("Using Independent TimesNet ASU and MSU")
+        
+        # Initialize TimesNet-based ASU
+        self.asu = TimesNetASU(
             num_assets=args.num_assets,
-            asset_features=args.in_features[0],
-            market_features=args.in_features[1],
-            seq_len=args.window_len,
+            in_features=args.in_features[0],
             hidden_dim=args.hidden_dim,
+            seq_len=args.window_len,
             num_layers=args.num_blocks,
+            top_k=getattr(args, 'top_k', 3),
+            d_ff=getattr(args, 'd_ff', args.hidden_dim * 4),
             dropout=args.dropout
         )
+        
+        # Initialize TimesNet-based MSU (if enabled)
+        if args.msu_bool:
+            self.msu = TimesNetMSU(
+                in_features=args.in_features[1],
+                seq_len=args.window_len,
+                hidden_dim=args.hidden_dim,
+                num_layers=max(2, args.num_blocks // 2),  # Use fewer layers for MSU
+                top_k=getattr(args, 'top_k', 3),
+                d_ff=getattr(args, 'd_ff', args.hidden_dim * 4),
+                dropout=args.dropout
+            )
+        
         self.args = args
 
     def forward(self, x_a, x_m, masks=None, deterministic=False, logger=None, y=None):
-        # Get predictions from unified model
-        scores, market_params = self.unified_model(x_a, x_m, masks)
+        # Get asset selection scores from TimesNet ASU
+        scores = self.asu(x_a, masks)
+        
+        # Get market parameters from TimesNet MSU (if enabled)
+        if self.args.msu_bool:
+            market_params = self.msu(x_m)
+        else:
+            market_params = None
+            
         return self.__generator(scores, market_params, deterministic)
 
     def __generator(self, scores, market_params, deterministic=None):
