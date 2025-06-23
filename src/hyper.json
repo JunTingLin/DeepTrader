@@ -12,6 +12,7 @@
     "use_gpu": true,
     "top_k": 3,
     "d_ff": 512,
+    "num_kernels": 6,
     "msu_bool": true,
     "spatial_bool": true,
     "trade_mode": "M",

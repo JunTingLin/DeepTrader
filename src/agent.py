@@ -25,6 +25,7 @@ class RLActor(nn.Module):
             num_layers=args.num_blocks,
             top_k=getattr(args, 'top_k', 3),
             d_ff=getattr(args, 'd_ff', args.hidden_dim * 4),
+            num_kernels=getattr(args, 'num_kernels', 6),
             dropout=args.dropout
         )
         
@@ -37,6 +38,7 @@ class RLActor(nn.Module):
                 num_layers=max(2, args.num_blocks // 2),  # Use fewer layers for MSU
                 top_k=getattr(args, 'top_k', 3),
                 d_ff=getattr(args, 'd_ff', args.hidden_dim * 4),
+                num_kernels=getattr(args, 'num_kernels', 6),
                 dropout=args.dropout
             )
         
