@@ -132,6 +132,32 @@
 + 通過 pd.merge() 和 reindex() 確保所有股票在所有交易日都有數據
 + 缺失的日期會通過補值策略填充
 
+## 資料來源
+> 成份股的資料來源均來自 [Yahoo Finance](https://finance.yahoo.com/)，使用 `yfinance` 套件下載或參考data內相關腳本
+
+### 美國市場
++ ^DJI (道瓊工業平均指數): yahoo finance
++ ^GSPC (標普500指數): yahoo finance
++ ^VIX (波動率指數): yahoo finance
++ BAMLCC0A4BBBTRIV (美國BBB級公司債券總回報指數): [fred.stlouisfed.org](https://fred.stlouisfed.org/series/BAMLCC0A4BBBTRIV)
++ BAMLCC0A0CMTRIV (美國CCC級公司債券總回報指數): [fred.stlouisfed.org](https://fred.stlouisfed.org/series/BAMLCC0A0CMTRIV)
++ BAMLCC0A1AAATRIV (美國AAA級公司債券總回報指數): [fred.stlouisfed.org](https://fred.stlouisfed.org/series/BAMLCC0A1AAATRIV)
++ BAMLHYH0A3CMTRIV (美國高收益債券總回報指數): [fred.stlouisfed.org](https://fred.stlouisfed.org/series/BAMLHYH0A3CMTRIV)
++ DGS10 (10年期美國國債收益率): [fred.stlouisfed.org](https://fred.stlouisfed.org/series/DGS10)
++ DGS30 (30年期美國國債收益率): [fred.stlouisfed.org](https://fred.stlouisfed.org/series/DGS30)
++ xauusd_d (黃金兌美元匯率): [stooq.com](https://stooq.com/q/d/?f=20000101&t=20250331&s=xauusd&c=0&o=1111111&o_s=1&o_d=1&o_p=1&o_n=1&o_o=1&o_m=1&o_x=1)
+
+### 台灣市場
++ ^TWII (台灣加權指數): yahoo finance
++ TWDUSD=X (台幣美元匯率): yahoo finance
++ TW5Y (5年期政府債券): [investing.com ](https://hk.investing.com/rates-bonds/taiwan-5-year-bond-yield-historical-data)
++ TW10Y (10年期政府債券): [investing.com ](https://hk.investing.com/rates-bonds/taiwan-10-year-bond-yield-historical-data)
++ TW20Y (20年期政府債券): [investing.com ](https://hk.investing.com/rates-bonds/taiwan-20-year-bond-yield-historical-data)
++ TW30Y (30年期政府債券): [investing.com ](https://hk.investing.com/rates-bonds/taiwan-30-year-bond-yield-historical-data)
+
+
+
+
 ## 執行流程
 
 ### 1. 環境設定

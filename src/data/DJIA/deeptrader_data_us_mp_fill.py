@@ -282,7 +282,7 @@ def process_one_stock(args):
 
 
 if __name__ == '__main__':
-    NUM_ASU_FEATURES = 5  # change here to 5 or 34
+    NUM_ASU_FEATURES = 34  # change here to 5 or 34
     # Read DJIA top stocks
     topdjia = pd.read_excel('DJIA.xlsx')
     topdjia_stocks = [str(symbol) for symbol in topdjia['Symbol']]
@@ -292,12 +292,12 @@ if __name__ == '__main__':
     for ticker in topdjia_stocks:
         print("Downloading:", ticker)
         try:
-            sample_data = yf.download(ticker, start='2000-01-03', end='2000-01-04', progress=False)
-            if sample_data.empty or sample_data.index[0] != pd.Timestamp('2000-01-03'):
-                print("Skipping:", ticker, "due to no data on 2000-01-03.")
+            sample_data = yf.download(ticker, start='2015-01-05', end='2015-01-06', progress=False)
+            if sample_data.empty or sample_data.index[0] != pd.Timestamp('2015-01-05'):
+                print("Skipping:", ticker, "due to missing data on 2015-01-05.")
                 continue
 
-            stock_data = yf.download(ticker, start='2000-01-03', end='2023-12-31', auto_adjust=False, progress=False)
+            stock_data = yf.download(ticker, start='2015-01-05', end='2025-03-31', auto_adjust=False, progress=False)
             if stock_data.empty:
                 print("Skipping:", ticker, "due to empty DataFrame.")
                 continue
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     df_us = df_us.sort_values(by=['Ticker','Date'])
 
     # Create business date range
-    unique_dates = pd.bdate_range(start='2000-01-03', end='2023-12-31')
+    unique_dates = pd.bdate_range(start='2015-01-01', end='2025-03-31')
     unique_dates = unique_dates.to_pydatetime()
     unique_dates = np.array(unique_dates)
     

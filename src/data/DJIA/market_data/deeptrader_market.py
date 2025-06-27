@@ -2,19 +2,20 @@ import pandas as pd
 import numpy as np
 
 # Create business day date range
-unique_dates = pd.bdate_range(start='2000-01-01', end='2023-12-31')
+unique_dates = pd.bdate_range(start='2015-01-01', end='2025-03-31')
 unique_dates = unique_dates.to_pydatetime()
 unique_dates = np.array(unique_dates)
 
-file_paths = ['BAMLCC0A4BBBTRIV.xls', 'BAMLCC0A0CMTRIV.xls', 'BAMLCC0A1AAATRIV.xls', 'BAMLHYH0A3CMTRIV.xls', 'DGS10.xls', 'DGS30.xls']
-dfs = [pd.read_excel(file) for file in file_paths]
+file_paths = ['BAMLCC0A4BBBTRIV.csv', 'BAMLCC0A0CMTRIV.csv', 'BAMLCC0A1AAATRIV.csv', 'BAMLHYH0A3CMTRIV.csv', 'DGS10.csv', 'DGS30.csv']
+dfs = [pd.read_csv(file) for file in file_paths]
 
 merged_df = pd.concat(dfs)
 merged_df.sort_values(by='observation_date', inplace=True)
 merged_df = merged_df.groupby('observation_date').mean().reset_index()
-merged_df = merged_df[(merged_df['observation_date'] >= '2000-01-03') & (merged_df['observation_date'] <= '2024-03-01')]
+merged_df = merged_df[(merged_df['observation_date'] >= '2015-01-02') & (merged_df['observation_date'] <= '2025-03-31')]
 merged_df = merged_df.reset_index(drop=True)
 merged_df = merged_df.rename(columns={'observation_date': 'Date'})
+merged_df['Date'] = pd.to_datetime(merged_df['Date'])
 csv_files = ['^DJI.csv', 'xauusd_d.csv', '^VIX.csv', '^GSPC.csv']
 # csv_dfs = [pd.read_csv(file, parse_dates=['Date']) for file in csv_files]
 
