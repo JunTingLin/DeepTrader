@@ -44,6 +44,26 @@
     - ror: Intra-day return
     - adjacency matrix: ror[:, :1000]
 
++ data/DJIA/feature5-Inter-p532
+    - ASU features: 5
+    - MSU features: 4
+    - num assets: 30
+    - Interval: 
+        - 2015/01/01 ~ 2025/03/31
+        - indices 0 to 2672
+    - ror: Inter-day return
+    - adjacency matrix: ror[:, :1000]
+
++ data/DJIA/feature34-Inter-p532
+    - ASU features: 34
+    - MSU features: 27
+    - num assets: 30
+    - Interval: 
+        - 2015/01/01 ~ 2025/03/31
+        - indices 0 to 2672
+    - ror: Inter-day return
+    - adjacency matrix: ror[:, :1000]
+
 
 ### TWII
 + data/TWII/feature5-Inter
