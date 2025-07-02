@@ -135,10 +135,14 @@ if __name__ == '__main__':
     parser.add_argument('--addaptiveadj', dest='addaptive_adj_bool', action='store_false')
     parser.add_argument('--no_tfinasu', dest='transformer_asu_bool', action='store_false', default=None)
     parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
-
+    parser.add_argument('--prefix', type=str, help='Experiment output directory prefix')
 
     opts = parser.parse_args()
-    PREFIX = r"outputs\0615\054009"
+    
+    if opts.prefix:
+        PREFIX = opts.prefix
+    else:
+        PREFIX = os.path.join("outputs", "0629", "064638")
 
     if opts.config is not None:
         with open(opts.config) as f:

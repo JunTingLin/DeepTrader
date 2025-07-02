@@ -254,6 +254,16 @@ python test.py
 
 + 執行後會打印基本的ASR、MDD、cumulative wealth等指標
 
+### 自動化執行(3.4.合併)（推薦）
+推薦使用 `run_and_test.sh` 腳本，會自動完成整個訓練和測試流程：
+```bash
+bash run_and_test.sh -c hyper.json
+```
+此腳本會：
+1. 執行 `python run.py -c hyper.json` 進行訓練
+2. 自動提取生成的 PREFIX（輸出目錄路徑）
+3. 自動執行 `python test.py --prefix "outputs/MMDD/HHMMSS"` 進行測試
+
 ### 5. Matrics & Plotting
 
 + 讀取 agent 與道瓊指數的累積財富資料，分別製作 validation/test 的 DataFrame

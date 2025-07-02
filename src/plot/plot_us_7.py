@@ -13,8 +13,8 @@ from utils.functions import calculate_metrics # ../utils/functions.py
 # -------------------------------
 TRADE_MODE = "M"    # "M": Monthly mode (12 trading periods per year)
 TRADE_LEN = 21      # Sampling interval: 21 business days per sample
-START_DATE = "2000-01-01"
-END_DATE = "2023-12-31"
+START_DATE = "2015-01-01"
+END_DATE = "2025-03-31"
 WEALTH_MODE = 'inter'  # 'inter' or 'intra' for DJIA daily returns
 
 # -------------------------------
@@ -22,9 +22,9 @@ WEALTH_MODE = 'inter'  # 'inter' or 'intra' for DJIA daily returns
 # -------------------------------
 # Define experiment IDs
 EXPERIMENT_IDS = [
-    r'0610\125306', 
-    r'0610\125415', 
-    r'0610\230725'
+    '0629/064529', 
+    '0629/064617', 
+    '0629/064638'
 ]
 
 # -------------------------------
@@ -48,8 +48,8 @@ def load_agent_wealth():
     
     for i, exp_path in enumerate(EXPERIMENT_IDS, 1):
         # Construct file paths using the full experiment path
-        val_path = rf'..\outputs\{exp_path}\npy_file\agent_wealth_val.npy'
-        test_path = rf'..\outputs\{exp_path}\npy_file\agent_wealth_test.npy'
+        val_path = os.path.join('..', 'outputs', exp_path, 'npy_file', 'agent_wealth_val.npy')
+        test_path = os.path.join('..', 'outputs', exp_path, 'npy_file', 'agent_wealth_test.npy')
         
         try:
             # Load validation data
@@ -81,9 +81,9 @@ def get_business_day_segments():
     total_days = len(full_days)
     print(f"Total business days: {total_days}")
     
-    train_days = full_days[0:2086]
-    val_days   = full_days[2086:4174]
-    test_days  = full_days[4174:6260]
+    train_days = full_days[0:1304]
+    val_days   = full_days[1304:2087]
+    test_days  = full_days[2087:2673]
     
     print(f"Training days: {len(train_days)}")
     print(f"Validation days: {len(val_days)}")
