@@ -93,7 +93,7 @@ def test(func_args):
     print("best_model_path: ", best_model_path)
     print("best_model: ", best_model)
 
-    actor = torch.load(os.path.join(best_model_path, best_model))
+    actor = torch.load(os.path.join(best_model_path, best_model), weights_only=False)
     actor.eval()
     agent = RLAgent(env, actor, func_args)
 

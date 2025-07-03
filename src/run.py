@@ -132,7 +132,7 @@ def run(func_args):
 
     mini_batch_num = int(np.ceil(len(env.src.order_set) / func_args.batch_size))
     try:
-        max_cr = 0
+        max_cr = -999
         start_checkpoint_epoch = func_args.start_checkpoint_epoch
         for epoch in range(func_args.epochs):
             epoch_return = 0
