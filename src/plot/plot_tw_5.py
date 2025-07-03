@@ -20,6 +20,9 @@ WEALTH_MODE = 'inter' # 'inter' or 'intra' for TWII daily returns
 # -------------------------------
 # Experiment Configuration
 # -------------------------------
+# Outputs base path
+OUTPUTS_BASE_PATH = '../outputs'
+
 # Define experiment IDs
 EXPERIMENT_IDS = [
     '0618/180612', 
@@ -47,9 +50,9 @@ def load_agent_wealth():
     agent_wealth = {}
     
     for i, exp_path in enumerate(EXPERIMENT_IDS, 1):
-        # Construct file paths using the full experiment path
-        val_path = os.path.join('..', 'outputs', exp_path, 'npy_file', 'agent_wealth_val.npy')
-        test_path = os.path.join('..', 'outputs', exp_path, 'npy_file', 'agent_wealth_test.npy')
+        # Construct file paths using the configurable outputs base path
+        val_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'npy_file', 'agent_wealth_val.npy')
+        test_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'npy_file', 'agent_wealth_test.npy')
         
         try:
             # Load validation data

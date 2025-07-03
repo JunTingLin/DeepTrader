@@ -23,7 +23,7 @@
         5,
         4
     ],
-    "num_assets": 49,
+    "num_assets": 30,
     "G": 4,
     "num_rounds": 80000,
     "max_grad_norm": 100.0,
@@ -32,8 +32,8 @@
     "norm_type": "standard",
     "epochs": 1500,
     "start_checkpoint_epoch": 1200,
-    "market": "TWII",
-    "data_prefix": "./data/TWII/feature5-Inter/",
+    "market": "DJIA",
+    "data_prefix": "./data/DJIA/feature5-Inter-p532/",
     "device": "cuda",
     "relation_file": "industry_classification.npy",
     "trade_len": 21,
@@ -42,5 +42,6 @@
     "val_idx": 1304,
     "test_idx": 2087,
     "test_idx_end": 2673,
-    "seed": -1
+    "seed": -1,
+    "outputs_base_path": "./outputs"
 }

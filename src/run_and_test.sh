@@ -54,27 +54,17 @@ OUTPUT_FILE=$(mktemp)
 if eval "$RUN_CMD" 2>&1 | tee "$OUTPUT_FILE"; then
     echo "Training completed!"
     
-    # Extract PREFIX from output (pattern: outputs/MMDD/HHMMSS)
-    PREFIX=$(grep -o "outputs/[0-9]\{4\}/[0-9]\{6\}" "$OUTPUT_FILE" | tail -1)
-    
-    # If not found, try to find the latest directory
-    if [ -z "$PREFIX" ]; then
-        if [ -d "outputs" ]; then
-            PREFIX=$(find outputs -type d -name "[0-9][0-9][0-9][0-9][0-9][0-9]" | sort | tail -1)
-            if [ -n "$PREFIX" ]; then
-                PREFIX=$(dirname "$PREFIX")/$(basename "$PREFIX")
-            fi
-        fi
-    fi
+    # Extract PREFIX from run.py output (looking for [DEEPTRADER_PREFIX] marker)
+    PREFIX=$(grep "\[DEEPTRADER_PREFIX\]" "$OUTPUT_FILE" | cut -d' ' -f2)
     
     rm -f "$OUTPUT_FILE"
     
     if [ -z "$PREFIX" ]; then
-        echo "Error: Unable to determine output directory PREFIX"
+        echo "Error: Unable to extract PREFIX from run.py output"
         exit 1
     fi
     
-    echo "Generated PREFIX: $PREFIX"
+    echo "Extracted PREFIX: $PREFIX"
 else
     rm -f "$OUTPUT_FILE"
     echo "Training failed!"

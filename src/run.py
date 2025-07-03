@@ -24,8 +24,9 @@ def run(func_args):
 
     start_time = datetime.now().strftime('%m%d/%H%M%S')
 
-    PREFIX = 'outputs/'
-    PREFIX = os.path.join(PREFIX, start_time)
+    outputs_base_path = getattr(func_args, 'outputs_base_path', './outputs')
+    PREFIX = os.path.join(outputs_base_path, start_time)
+    print(f"[DEEPTRADER_PREFIX] {PREFIX}")  # Clear output PREFIX for script extraction
     img_dir = os.path.join(PREFIX, 'img_file')
     save_dir = os.path.join(PREFIX, 'log_file')
     model_save_dir = os.path.join(PREFIX, 'model_file')
