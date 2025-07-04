@@ -43,7 +43,8 @@ drive.mount('/content/drive')
 ### 7. 修改hyperparameter
 找到路徑`/content/drive/MyDrive/Colab Notebooks/Esun/DeepTrader/src/hyper.json`，打開json檔，修改其中的超參數，並保存。可使用cat命令再次查看修改後的內容。
 
-![image](https://github.com/user-attachments/assets/dbb0f26c-d9da-473d-9847-fa1d668b028e)
+![image](https://github.com/user-attachments/assets/0b4ef612-3ffb-486e-8b84-cf18ba4b7237)
+
 
 
 相關hyperparameter實驗測試說明請參考[[README.md]([README.md](https://github.com/JunTingLin/DeepTrader/edit/main/Colab_Execution.md))](https://github.com/JunTingLin/DeepTrader/edit/main/Colab_Execution.md)
@@ -54,7 +55,7 @@ drive.mount('/content/drive')
 ```
 ! bash run_and_test.sh -c hyper.json
 ```
-執行後會會看到打印
+跑完後會看到最後的打印
 ```
 ========================================
 All completed successfully!
@@ -77,7 +78,8 @@ drive.mount('/content/drive')
 ### 10. 修改plot_XX.py 變數
 在`plot_us_7.py`或`plot_tw_5.py`中修改實驗ID，例如`0702/231615`
 
-![image](https://github.com/user-attachments/assets/853fb318-62d5-4b5d-b48b-f638185f0ea7)
+![image](https://github.com/user-attachments/assets/9260f157-e408-4443-8613-0995a664345f)
+
 
 > 20250704追加: 請將    `OUTPUTS_BASE_PATH`改為`/content/drive/Shareddrives/Esun/outputs`
 
@@ -90,5 +92,3 @@ drive.mount('/content/drive')
 
 ![image](https://github.com/user-attachments/assets/84caa4f8-0362-4d9b-b753-ea59080dd126)
 
-
-### 12. 保留outputs實驗結果
