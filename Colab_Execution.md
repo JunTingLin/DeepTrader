@@ -35,6 +35,7 @@ drive.mount('/content/drive')
 ```
 %cd /content/drive/MyDrive/Colab Notebooks/Esun/DeepTrader
 !git pull origin main
+!git reset --hard origin/main
 %cd src
 ```
 
@@ -46,6 +47,8 @@ drive.mount('/content/drive')
 
 
 相關hyperparameter實驗測試說明請參考[[README.md]([README.md](https://github.com/JunTingLin/DeepTrader/edit/main/Colab_Execution.md))](https://github.com/JunTingLin/DeepTrader/edit/main/Colab_Execution.md)
+
+> 20250704追加: 請將hyper.json的`outputs_base_path`改為`/content/drive/Shareddrives/Esun/outputs`
 
 ### 8. 執行training/test
 ```
@@ -71,11 +74,12 @@ drive.mount('/content/drive')
 %cd src/plot
 ```
 
-### 10. 修改plot_XX.py 實驗id
+### 10. 修改plot_XX.py 變數
 在`plot_us_7.py`或`plot_tw_5.py`中修改實驗ID，例如`0702/231615`
 
 ![image](https://github.com/user-attachments/assets/853fb318-62d5-4b5d-b48b-f638185f0ea7)
 
+> 20250704追加: 請將    `OUTPUTS_BASE_PATH`改為`/content/drive/Shareddrives/Esun/outputs`
 
 ### 11. 登記實驗細節在google sheet
 
