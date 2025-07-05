@@ -47,9 +47,19 @@ drive.mount('/content/drive')
 
 
 
-相關hyperparameter實驗測試說明請參考[[README.md]([README.md](https://github.com/JunTingLin/DeepTrader/edit/main/Colab_Execution.md))](https://github.com/JunTingLin/DeepTrader/edit/main/Colab_Execution.md)
+相關hyperparameter實驗測試說明請參考[README.md](https://github.com/JunTingLin/DeepTrader/blob/main/README.md)
 
 > 20250704追加: 請將hyper.json的`outputs_base_path`改為`/content/drive/Shareddrives/Esun/outputs`
+
+> TWII note
+```
+"market": "TWII",
+"data_prefix": "./data/TWII/feature5-Inter/",
+```
+```
+"market": "TWII",
+"data_prefix": "./data/TWII/feature34-Inter/",
+```
 
 ### 8. 執行training/test
 ```
