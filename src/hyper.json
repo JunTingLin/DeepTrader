@@ -4,6 +4,7 @@
     "num_blocks": 4,
     "kernel_size": 2,
     "gcn_bool": true,
+    "spatial_bool": false,
     "dropout": 0.5,
     "optimizer": "adam",
     "window_len": 13,
