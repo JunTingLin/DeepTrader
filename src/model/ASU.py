@@ -80,9 +80,11 @@ class SAGCN(nn.Module):
         if spatial_bool:
             self.gcn_bool = True
             self.spatialattn_bool = True
+            print("spatial_bool=True: enabling both GCN and spatial attention")
         else:
             self.gcn_bool = True
             self.spatialattn_bool = False
+            print("spatial_bool=False: enabling only GCN, disabling spatial attention")
         self.addaptiveadj = addaptiveadj
         self.transformer_asu_bool = transformer_asu_bool
         self.num_assets = num_assets

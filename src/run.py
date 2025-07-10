@@ -189,7 +189,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int)
     parser.add_argument('--lr', type=float)
     parser.add_argument('--gamma', type=float)
-    parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false')
+    # parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false')
     parser.add_argument('--no_msu', dest='msu_bool', action='store_false')
     parser.add_argument('--relation_file', type=str)
     parser.add_argument('--addaptiveadj', dest='addaptive_adj_bool', action='store_false')
