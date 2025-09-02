@@ -142,7 +142,7 @@ if __name__ == '__main__':
     if opts.prefix:
         PREFIX = opts.prefix
     else:
-        PREFIX = os.path.join("outputs", "0703", "013034")
+        PREFIX = os.path.join("outputs", "0710", "200719")
 
     if opts.config is not None:
         with open(opts.config) as f:

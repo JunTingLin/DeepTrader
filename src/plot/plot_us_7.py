@@ -13,8 +13,8 @@ from utils.functions import calculate_metrics # ../utils/functions.py
 # -------------------------------
 TRADE_MODE = "M"    # "M": Monthly mode (12 trading periods per year)
 TRADE_LEN = 21      # Sampling interval: 21 business days per sample
-START_DATE = "2015-01-01"
-END_DATE = "2025-03-31"
+START_DATE = "2000-01-01"
+END_DATE = "2024-12-31"
 WEALTH_MODE = 'inter'  # 'inter' or 'intra' for DJIA daily returns
 
 # -------------------------------
@@ -25,9 +25,16 @@ OUTPUTS_BASE_PATH = '../outputs'
 
 # Define experiment IDs
 EXPERIMENT_IDS = [
-    '0629/064529', 
-    '0629/064617', 
-    '0629/064638'
+'0707/204535',
+'0707/204916',
+'0708/005603',
+'0708/005627',
+'0708/044208',
+'0708/045344',
+'0708/103426',
+'0708/113719',
+'0708/153828',
+'0708/153844'
 ]
 
 # -------------------------------
@@ -84,9 +91,12 @@ def get_business_day_segments():
     total_days = len(full_days)
     print(f"Total business days: {total_days}")
     
-    train_days = full_days[0:1304]
-    val_days   = full_days[1304:2087]
-    test_days  = full_days[2087:2673]
+    # train_days = full_days[0:1304]
+    # val_days   = full_days[1304:2087]
+    # test_days  = full_days[2087:2673]
+    train_days = full_days[0:2086]
+    val_days   = full_days[2086:4174]
+    test_days  = full_days[4174:6260]
     
     print(f"Training days: {len(train_days)}")
     print(f"Validation days: {len(val_days)}")
@@ -252,6 +262,7 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     plt.title("DeepTrader vs. DJIA", fontsize=16)
     plt.grid(True)
     plt.legend(fontsize=10, loc='upper left')
+    plt.ylim(0, 8)
     plt.tight_layout()
     plt.show()
 
@@ -309,6 +320,7 @@ def plot_yearly_results(df_val, df_test, val_days, test_days):
     plt.title("DeepTrader vs. DJIA (Yearly Rebased)", fontsize=16)
     plt.grid(True)
     plt.legend(fontsize=10, loc='upper center')
+    plt.ylim(0, 8)
     plt.tight_layout()
     plt.show()
 
