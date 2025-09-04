@@ -7,6 +7,73 @@ import torch
 switch2days = {'D': 1, 'W': 5, 'M': 21}
 
 
+def convert_to_native_type(obj):
+    """Convert numpy types to native Python types for JSON serialization"""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        # If it's a single element array, extract the value
+        if obj.size == 1:
+            return float(obj.flatten()[0])
+        else:
+            return obj.tolist()
+    elif hasattr(obj, 'item'):
+        return obj.item()
+    elif isinstance(obj, list) and len(obj) == 1:
+        # Handle nested lists
+        return convert_to_native_type(obj[0])
+    else:
+        return obj
+
+
+def convert_portfolio_records_to_json(portfolio_records):
+    """Convert portfolio_records to JSON serializable format"""
+    json_portfolio_records = []
+    
+    for step_idx, portfolio_info in enumerate(portfolio_records):
+        step_data = {
+            'step': step_idx + 1,
+            'long_positions': [],
+            'short_positions': [],
+            'all_scores': portfolio_info['all_scores'][0].tolist()  # 只取第一個 batch
+        }
+        
+        # 只處理第一個 batch 的資料
+        batch_idx = 0
+        
+        # 處理做多倉位
+        long_positions = []
+        for pos_idx in range(len(portfolio_info['long_indices'][batch_idx])):
+            stock_idx = int(portfolio_info['long_indices'][batch_idx][pos_idx])
+            weight = float(portfolio_info['long_weights'][batch_idx][pos_idx])
+            score = float(portfolio_info['all_scores'][batch_idx][stock_idx])
+            long_positions.append({
+                'stock_index': stock_idx,
+                'weight': weight,
+                'score': score
+            })
+        step_data['long_positions'] = long_positions
+        
+        # 處理做空倉位
+        short_positions = []
+        for pos_idx in range(len(portfolio_info['short_indices'][batch_idx])):
+            stock_idx = int(portfolio_info['short_indices'][batch_idx][pos_idx])
+            weight = float(portfolio_info['short_weights'][batch_idx][pos_idx])
+            score = float(portfolio_info['all_scores'][batch_idx][stock_idx])
+            short_positions.append({
+                'stock_index': stock_idx,
+                'weight': weight,
+                'score': score
+            })
+        step_data['short_positions'] = short_positions
+        
+        json_portfolio_records.append(step_data)
+    
+    return json_portfolio_records
+
+
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)

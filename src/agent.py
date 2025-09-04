@@ -80,7 +80,16 @@ class RLActor(nn.Module):
             rho_log_p = None
         # force rho to 0.5
         # rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
-        return weights, rho, scores_p, rho_log_p
+
+        portfolio_info = {
+            'long_indices': w_idx.detach().cpu().numpy(),
+            'long_weights': long_ratio.detach().cpu().numpy(),
+            'short_indices': l_idx.detach().cpu().numpy(),
+            'short_weights': short_ratio.detach().cpu().numpy(),
+            'all_scores': scores.detach().cpu().numpy()
+        }
+        
+        return weights, rho, scores_p, rho_log_p, portfolio_info
 
 
 class RLAgent():
@@ -118,7 +127,7 @@ class RLAgent():
                 x_m = torch.from_numpy(states[1]).to(self.args.device)
             else:
                 x_m = None
-            weights, rho, scores_p, log_p_rho \
+            weights, rho, scores_p, log_p_rho, portfolio_info \
                 = self.actor(x_a, x_m, masks, deterministic=False)
 
             ror = torch.from_numpy(self.env.ror).to(self.args.device)
@@ -187,6 +196,8 @@ class RLAgent():
 
         agent_wealth = np.ones((batch_size, 1), dtype=np.float32)
         rho_record = []
+        portfolio_records = []
+        
         while True:
             steps += 1
             x_a = torch.from_numpy(states[0]).to(self.args.device)
@@ -196,8 +207,12 @@ class RLAgent():
             else:
                 x_m = None
 
-            weights, rho, _, _ \
+            weights, rho, _, _, portfolio_info \
                 = self.actor(x_a, x_m, masks, deterministic=True)
+            
+            rho_record.append(np.mean(rho.detach().cpu().numpy()))
+            portfolio_records.append(portfolio_info)
+            
             next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
 
             agent_wealth = np.concatenate((agent_wealth, info['total_value'][..., None]), axis=-1)
@@ -206,7 +221,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth
+        return agent_wealth, rho_record, portfolio_records
     
 
     def test(self, logger=None):
@@ -218,6 +233,8 @@ class RLAgent():
 
         agent_wealth = np.ones((batch_size, 1), dtype=np.float32)
         rho_record = []
+        portfolio_records = []
+        
         while True:
             steps += 1
             x_a = torch.from_numpy(states[0]).to(self.args.device)
@@ -227,9 +244,12 @@ class RLAgent():
             else:
                 x_m = None
 
-            weights, rho, _, _ \
+            weights, rho, _, _, portfolio_info \
                 = self.actor(x_a, x_m, masks, deterministic=True)
-            rho_record.append(np.mean(rho.detach().cpu().numpy())) 
+            
+            rho_record.append(np.mean(rho.detach().cpu().numpy()))
+            portfolio_records.append(portfolio_info)
+            
             next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
 
             agent_wealth = np.concatenate((agent_wealth, info['total_value'][..., None]), axis=-1)
@@ -238,7 +258,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth, rho_record
+        return agent_wealth, rho_record, portfolio_records
 
     def clip_grad_norms(self, param_groups, max_norm=math.inf):
         """

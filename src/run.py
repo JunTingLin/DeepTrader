@@ -150,7 +150,7 @@ def run(func_args):
             writer.add_scalar('Train/Rho', avg_rho, global_step=epoch)
             writer.add_scalar('Train/MDD', avg_mdd, global_step=epoch)
 
-            agent_wealth = agent.evaluation()
+            agent_wealth, rho_record, portfolio_records = agent.evaluation()
             logger.warning('agent_wealth: %s' % agent_wealth)
             logger.warning('agent_wealth shape: %s', agent_wealth.shape)
             metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
@@ -166,7 +166,34 @@ def run(func_args):
                 print('New Best CR Policy!!!!')
                 max_cr = metrics['CR']
                 torch.save(actor, os.path.join(model_save_dir, 'best_cr-'+str(epoch)+'.pkl'))
-                np.save(os.path.join(npy_save_dir, 'agent_wealth_val.npy'), agent_wealth)
+                
+                val_results = {
+                    'agent_wealth': agent_wealth.tolist(),
+                    'rho_record': [convert_to_native_type(r) for r in rho_record],
+                    'portfolio_records': convert_portfolio_records_to_json(portfolio_records),
+                    'performance_metrics': {
+                        'ARR': convert_to_native_type(metrics['ARR']),
+                        'MDD': convert_to_native_type(metrics['MDD']),
+                        'AVOL': convert_to_native_type(metrics['AVOL']),
+                        'ASR': convert_to_native_type(metrics['ASR']),
+                        'DDR': convert_to_native_type(metrics['DDR']),
+                        'CR': convert_to_native_type(metrics['CR'])
+                    },
+                    'summary': {
+                        'total_steps': len(portfolio_records),
+                        'agent_wealth_shape': list(agent_wealth.shape),
+                        'final_wealth': convert_to_native_type(agent_wealth[0, -1]),
+                        'total_return': convert_to_native_type(agent_wealth[0, -1] - 1.0)
+                    },
+                    'epoch': epoch
+                }
+                
+                val_results_dir = os.path.join(PREFIX, 'val_results')
+                os.makedirs(val_results_dir, exist_ok=True)
+                val_json_file = os.path.join(val_results_dir, 'val_results.json')
+                with open(val_json_file, 'w', encoding='utf-8') as f:
+                    json.dump(val_results, f, indent=2, ensure_ascii=False)
+                
             logger.warning('after training %d round, max wealth: %.4f, min wealth: %.4f,'
                             ' avg wealth: %.4f, final wealth: %.4f, ARR: %.3f%%, ASR: %.3f, AVol" %.3f,'
                             'MDD: %.2f%%, CR: %.3f, DDR: %.3f'

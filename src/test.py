@@ -98,22 +98,41 @@ def test(func_args):
     agent = RLAgent(env, actor, func_args)
 
     try:
-        agent_wealth, rho_record = agent.test()
-        print("agent_wealth: ", agent_wealth)
-        print("agent_wealth.shape: ", agent_wealth.shape)
-        print("rho_record: ", rho_record)
-        print("rho_record type: ", type(rho_record))
-        # np.save("agent_wealth.npy", agent_wealth)
-        npy_save_dir = os.path.join(PREFIX, 'npy_file')
-        np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
-
+        agent_wealth, rho_record, portfolio_records = agent.test()
+        
         metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
-        print("ARR:", metrics['ARR'])
-        print("MDD:", metrics['MDD'])
-        print("AVOL:", metrics['AVOL'])
-        print("ASR:", metrics['ASR'])
-        print("SoR:", metrics['DDR'])
-        print("CR:", metrics['CR'])
+        
+        test_results = {
+            'agent_wealth': agent_wealth.tolist(),
+            'rho_record': [convert_to_native_type(r) for r in rho_record],
+            'portfolio_records': convert_portfolio_records_to_json(portfolio_records),
+            'performance_metrics': {
+                'ARR': convert_to_native_type(metrics['ARR']),
+                'MDD': convert_to_native_type(metrics['MDD']),
+                'AVOL': convert_to_native_type(metrics['AVOL']),
+                'ASR': convert_to_native_type(metrics['ASR']),
+                'DDR': convert_to_native_type(metrics['DDR']),
+                'CR': convert_to_native_type(metrics['CR'])
+            },
+            'summary': {
+                'total_steps': len(portfolio_records),
+                'agent_wealth_shape': list(agent_wealth.shape),
+                'final_wealth': convert_to_native_type(agent_wealth[0, -1]),
+                'total_return': convert_to_native_type(agent_wealth[0, -1] - 1.0)
+            }
+        }
+        
+        test_results_dir = os.path.join(PREFIX, 'test_results')
+        os.makedirs(test_results_dir, exist_ok=True)
+        json_file = os.path.join(test_results_dir, 'test_results.json')
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(test_results, f, indent=2, ensure_ascii=False)
+        
+        print("Test completed successfully!")
+        print(f"Results saved to: {json_file}")
+        print(f"Total steps: {test_results['summary']['total_steps']}")
+        print(f"Final wealth: {test_results['summary']['final_wealth']:.4f}")
+        print(f"Total return: {test_results['summary']['total_return']:.2%}")
 
     
     except KeyboardInterrupt:
@@ -142,7 +161,7 @@ if __name__ == '__main__':
     if opts.prefix:
         PREFIX = opts.prefix
     else:
-        PREFIX = os.path.join("outputs", "0710", "200719")
+        PREFIX = os.path.join("outputs", "0904", "013935")
 
     if opts.config is not None:
         with open(opts.config) as f:

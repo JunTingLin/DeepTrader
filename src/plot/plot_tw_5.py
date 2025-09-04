@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
+import json
 
 import os
 import sys
@@ -51,28 +52,34 @@ AGENT_LABELS = ['Agent 1', 'Agent 2', 'Agent 3', 'Agent 4', 'Agent 5', 'Agent 6'
 # -------------------------------
 def load_agent_wealth():
     """
-    Load and flatten agent wealth arrays for validation and test automatically.
+    Load agent wealth arrays from JSON files (both validation and test).
     Based on EXPERIMENT_IDS list containing full date/time paths.
     """
     agent_wealth = {}
     
     for i, exp_path in enumerate(EXPERIMENT_IDS, 1):
-        # Construct file paths using the configurable outputs base path
-        val_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'npy_file', 'agent_wealth_val.npy')
-        test_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'npy_file', 'agent_wealth_test.npy')
+        # Construct file paths for JSON files
+        val_json_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'val_results', 'val_results.json')
+        test_json_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'test_results', 'test_results.json')
         
         try:
-            # Load validation data
-            val_data = np.load(val_path).flatten()
-            agent_wealth[f'val_{i}'] = val_data
+            # Load validation data from JSON
+            if os.path.exists(val_json_path):
+                with open(val_json_path, 'r', encoding='utf-8') as f:
+                    val_results = json.load(f)
+                val_data = np.array(val_results['agent_wealth']).flatten()
+                agent_wealth[f'val_{i}'] = val_data
+                print(f"Successfully loaded validation data for experiment {exp_path}")
             
-            # Load test data
-            test_data = np.load(test_path).flatten()
-            agent_wealth[f'test_{i}'] = test_data
+            # Load test data from JSON
+            if os.path.exists(test_json_path):
+                with open(test_json_path, 'r', encoding='utf-8') as f:
+                    test_results = json.load(f)
+                test_data = np.array(test_results['agent_wealth']).flatten()
+                agent_wealth[f'test_{i}'] = test_data
+                print(f"Successfully loaded test data for experiment {exp_path}")
             
-            print(f"Successfully loaded experiment {exp_path} as agent {i}")
-            
-        except FileNotFoundError as e:
+        except Exception as e:
             print(f"Warning: Could not load experiment {exp_path}: {e}")
             continue
     
@@ -365,6 +372,84 @@ def compute_metrics_df(df, series_list):
     return pd.DataFrame(metrics_dict)
 
 # -------------------------------
+# Portfolio Visualization
+# -------------------------------
+def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test'):
+    """
+    Plot portfolio positions as single heatmap (positive=long, negative=short).
+    """
+    # Load JSON data
+    json_path = os.path.join(outputs_base_path, experiment_id, f'{period}_results', f'{period}_results.json')
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        print(f"No portfolio records found for {experiment_id}")
+        return
+    
+    # Prepare data matrix
+    n_stocks = len(stock_symbols)
+    n_steps = len(portfolio_records)
+    
+    # Single matrix: positive for long, negative for short
+    position_matrix = np.zeros((n_stocks, n_steps))
+    
+    for i, record in enumerate(portfolio_records):
+        # Long positions (positive values)
+        for pos in record['long_positions']:
+            idx = pos['stock_index']
+            if idx < n_stocks:
+                position_matrix[idx, i] = pos['weight']
+        
+        # Short positions (negative values)
+        for pos in record['short_positions']:
+            idx = pos['stock_index']
+            if idx < n_stocks:
+                position_matrix[idx, i] = -pos['weight']
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(min(20, n_steps * 0.15), 10))
+    
+    # Plot heatmap with diverging colormap
+    im = ax.imshow(position_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest', 
+                   vmin=-0.3, vmax=0.3, origin='lower')
+    
+    # Formatting
+    ax.set_xlabel('Trading Steps', fontsize=12)
+    ax.set_ylabel('Stocks', fontsize=12)
+    ax.set_title(f'Portfolio Positions - {experiment_id} ({period})', fontsize=14)
+    
+    # Set y-axis labels with both index and symbol
+    ax.set_yticks(range(n_stocks))
+    y_labels = [f"{i}: {stock_symbols[i]}" for i in range(n_stocks)]
+    ax.set_yticklabels(y_labels, fontsize=8)
+    
+    # Set x-axis labels
+    step_interval = max(1, n_steps // 10)
+    xticks = range(0, n_steps, step_interval)
+    ax.set_xticks(xticks)
+    if len(sample_dates) >= n_steps:
+        xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks]
+        ax.set_xticklabels(xlabels, rotation=45, ha='right')
+    
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax, pad=0.01)
+    cbar.set_label('Weight (Green=Long, Red=Short)', fontsize=10)
+    
+    # Add grid
+    ax.set_xticks(np.arange(n_steps) - 0.5, minor=True)
+    ax.set_yticks(np.arange(n_stocks) - 0.5, minor=True)
+    ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+
+# -------------------------------
 # Main
 # -------------------------------
 def main():
@@ -381,6 +466,20 @@ def main():
     plot_results(df_val, df_test, train_days, val_days, test_days)
     # Plot yearly rebased cumulative wealth
     plot_yearly_results(df_val, df_test, val_days, test_days)
+    
+    # Load Taiwan stock symbols from Excel
+    
+    df_symbols = pd.read_excel('../data/TWII/0050.xlsx')
+    tw_symbols = df_symbols.iloc[:, 0].tolist() if not df_symbols.empty else [f'Stock_{i}' for i in range(49)]
+    
+    # Plot portfolio visualizations for each experiment
+    print("\n=== Portfolio Visualizations ===")
+    for exp_id in EXPERIMENT_IDS:
+        print(f"\nVisualizing portfolio for {exp_id}...")
+        # Test period visualizations - using heatmap style
+        plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, tw_symbols, df_test.index, 'test')
+        # Validation period visualizations (optional)
+        # plot_portfolio_scatter(exp_id, OUTPUTS_BASE_PATH, tw_symbols, df_val.index, 'val')
     
     # Compute periodic returns and win rates for validation period
     period_codes = ['ME', 'QE', '6ME', 'YE']
