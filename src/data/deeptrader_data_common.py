@@ -199,7 +199,7 @@ def clean_alpha_factor(alpha_series):
     return result
 
 def process_one_stock(args):
-    i, stock_id, df_stock, unique_dates, alphas, num_ASU_features = args
+    i, stock_id, df_stock, unique_dates, alphas, feature_mode, feature_names = args
     
     # 1) Get data for this stock (FULL historical data for calculations)
     full_stock_data = df_stock[df_stock['Ticker'] == stock_id].copy()
@@ -264,9 +264,10 @@ def process_one_stock(args):
     
     # 5) Create array for this stock
     num_days = len(unique_dates)
-    per_stock_array = np.zeros((num_days, num_ASU_features))
+    num_features = len(feature_names)
+    per_stock_array = np.zeros((num_days, num_features))
 
-    if num_ASU_features == 5:
+    if feature_mode == 'basic':
         used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
     else:
         drop_cols = ['Date', 'Ticker', 'Adj Close', 'Returns', 'MACD', 'MACD_Hist']
@@ -279,7 +280,7 @@ def process_one_stock(args):
 
 
 def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-31', 
-                       num_asu_features=34, output_prefix='./',
+                       feature_mode='full', output_prefix='./',
                        download_start_date='2000-01-01', download_end_date='2025-08-31'):
     """
     Process stock data and generate required outputs
@@ -288,7 +289,7 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
     stock_list: list of stock symbols
     start_date: start date for final data range (business days)
     end_date: end date for final data range (business days)
-    num_asu_features: number of features (5 for OHLCV only, 34 for all features)
+    feature_mode: 'basic' for OHLCV only, 'full' for all features (auto-determined)
     output_prefix: prefix path for output files
     download_start_date: start date for yfinance download (to ensure enough data for indicators)
     download_end_date: end date for yfinance download
@@ -333,18 +334,37 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
               'Alpha033', 'Alpha038', 'Alpha040', 'Alpha044', 'Alpha045', 'Alpha046', 'Alpha051',
               'Alpha052', 'Alpha053', 'Alpha054', 'Alpha056', 'Alpha068', 'Alpha085']
     
+    # Create feature names list based on mode
+    if feature_mode == 'basic':
+        feature_names = ['Open', 'High', 'Low', 'Close', 'Volume']
+    else:  # 'full' mode
+        # OHLCV + Technical indicators + Alpha factors
+        ohlcv_names = ['Open', 'High', 'Low', 'Close', 'Volume']
+        tech_names = ['MA20', 'MA60', 'RSI', 'MACD_Signal', 'K', 'D', 
+                      'BBands_Upper', 'BBands_Middle', 'BBands_Lower']
+        feature_names = ohlcv_names + tech_names + alphas
+    
+    print(f"\n=== FEATURE CONFIGURATION ===")
+    print(f"Mode: {feature_mode}")
+    print(f"Total features: {len(feature_names)}")
+    print(f"Feature names (in order):")
+    for i, name in enumerate(feature_names, 1):
+        print(f"  {i:2d}. {name}")
+    print("=" * 30)
+    
     # Get dimensions for output array
     unique_stock_ids = df_stock['Ticker'].unique()
     num_stocks = len(unique_stock_ids)
     num_days = len(unique_dates)
+    num_features = len(feature_names)
     
     # Prepare tasks for parallel processing
     tasks = []
     for i, stock_id in enumerate(unique_stock_ids):
-        tasks.append((i, stock_id, df_stock, unique_dates, alphas, num_asu_features))
+        tasks.append((i, stock_id, df_stock, unique_dates, alphas, feature_mode, feature_names))
     
     # Initialize output array
-    reshaped_data = np.zeros((num_stocks, num_days, num_asu_features))
+    reshaped_data = np.zeros((num_stocks, num_days, num_features))
     
     # Create multiprocessing pool
     pool = mp.Pool(processes=mp.cpu_count())
@@ -372,7 +392,10 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
     correlation_matrix = np.corrcoef(returns[:, :1000])
     np.save(output_prefix + 'industry_classification.npy', correlation_matrix)
     
-    print(f"Processed {num_stocks} stocks with {num_asu_features} features")
+    print(f"\n=== PROCESSING COMPLETE ===")
+    print(f"Processed {num_stocks} stocks with {num_features} features")
     print(f"Data shape: {reshaped_data.shape}")
+    print(f"Feature mode: {feature_mode}")
+    print("=" * 30)
     
     return unique_stock_ids, reshaped_data

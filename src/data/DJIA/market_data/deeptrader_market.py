@@ -5,6 +5,9 @@ import numpy as np
 START_DATE = '2015-01-01'
 END_DATE = '2025-08-31'
 
+# Feature mode: 'basic' for 4 DJIA features only, 'full' for all market features
+FEATURE_MODE = 'full'  # Change to 'basic' to use only DJI OHLC
+
 # Create business day date range
 unique_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
 unique_dates = unique_dates.to_pydatetime()
@@ -57,12 +60,33 @@ merged_df_filled = merged_df.ffill().bfill()
 assert not merged_df_filled.isnull().any().any(), "There are still NaN in merged_df_filled"
 
 num_days = len(merged_df_filled['Date'].unique())
-# change here
-# used_cols = ['DJI_Open', 'DJI_High', 'DJI_Low', 'DJI_Close']
-# selected_data = merged_df_filled[used_cols]
-# reshaped_data_new = selected_data.to_numpy()
-num_MSU_features = merged_df_filled.shape[1] - 1
-reshaped_data_new = merged_df_filled.drop(columns='Date').to_numpy().reshape(num_days, num_MSU_features)
+
+# Determine which features to use based on mode
+if FEATURE_MODE == 'basic':
+    # Basic mode: only DJI OHLC
+    feature_columns = ['DJI_Open', 'DJI_High', 'DJI_Low', 'DJI_Close']
+    selected_data = merged_df_filled[feature_columns]
+else:
+    # Full mode: all market data
+    feature_columns = [col for col in merged_df_filled.columns if col != 'Date']
+    selected_data = merged_df_filled.drop(columns='Date')
+
+num_MSU_features = len(feature_columns)
+
+print(f"\n=== MARKET DATA FEATURES ===")
+print(f"Feature Mode: {FEATURE_MODE}")
+print(f"Total features: {num_MSU_features}")
+print(f"Feature names (in order):")
+for i, name in enumerate(feature_columns, 1):
+    print(f"  {i:2d}. {name}")
+print("=" * 30)
+
+reshaped_data_new = selected_data.to_numpy().reshape(num_days, num_MSU_features)
 
 output_file = 'market_data.npy'
 np.save(output_file, reshaped_data_new)
+
+print(f"\n=== MARKET DATA PROCESSING COMPLETE ===")
+print(f"Shape: {reshaped_data_new.shape}")
+print(f"Saved to: {output_file}")
+print("=" * 40)
