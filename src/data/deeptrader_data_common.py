@@ -89,15 +89,11 @@ def calculate_alpha052(df):
     return alpha052
 
 def calculate_alpha053(df):
-    # Add small epsilon to avoid division by zero when Close = Low
-    epsilon = 0.0001
-    alpha053 = -1 * (((df['Close'] - df['Low']) - (df['High'] - df['Close'])) / (df['Close'] - df['Low'] + epsilon)).diff(9)
+    alpha053 = -1 * (((df['Close'] - df['Low']) - (df['High'] - df['Close'])) / (df['Close'] - df['Low'])).diff(9)
     return alpha053
 
 def calculate_alpha054(df):
-    # Add small epsilon to avoid division by zero when Low = High (no price movement)
-    epsilon = 0.0001
-    alpha054 = (-1 * ((df['Low'] - df['Close']) * df['Open']**5)) / ((df['Low'] - df['High'] + epsilon) * df['Close']**5)
+    alpha054 = (-1 * ((df['Low'] - df['Close']) * df['Open']**5)) / ((df['Low'] - df['High']) * df['Close']**5)
     return alpha054
 
 def calculate_alpha056(df):
@@ -155,7 +151,7 @@ def calculate_alpha095(df):
     return alpha095
 
 def calculate_alpha101(df):
-    alpha101 = (df['Close'] - df['Open']) / ((df['High'] - df['Low']) + 0.001)
+    alpha101 = (df['Close'] - df['Open']) / (df['High'] - df['Low'])
     return alpha101
 
 def fill_technical_indicators(df):
@@ -383,9 +379,21 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
     # Calculate returns
     returns = np.zeros((num_stocks, num_days))
     for i in range(1, num_days):
+        # Inter-day return: (today_open - yesterday_open) / yesterday_open
         returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+    # Alternative intraday return calculation:
     # for i in range(1, num_days):
     #     returns[:, i] = (reshaped_data[:, i, 3] / reshaped_data[:, i, 0]) - 1
+    
+    # Handle only Inf values (preserve real zeros which represent no price change)
+    returns = np.where(np.isinf(returns), np.nan, returns)
+    
+    # Fill NaN values for each stock using forward/backward fill
+    for stock_idx in range(num_stocks):
+        stock_returns = pd.Series(returns[stock_idx, :])
+        stock_returns = stock_returns.bfill().ffill().fillna(0)
+        returns[stock_idx, :] = stock_returns.values
+    
     np.save(output_prefix + 'ror.npy', returns)
 
     # Calculate correlation matrix
