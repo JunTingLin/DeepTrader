@@ -1,8 +1,12 @@
 import pandas as pd
 import numpy as np
 
+# Define date range constants
+START_DATE = '2015-01-01'
+END_DATE = '2025-08-31'
+
 # Create business day date range
-unique_dates = pd.bdate_range(start='2015-01-01', end='2025-03-31')
+unique_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
 unique_dates = unique_dates.to_pydatetime()
 unique_dates = np.array(unique_dates)
 
@@ -12,7 +16,7 @@ dfs = [pd.read_csv(file) for file in file_paths]
 merged_df = pd.concat(dfs)
 merged_df.sort_values(by='observation_date', inplace=True)
 merged_df = merged_df.groupby('observation_date').mean().reset_index()
-merged_df = merged_df[(merged_df['observation_date'] >= '2015-01-02') & (merged_df['observation_date'] <= '2025-03-31')]
+merged_df = merged_df[(merged_df['observation_date'] >= START_DATE) & (merged_df['observation_date'] <= END_DATE)]
 merged_df = merged_df.reset_index(drop=True)
 merged_df = merged_df.rename(columns={'observation_date': 'Date'})
 merged_df['Date'] = pd.to_datetime(merged_df['Date'])
@@ -47,7 +51,7 @@ merged_df = merged_df.reset_index()
 merged_df = merged_df.rename(columns={'index': 'Date'})
 
 # Fill in missing values
-merged_df_filled = merged_df.fillna(method='ffill').fillna(method='bfill')
+merged_df_filled = merged_df.ffill().bfill()
 assert not merged_df_filled.isnull().any().any(), "There are still NaN in merged_df_filled"
 
 num_days = len(merged_df_filled['Date'].unique())
