@@ -1,8 +1,15 @@
 import pandas as pd
 import numpy as np
 
+# Define date range constants
+START_DATE = '2015-01-01'
+END_DATE = '2025-03-31'
+
+# Feature mode: 'basic' for 4 TWII features only, 'full' for all market features
+FEATURE_MODE = 'full'  # Change to 'basic' to use only TWII OHLC
+
 # Create business day date range
-unique_dates = pd.bdate_range(start='2015-01-01', end='2025-03-31')
+unique_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
 unique_dates = unique_dates.to_pydatetime()
 unique_dates = np.array(unique_dates)
 
@@ -137,7 +144,7 @@ for df in dfs[1:]:
 merged_df.sort_values(by='Date', inplace=True)
 
 # Set date range for the data
-merged_df = merged_df[(merged_df['Date'] >= '2015-01-05') & (merged_df['Date'] <= '2025-03-31')]
+merged_df = merged_df[(merged_df['Date'] >= START_DATE) & (merged_df['Date'] <= END_DATE)]
 merged_df = merged_df.reset_index(drop=True)
 
 # Reindex to ensure all business days are included
@@ -150,16 +157,41 @@ merged_df = merged_df.reset_index()
 merged_df = merged_df.rename(columns={'index': 'Date'})
 
 # Fill missing values
-merged_df_filled = merged_df.fillna(method='ffill').fillna(method='bfill')
+# Replace all zeros with NaN (as zero values are unrealistic for market data)
+merged_df = merged_df.replace(0, np.nan)
+merged_df_filled = merged_df.ffill().bfill()
 assert not merged_df_filled.isnull().any().any(), "There are still NaN in merged_df_filled"
 
 num_days = len(merged_df_filled['Date'].unique())
-# change here
-used_cols = ['TWII_Open', 'TWII_High', 'TWII_Low', 'TWII_Close']
-selected_data = merged_df_filled[used_cols]
+
+# Determine which features to use based on mode
+if FEATURE_MODE == 'basic':
+    # Basic mode: only TWII OHLC
+    feature_columns = ['TWII_Open', 'TWII_High', 'TWII_Low', 'TWII_Close']
+    selected_data = merged_df_filled[feature_columns]
+else:
+    # Full mode: all market data
+    feature_columns = [col for col in merged_df_filled.columns if col != 'Date']
+    selected_data = merged_df_filled.drop(columns='Date')
+
+num_MSU_features = len(feature_columns)
+
+print(f"\n=== MARKET DATA FEATURES ===")
+print(f"Feature Mode: {FEATURE_MODE}")
+print(f"Total features: {num_MSU_features}")
+print(f"Feature names (in order):")
+for i, name in enumerate(feature_columns, 1):
+    print(f"  {i:2d}. {name}")
+print("=" * 30)
+
 reshaped_data = selected_data.to_numpy()
-# num_MSU_features = merged_df_filled.shape[1] - 1
-# reshaped_data = merged_df_filled.drop(columns='Date').to_numpy().reshape(num_days, num_MSU_features)
+if len(reshaped_data.shape) == 2:
+    reshaped_data = reshaped_data.reshape(num_days, num_MSU_features)
 
 output_file = 'market_data.npy'
 np.save(output_file, reshaped_data)
+
+print(f"\n=== MARKET DATA PROCESSING COMPLETE ===")
+print(f"Shape: {reshaped_data.shape}")
+print(f"Saved to: {output_file}")
+print("=" * 40)
