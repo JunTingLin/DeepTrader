@@ -51,6 +51,8 @@ merged_df = merged_df.reset_index()
 merged_df = merged_df.rename(columns={'index': 'Date'})
 
 # Fill in missing values
+# Replace all zeros with NaN (as zero values are unrealistic for market data)
+merged_df = merged_df.replace(0, np.nan)
 merged_df_filled = merged_df.ffill().bfill()
 assert not merged_df_filled.isnull().any().any(), "There are still NaN in merged_df_filled"
 
