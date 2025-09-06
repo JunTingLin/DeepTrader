@@ -409,12 +409,74 @@ def plot_yearly_results(df_val, df_test, val_days, test_days):
 # -------------------------------
 def calculate_periodic_returns_df(df, period):
     """
-    Resample the DataFrame using the specified period (e.g., 'ME', 'QE', '6ME', 'YE')
-    by taking the last value of each period, then compute period-over-period returns.
+    Calculate periodic returns using non-overlapping fixed periods:
+    - 'ME': 1 cycle (1 * 21 days, ~monthly)
+    - 'QE': 3 cycles (3 * 21 days, ~quarterly) 
+    - '6ME': 6 cycles (6 * 21 days, ~semi-annual)
+    - 'YE': 12 cycles (12 * 21 days, ~annual)
+    
+    Args:
+        df: DataFrame with datetime index (sampled every ~21 business days)
+        period: 'ME', 'QE', '6ME', 'YE' 
     """
-    resampled = df.resample(period).last()
-    returns = resampled.pct_change(fill_method=None).dropna()
-    return returns
+    if len(df) == 0:
+        return pd.DataFrame()
+    
+    # Map period to number of 21-day cycles
+    cycle_map = {
+        'ME': 1,    # Monthly: 1 cycle (21 days)
+        'QE': 3,    # Quarterly: 3 cycles (63 days)  
+        '6ME': 6,   # Semi-annual: 6 cycles (126 days)
+        'YE': 12    # Yearly: 12 cycles (252 days)
+    }
+    
+    if period not in cycle_map:
+        print(f"Unsupported period: {period}. Use 'ME', 'QE', '6ME', or 'YE'")
+        return pd.DataFrame()
+    
+    cycles = cycle_map[period]
+    
+    try:
+        returns_data = {}
+        return_dates = []
+        
+        # Calculate returns for non-overlapping fixed periods
+        start_idx = 0
+        while start_idx + cycles < len(df):
+            end_idx = start_idx + cycles
+            
+            # Get start and end values
+            start_values = df.iloc[start_idx]
+            end_values = df.iloc[end_idx] 
+            
+            # Calculate returns: (end - start) / start
+            period_returns = (end_values - start_values) / start_values
+            
+            # Use end date as the period identifier
+            end_date = df.index[end_idx]
+            
+            # Store returns for this period
+            for col in df.columns:
+                if col not in returns_data:
+                    returns_data[col] = []
+                returns_data[col].append(period_returns[col])
+            
+            return_dates.append(end_date)
+            
+            # Move to next non-overlapping period
+            start_idx = end_idx
+        
+        # Create DataFrame with returns
+        if returns_data and return_dates:
+            returns_df = pd.DataFrame(returns_data, index=return_dates)
+            return returns_df.dropna()
+        else:
+            print(f"Not enough data for {period} calculation (need at least {cycles + 1} data points)")
+            return pd.DataFrame()
+            
+    except Exception as e:
+        print(f"Error in period return calculation: {e}")
+        return pd.DataFrame()
 
 def calculate_win_rate_df(returns_df):
     """
@@ -500,7 +562,7 @@ def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, samp
     # Formatting
     ax.set_xlabel('Trading Steps', fontsize=12)
     ax.set_ylabel('Stocks', fontsize=12)
-    ax.set_title(f'Portfolio Positions - {experiment_id} ({period})', fontsize=14)
+    ax.set_title(f'Portfolio Positions - {period}', fontsize=14)
     
     # Set y-axis labels with both index and symbol
     ax.set_yticks(range(n_stocks))
@@ -540,7 +602,7 @@ def main():
     print(f"Loaded {len(symbols)} stock symbols")
     
     # Process data into validation and testing DataFrames
-    df_val, df_test, full_days, train_days, val_days, test_days = process_data()
+    df_val, df_test, _, train_days, val_days, test_days = process_data()
     
     print("Validation Data (first 5 rows):")
     print(df_val.head())
@@ -568,9 +630,9 @@ def main():
         returns_val = calculate_periodic_returns_df(df_val, period)
         win_rate_val = calculate_win_rate_df(returns_val)
         print(f"\nValidation Period: {period}")
-        if period == 'YE':
-            print("Returns:")
-            print(returns_val)
+        # if period == 'YE':
+        print("Returns:")
+        print(returns_val)
         print("Win Rates:")
         print(win_rate_val)
     
@@ -580,9 +642,9 @@ def main():
         returns_test = calculate_periodic_returns_df(df_test, period)
         win_rate_test = calculate_win_rate_df(returns_test)
         print(f"\nTesting Period: {period}")
-        if period == 'YE':
-            print("Returns:")
-            print(returns_test)
+        # if period == 'YE':
+        print("Returns:")
+        print(returns_test)
         print("Win Rates:")
         print(win_rate_test)
     
