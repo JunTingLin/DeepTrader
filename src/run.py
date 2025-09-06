@@ -31,6 +31,7 @@ def run(func_args):
     save_dir = os.path.join(PREFIX, 'log_file')
     model_save_dir = os.path.join(PREFIX, 'model_file')
     npy_save_dir = os.path.join(PREFIX, 'npy_file')
+    json_save_dir = os.path.join(PREFIX, 'json_file')
 
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
@@ -40,6 +41,8 @@ def run(func_args):
         os.mkdir(model_save_dir)
     if not os.path.isdir(npy_save_dir):
         os.mkdir(npy_save_dir)
+    if not os.path.isdir(json_save_dir):
+        os.makedirs(json_save_dir)
 
     hyper = copy.deepcopy(func_args.__dict__)
     print(hyper)
@@ -166,6 +169,7 @@ def run(func_args):
                 print('New Best CR Policy!!!!')
                 max_cr = metrics['CR']
                 torch.save(actor, os.path.join(model_save_dir, 'best_cr-'+str(epoch)+'.pkl'))
+                np.save(os.path.join(npy_save_dir, 'agent_wealth_val.npy'), agent_wealth)
                 
                 val_results = {
                     'agent_wealth': agent_wealth.tolist(),
@@ -188,9 +192,7 @@ def run(func_args):
                     'epoch': epoch
                 }
                 
-                val_results_dir = os.path.join(PREFIX, 'val_results')
-                os.makedirs(val_results_dir, exist_ok=True)
-                val_json_file = os.path.join(val_results_dir, 'val_results.json')
+                val_json_file = os.path.join(json_save_dir, 'val_results.json')
                 with open(val_json_file, 'w', encoding='utf-8') as f:
                     json.dump(val_results, f, indent=2, ensure_ascii=False)
                 

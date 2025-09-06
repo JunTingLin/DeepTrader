@@ -99,6 +99,8 @@ def test(func_args):
 
     try:
         agent_wealth, rho_record, portfolio_records = agent.test()
+        npy_save_dir = os.path.join(PREFIX, 'npy_file')
+        np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
         
         metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
         
@@ -122,7 +124,7 @@ def test(func_args):
             }
         }
         
-        test_results_dir = os.path.join(PREFIX, 'test_results')
+        test_results_dir = os.path.join(PREFIX, 'json_file')
         os.makedirs(test_results_dir, exist_ok=True)
         json_file = os.path.join(test_results_dir, 'test_results.json')
         with open(json_file, 'w', encoding='utf-8') as f:
