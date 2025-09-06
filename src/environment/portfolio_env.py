@@ -130,18 +130,10 @@ class DataGenerator():
         elif self.test_mode:
             self.cursor = np.array([self.test_idx])
         else:
-            # if len(self.tmp_order) == 0:
-            #     # self.tmp_order = self.order_set.copy()
-            #     self.tmp_order = np.random.permutation(self.order_set).copy()
-            # self.cursor = self.tmp_order[:min(self.batch_size, len(self.tmp_order))]
-            # self.tmp_order = self.tmp_order[min(self.batch_size, len(self.tmp_order)):]
-
-            # 若剩餘索引不足一個完整 batch，就丟棄（drop_last）並重新生成全新的隨機順序
-            if len(self.tmp_order) < self.batch_size:
-                # self.tmp_order = self.order_set.copy()
+            if len(self.tmp_order) == 0:
                 self.tmp_order = np.random.permutation(self.order_set).copy()
-            self.cursor = self.tmp_order[:self.batch_size]
-            self.tmp_order = self.tmp_order[self.batch_size:]
+            self.cursor = self.tmp_order[:min(self.batch_size, len(self.tmp_order))]
+            self.tmp_order = self.tmp_order[min(self.batch_size, len(self.tmp_order)):]
 
         obs, market_obs, future_return, past_return = self._get_data()
         obs_masks, future_return_masks = self._get_masks(obs, future_return)
