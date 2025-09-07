@@ -28,7 +28,7 @@ def convert_to_native_type(obj):
         return obj
 
 
-def convert_portfolio_records_to_json(portfolio_records):
+def convert_portfolio_records_to_json(portfolio_records, start_idx=None, window_len=None, trade_len=None):
     """Convert portfolio_records to JSON serializable format"""
     json_portfolio_records = []
     
@@ -39,6 +39,24 @@ def convert_portfolio_records_to_json(portfolio_records):
             'short_positions': [],
             'all_scores': portfolio_info['all_scores'][0].tolist()  # 只取第一個 batch
         }
+        
+        # 添加 input_indices 和 predict_indices 資訊
+        if start_idx is not None and window_len is not None and trade_len is not None:
+            # 每個step的cursor向前跳躍trade_len天
+            cursor = start_idx + step_idx * trade_len
+            
+            # 觀察窗口：cursor - (window_len + 1) * 5 + 1 : cursor + 1 (含頭不含尾)
+            input_start = cursor - (window_len + 1) * 5 + 1
+            input_end = cursor + 1  # Python 切片風格，不包含此 index
+            
+            # 預測窗口：cursor + 1 : cursor + trade_len + 1 (含頭不含尾) 
+            predict_start = cursor + 1
+            predict_end = cursor + trade_len + 1  # Python 切片風格，不包含此 index
+            
+            step_data['input_start'] = input_start
+            step_data['input_end'] = input_end
+            step_data['predict_start'] = predict_start
+            step_data['predict_end'] = predict_end
         
         # 只處理第一個 batch 的資料
         batch_idx = 0

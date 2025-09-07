@@ -107,7 +107,12 @@ def test(func_args):
         test_results = {
             'agent_wealth': agent_wealth.tolist(),
             'rho_record': [convert_to_native_type(r) for r in rho_record],
-            'portfolio_records': convert_portfolio_records_to_json(portfolio_records),
+            'portfolio_records': convert_portfolio_records_to_json(
+                portfolio_records,
+                start_idx=test_idx,
+                window_len=func_args.window_len,
+                trade_len=func_args.trade_len
+            ),
             'performance_metrics': {
                 'ARR': convert_to_native_type(metrics['ARR']),
                 'MDD': convert_to_native_type(metrics['MDD']),

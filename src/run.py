@@ -174,7 +174,12 @@ def run(func_args):
                 val_results = {
                     'agent_wealth': agent_wealth.tolist(),
                     'rho_record': [convert_to_native_type(r) for r in rho_record],
-                    'portfolio_records': convert_portfolio_records_to_json(portfolio_records),
+                    'portfolio_records': convert_portfolio_records_to_json(
+                        portfolio_records, 
+                        start_idx=val_idx, 
+                        window_len=args.window_len, 
+                        trade_len=args.trade_len
+                    ),
                     'performance_metrics': {
                         'ARR': convert_to_native_type(metrics['ARR']),
                         'MDD': convert_to_native_type(metrics['MDD']),
