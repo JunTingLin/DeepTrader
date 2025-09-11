@@ -553,7 +553,7 @@ def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, samp
                 position_matrix[idx, i] = -pos['weight']
     
     # Create figure
-    fig, ax = plt.subplots(figsize=(min(20, n_steps * 0.15), 10))
+    fig, ax = plt.subplots(figsize=(min(20, n_steps * 0.30), 10))
     
     # Plot heatmap with diverging colormap
     im = ax.imshow(position_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest', 
@@ -589,6 +589,73 @@ def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, samp
     plt.tight_layout()
     plt.show()
 
+def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='test'):
+    """
+    Plot step-wise profit heatmap (single row showing profit for each trading step).
+    Each step shows the return from previous step: (wealth[i] - wealth[i-1]) / wealth[i-1]
+    """
+    # Load JSON data
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    
+    agent_wealth = results.get('agent_wealth', [])
+    if not agent_wealth:
+        print(f"No agent wealth found for {experiment_id}")
+        return
+    
+    # Convert to numpy array and flatten if nested
+    wealth_array = np.array(agent_wealth).flatten()
+    n_steps = len(wealth_array)
+    
+    # Calculate step-wise returns (skip first step as it's always 1.0)
+    returns = []
+    for i in range(1, n_steps):
+        step_return = (wealth_array[i] - wealth_array[i-1]) / wealth_array[i-1]
+        returns.append(step_return)
+    
+    # Convert to matrix for heatmap (1 row, n_steps-1 columns)
+    profit_matrix = np.array(returns).reshape(1, -1)
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(min(20, (n_steps-1) * 0.3), 8))
+    
+    # Plot heatmap with diverging colormap (red=loss, green=profit)
+    vmax = max(abs(profit_matrix.min()), abs(profit_matrix.max()))
+    im = ax.imshow(profit_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest', 
+                   vmin=-vmax, vmax=vmax, origin='lower')
+    
+    # Formatting
+    ax.set_xlabel('Trading Steps', fontsize=12)
+    ax.set_ylabel('Step Returns', fontsize=12)
+    ax.set_title(f'Step-wise Profit/Loss - {period}', fontsize=14)
+    
+    # Remove y-axis ticks (only one row)
+    ax.set_yticks([])
+    
+    # Set x-axis labels
+    step_interval = max(1, (n_steps-1) // 10)
+    xticks = range(0, n_steps-1, step_interval)
+    ax.set_xticks(xticks)
+    if len(sample_dates) >= n_steps:
+        xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks if i < len(sample_dates)]
+        ax.set_xticklabels(xlabels, rotation=45, ha='right')
+    
+    # Add horizontal colorbar
+    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.15, shrink=0.8)
+    cbar.set_label('Return (Green=Profit, Red=Loss)', fontsize=10)
+    
+    # Add grid
+    ax.set_xticks(np.arange(n_steps-1) - 0.5, minor=True)
+    ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+
 # -------------------------------
 # Main
 # -------------------------------
@@ -618,10 +685,15 @@ def main():
     print("\n=== Portfolio Visualizations ===")
     for exp_id in EXPERIMENT_IDS:
         print(f"\nVisualizing portfolio for {exp_id}...")
-        # Test period visualization
-        plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
         # Validation period visualization
         plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
+        # Test period visualization
+        plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
+        
+        # Plot profit heatmaps
+        print(f"Plotting profit heatmaps for {exp_id}...")
+        plot_profit_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val')
+        plot_profit_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test')
     
     # Compute periodic returns and win rates for validation period
     period_codes = ['ME', 'QE', '6ME', 'YE']
