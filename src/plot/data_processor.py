@@ -34,15 +34,17 @@ def process_data():
     df_market_test = df_market_full.loc[test_days]
     market_wealth_test = compute_cumulative_wealth(df_market_test)
     
-    # Sample dates for validation and testing segments
-    val_sample_dates = val_days[::TRADE_LEN]
-    test_sample_dates = test_days[::TRADE_LEN]
+    # Sample dates for validation and testing segments (only complete trading periods)
+    n_val_complete = len(val_days) // TRADE_LEN
+    n_test_complete = len(test_days) // TRADE_LEN
+    val_sample_dates = val_days[::TRADE_LEN][:n_val_complete]
+    test_sample_dates = test_days[::TRADE_LEN][:n_test_complete]
     
-    # Sample the market cumulative wealth for validation and testing, and rebase to 1
-    market_series_val = market_wealth_val.iloc[::TRADE_LEN].copy()
+    # Sample the market cumulative wealth for validation and testing, and rebase to 1 (only complete periods)
+    market_series_val = market_wealth_val.iloc[::TRADE_LEN][:n_val_complete].copy()
     market_series_val = market_series_val / market_series_val.iloc[0]
     
-    market_series_test = market_wealth_test.iloc[::TRADE_LEN].copy()
+    market_series_test = market_wealth_test.iloc[::TRADE_LEN][:n_test_complete].copy()
     market_series_test = market_series_test / market_series_test.iloc[0]
     
     # Load combined agent wealth data
