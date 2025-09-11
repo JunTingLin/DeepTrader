@@ -5,7 +5,7 @@
 from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
 from heatmaps import plot_portfolio_heatmap, plot_profit_heatmap
-from stock_trends import plot_stock_price_trends
+from stock_trends import plot_stock_price_trends, plot_step_analysis
 from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df
 from config import (
     config, get_stock_symbols, START_DATE, END_DATE, 
@@ -54,6 +54,12 @@ def main():
         print(f"This will create {len(symbols) * 2} PNG files (val + test for each stock)")
         plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'val', save_plots=True)
         plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'test', save_plots=True)
+        
+        # Plot and save step analysis with 8 selected stocks per step
+        print(f"Generating step analysis plots for {exp_id}...")
+        print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
+        plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
+        plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
     
     # Compute periodic returns and win rates for validation period
     period_codes = ['ME', 'QE', '6ME', 'YE']

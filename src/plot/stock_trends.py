@@ -155,3 +155,173 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
             plt.close()  # Free memory
         else:
             plt.show()
+
+def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test', save_plots=True):
+    """
+    Plot analysis for all trading steps showing the 8 selected stocks (4 long + 4 short) for each step.
+    Each subplot shows past 70 days + future 21 days of close prices with decision point marked.
+    
+    Args:
+        experiment_id: Experiment identifier
+        outputs_base_path: Base path to outputs
+        stock_symbols: List of all stock symbols
+        sample_dates: DatetimeIndex of trading decision dates (df_val.index or df_test.index)
+        period: 'val' or 'test'
+        save_plots: Whether to save the plots
+    """
+    # Load portfolio data
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        print(f"No portfolio records found for {experiment_id}")
+        return
+    
+    # Load stock price data
+    if not os.path.exists(STOCK_DATA_PATH):
+        print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
+        return
+    
+    stocks_data = np.load(STOCK_DATA_PATH)
+    print(f"Loaded stock data with shape: {stocks_data.shape}")
+    
+    # Get date range for the period
+    if period == 'val':
+        date_start_idx = config['train_end']
+    else:  # test
+        date_start_idx = config['val_end']
+    
+    # Generate business day range for the entire dataset
+    full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
+    
+    # Create output directory
+    output_dir = f'plot_outputs/{experiment_id}/step_analysis'
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Iterate through all trading steps
+    for step_idx in range(len(sample_dates)):
+        if step_idx >= len(portfolio_records):
+            print(f"Warning: Step {step_idx} not found. Available portfolio records: 0-{len(portfolio_records)-1}")
+            continue
+        
+        # Calculate the decision date for this step
+        decision_date_idx = date_start_idx + step_idx * TRADE_LEN
+        
+        # Define the analysis window: past 70 days + future 21 days
+        window_start_idx = decision_date_idx - 70
+        window_end_idx = decision_date_idx + TRADE_LEN
+        
+        # Check bounds
+        if window_start_idx < 0 or window_end_idx >= len(full_dates):
+            print(f"Step {step_idx} analysis window is out of bounds, skipping...")
+            continue
+        
+        # Get dates for the analysis window
+        analysis_dates = full_dates[window_start_idx:window_end_idx + 1]
+        decision_date = full_dates[decision_date_idx]
+        
+        # Get the portfolio positions for this step
+        step_record = portfolio_records[step_idx]
+        long_positions = step_record['long_positions']
+        short_positions = step_record['short_positions']
+        
+        if len(long_positions) != 4 or len(short_positions) != 4:
+            print(f"Warning: Step {step_idx} has {len(long_positions)} long and {len(short_positions)} short positions")
+        
+        # Create the plot with 2x4 subplots (top row: long, bottom row: short)
+        fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+        fig.suptitle(f'Step {step_idx} Analysis - {period.upper()} - Decision Date: {decision_date.strftime("%Y-%m-%d")}', 
+                     fontsize=16, fontweight='bold')
+        
+        # Plot long positions (top row)
+        for i, pos in enumerate(long_positions[:4]):  # Ensure max 4 positions
+            stock_idx = pos['stock_index']
+            weight = pos['weight']
+            
+            if stock_idx >= len(stock_symbols):
+                continue
+                
+            stock_symbol = stock_symbols[stock_idx]
+            
+            # Extract price data for this stock in the analysis window
+            stock_prices = stocks_data[stock_idx, window_start_idx:window_end_idx + 1, CLOSE_PRICE_INDEX]
+            
+            # Plot in the top row (long positions)
+            ax = axes[0, i] if i < 4 else None
+            if ax is not None:
+                ax.plot(analysis_dates, stock_prices, 'b-', linewidth=1.5, alpha=0.8)
+                
+                # Mark the decision point with vertical line
+                ax.axvline(x=decision_date, color='red', linestyle='--', linewidth=2, alpha=0.8)
+                
+                # Add background colors for past vs future
+                ax.axvspan(analysis_dates[0], decision_date, facecolor='lightblue', alpha=0.1, label='Past 70 days')
+                ax.axvspan(decision_date, analysis_dates[-1], facecolor='lightgreen', alpha=0.1, label='Future 21 days')
+                
+                # Formatting
+                ax.set_title(f'{stock_symbol} (LONG)\nWeight: {weight:.3f}', fontsize=12, fontweight='bold', color='green')
+                ax.set_ylabel('Close Price ($)', fontsize=10)
+                ax.grid(True, alpha=0.3)
+                ax.tick_params(axis='x', rotation=45)
+        
+        # Plot short positions (bottom row)
+        for i, pos in enumerate(short_positions[:4]):  # Ensure max 4 positions
+            stock_idx = pos['stock_index']
+            weight = pos['weight']
+            
+            if stock_idx >= len(stock_symbols):
+                continue
+                
+            stock_symbol = stock_symbols[stock_idx]
+            
+            # Extract price data for this stock in the analysis window
+            stock_prices = stocks_data[stock_idx, window_start_idx:window_end_idx + 1, CLOSE_PRICE_INDEX]
+            
+            # Plot in the bottom row (short positions)
+            ax = axes[1, i] if i < 4 else None
+            if ax is not None:
+                ax.plot(analysis_dates, stock_prices, 'b-', linewidth=1.5, alpha=0.8)
+                
+                # Mark the decision point with vertical line
+                ax.axvline(x=decision_date, color='red', linestyle='--', linewidth=2, alpha=0.8)
+                
+                # Add background colors for past vs future
+                ax.axvspan(analysis_dates[0], decision_date, facecolor='lightblue', alpha=0.1, label='Past 70 days')
+                ax.axvspan(decision_date, analysis_dates[-1], facecolor='lightcoral', alpha=0.1, label='Future 21 days')
+                
+                # Formatting
+                ax.set_title(f'{stock_symbol} (SHORT)\nWeight: {weight:.3f}', fontsize=12, fontweight='bold', color='red')
+                ax.set_ylabel('Close Price ($)', fontsize=10)
+                ax.set_xlabel('Date', fontsize=10)
+                ax.grid(True, alpha=0.3)
+                ax.tick_params(axis='x', rotation=45)
+        
+        # Hide unused subplots
+        for i in range(len(long_positions), 4):
+            if i < 4:
+                axes[0, i].set_visible(False)
+        
+        for i in range(len(short_positions), 4):
+            if i < 4:
+                axes[1, i].set_visible(False)
+        
+        # Add legend
+        handles, labels = axes[0, 0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper right', fontsize=10)
+        
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.90)  # Make room for suptitle
+        
+        if save_plots:
+            filename = f'{output_dir}/step_{step_idx:02d}_{period}_analysis.png'
+            plt.savefig(filename, dpi=150, bbox_inches='tight')
+            print(f"Saved: {filename}")
+            plt.close()
+        else:
+            plt.show()
