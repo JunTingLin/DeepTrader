@@ -126,7 +126,7 @@ def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='
     profit_matrix = np.array(returns).reshape(1, -1)
     
     # Create figure
-    fig, ax = plt.subplots(figsize=(min(20, (n_steps-1) * 0.3), 8))
+    fig, ax = plt.subplots(figsize=(min(20, (n_steps-1) * 0.3), 3))
     
     # Plot heatmap with diverging colormap (red=loss, green=profit)
     vmax = max(abs(profit_matrix.min()), abs(profit_matrix.max()))
@@ -153,8 +153,8 @@ def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='
         xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks if i < len(sample_dates)]
         ax.set_xticklabels(xlabels, rotation=45, ha='right')
     
-    # Add horizontal colorbar (increase pad to avoid overlapping with date labels)
-    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.15, shrink=0.8)
+    # Add horizontal colorbar
+    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.50, shrink=0.8)
     cbar.set_label('Return (Green=Profit, Red=Loss)', fontsize=10)
     
     # Add grid
@@ -169,6 +169,77 @@ def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='
         os.makedirs(output_dir, exist_ok=True)
         
         filename = f'{output_dir}/profit_heatmap_{period}.png'
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        print(f"Saved: {filename}")
+        plt.close()
+    else:
+        plt.show()
+
+def plot_rho_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=False):
+    """
+    Plot rho (long/short allocation parameter) as single row heatmap.
+    Rho ranges from 0.0 (100% short) to 1.0 (100% long).
+    """
+    # Load JSON data
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    
+    rho_record = results.get('rho_record', [])
+    if not rho_record:
+        print(f"No rho records found for {experiment_id}")
+        return
+    
+    # Convert to numpy array and reshape to 1 row
+    rho_array = np.array(rho_record)
+    n_steps = len(rho_array)
+    rho_matrix = rho_array.reshape(1, n_steps)
+    
+    # Create figure  
+    fig, ax = plt.subplots(figsize=(min(20, n_steps * 0.30), 3))
+    
+    # Plot heatmap with consistent colormap (red=short, white=neutral, green=long)
+    im = ax.imshow(rho_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest',
+                   vmin=0.0, vmax=1.0, origin='lower')
+    
+    # Formatting
+    ax.set_xlabel('Trading Steps', fontsize=12)
+    ax.set_ylabel('Rho (ρ)', fontsize=12)
+    ax.set_title(f'MSU Rho Values - Long/Short Allocation - {period.upper()}', fontsize=14)
+    
+    # Set y-axis (only one row)
+    ax.set_yticks([0])
+    ax.set_yticklabels(['ρ'], fontsize=12)
+    
+    # Set x-axis labels (align with other heatmaps)
+    step_interval = max(1, n_steps // 10)
+    xticks = range(0, n_steps, step_interval)
+    ax.set_xticks(xticks)
+    if sample_dates is not None and len(sample_dates) >= n_steps:
+        xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks if i < len(sample_dates)]
+        ax.set_xticklabels(xlabels, rotation=45, ha='right')
+    
+    
+    # Add horizontal colorbar
+    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.50, shrink=0.8)
+    cbar.set_label('Rho Value (0.0=100% Short/Red, 0.5=Balanced/Yellow, 1.0=100% Long/Green)', fontsize=10)
+    
+    # Add grid for better readability
+    ax.set_xticks(np.arange(n_steps) - 0.5, minor=True)
+    ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5, alpha=0.3)
+    
+    plt.tight_layout()
+    
+    if save_plot:
+        # Create output directory for this experiment
+        output_dir = f'plot_outputs/{experiment_id}'
+        os.makedirs(output_dir, exist_ok=True)
+        
+        filename = f'{output_dir}/rho_heatmap_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()

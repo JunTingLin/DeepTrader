@@ -37,14 +37,15 @@ def process_data():
     # Sample dates for validation and testing segments (only complete trading periods)
     n_val_complete = len(val_days) // TRADE_LEN
     n_test_complete = len(test_days) // TRADE_LEN
-    val_sample_dates = val_days[::TRADE_LEN][:n_val_complete]
-    test_sample_dates = test_days[::TRADE_LEN][:n_test_complete]
+    # Include initial date plus all complete period end dates
+    val_sample_dates = val_days[::TRADE_LEN][:n_val_complete + 1]
+    test_sample_dates = test_days[::TRADE_LEN][:n_test_complete + 1]
     
-    # Sample the market cumulative wealth for validation and testing, and rebase to 1 (only complete periods)
-    market_series_val = market_wealth_val.iloc[::TRADE_LEN][:n_val_complete].copy()
+    # Sample the market cumulative wealth for validation and testing, and rebase to 1
+    market_series_val = market_wealth_val.iloc[::TRADE_LEN][:n_val_complete + 1].copy()
     market_series_val = market_series_val / market_series_val.iloc[0]
     
-    market_series_test = market_wealth_test.iloc[::TRADE_LEN][:n_test_complete].copy()
+    market_series_test = market_wealth_test.iloc[::TRADE_LEN][:n_test_complete + 1].copy()
     market_series_test = market_series_test / market_series_test.iloc[0]
     
     # Load combined agent wealth data
@@ -55,8 +56,9 @@ def process_data():
     val_data = {}
     for key in agent_wealth:
         if key.startswith('val_'):
-            # Assume the agent array covers the entire validation period and has n_val points
-            agent_val = agent_wealth[key][:n_val]
+            # Use the complete agent wealth data (agent_wealth is already sampled at 21-day intervals)
+            # Expected length: n_val + 1 (initial 1.0 + n_val records)
+            agent_val = agent_wealth[key]
             agent_val = agent_val / agent_val[0]
             val_data[key] = agent_val
     
@@ -65,8 +67,9 @@ def process_data():
     test_data = {}
     for key in agent_wealth:
         if key.startswith('test_'):
-            # Assume the agent array covers the entire testing period and has n_test points
-            agent_test = agent_wealth[key][:n_test]
+            # Use the complete agent wealth data (agent_wealth is already sampled at 21-day intervals)
+            # Expected length: n_test + 1 (initial 1.0 + n_test records)
+            agent_test = agent_wealth[key]
             agent_test = agent_test / agent_test[0]
             test_data[key] = agent_test
     
