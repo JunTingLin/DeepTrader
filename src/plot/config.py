@@ -96,7 +96,9 @@ WEALTH_MODE = 'inter'  # 'inter' or 'intra' for daily returns
 OUTPUTS_BASE_PATH = '../outputs'
 EXPERIMENT_IDS = config['experiment_ids']
 STOCK_DATA_PATH = '../data/DJIA/feature34-Inter-P532-0831/stocks_data.npy'
-CLOSE_PRICE_INDEX = 3  # Close price is at index 3 in the 34 features
+MARKET_DATA_PATH = '../data/DJIA/feature34-Inter-P532-0831/market_data.npy'
+CLOSE_PRICE_INDEX = 3     # Stock close price index in the 34 stock features
+MARKET_CLOSE_INDEX = 9    # Market close price index in the 27 market features
 
 # -------------------------------
 # Plotting Style Configuration

@@ -9,7 +9,7 @@ import json
 import os
 from config import (
     config, START_DATE, END_DATE, TRADE_LEN,
-    STOCK_DATA_PATH, CLOSE_PRICE_INDEX
+    STOCK_DATA_PATH, CLOSE_PRICE_INDEX, MARKET_DATA_PATH, MARKET_CLOSE_INDEX
 )
 
 def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, period='test', save_plots=True):
@@ -320,6 +320,126 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
         
         if save_plots:
             filename = f'{output_dir}/step_{step_idx:02d}_{period}_analysis.png'
+            plt.savefig(filename, dpi=150, bbox_inches='tight')
+            print(f"Saved: {filename}")
+            plt.close()
+        else:
+            plt.show()
+
+
+def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, period='test', save_plots=True):
+    """
+    Plot MSU step analysis showing past 65 days + future 21 days of market close prices
+    with the AI's rho decision for each trading step.
+    
+    Args:
+        experiment_id: Experiment identifier
+        outputs_base_path: Base path to outputs
+        sample_dates: DatetimeIndex of trading decision dates 
+        period: 'val' or 'test'
+        save_plots: Whether to save the plots
+    """
+    # Load portfolio data
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    
+    portfolio_records = results.get('portfolio_records', [])
+    rho_record = results.get('rho_record', [])
+    
+    if not portfolio_records:
+        print(f"No portfolio records found for {experiment_id}")
+        return
+    
+    if len(rho_record) != len(portfolio_records):
+        print(f"Warning: rho_record length ({len(rho_record)}) != portfolio_records length ({len(portfolio_records)})")
+        return
+    
+    # Load market data
+    if not os.path.exists(MARKET_DATA_PATH):
+        print(f"Warning: Market data not found at {MARKET_DATA_PATH}")
+        return
+    
+    market_data = np.load(MARKET_DATA_PATH)
+    print(f"Loaded market data with shape: {market_data.shape}")
+    
+    # Use market close price index from config
+    market_close_index = MARKET_CLOSE_INDEX
+    
+    # Get date range for the period
+    if period == 'val':
+        date_start_idx = config['train_end']
+    else:  # test
+        date_start_idx = config['val_end'] 
+    
+    # Generate business day range for the entire dataset
+    full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
+    
+    # Create output directory
+    output_dir = f'plot_outputs/{experiment_id}/msu_step_analysis'
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Iterate through all trading steps
+    for step_idx in range(len(sample_dates)):
+        if step_idx >= len(portfolio_records):
+            print(f"Warning: Step {step_idx} not found. Available portfolio records: 0-{len(portfolio_records)-1}")
+            continue
+        
+        # Calculate the decision date for this step
+        decision_date_idx = date_start_idx + step_idx * TRADE_LEN
+        
+        # Define the MSU analysis window: past 65 days + future 21 days
+        window_start_idx = decision_date_idx - 65
+        window_end_idx = decision_date_idx + TRADE_LEN
+        
+        # Check bounds
+        if window_start_idx < 0 or window_end_idx >= len(full_dates):
+            print(f"Step {step_idx} MSU analysis window is out of bounds, skipping...")
+            continue
+        
+        # Get dates and market prices for the analysis window
+        analysis_dates = full_dates[window_start_idx:window_end_idx + 1]
+        decision_date = full_dates[decision_date_idx]
+        
+        # Extract market close prices for the analysis window
+        market_prices = market_data[window_start_idx:window_end_idx + 1, market_close_index]
+        
+        # Get the rho value for this step
+        rho_value = rho_record[step_idx]
+        
+        # Create the plot
+        plt.figure(figsize=(15, 8))
+        
+        # Plot market price trend
+        plt.plot(analysis_dates, market_prices, 'b-', linewidth=1.5, alpha=0.8, label='Market Close')
+        
+        # Mark the decision point with vertical line
+        plt.axvline(x=decision_date, color='red', linestyle='--', linewidth=2, alpha=0.8, label='Decision Point')
+        
+        # Add background colors for past vs future
+        plt.axvspan(analysis_dates[0], decision_date, facecolor='lightblue', alpha=0.1, label='Past 65 days (MSU input)')
+        plt.axvspan(decision_date, analysis_dates[-1], facecolor='lightgreen', alpha=0.1, label='Future 21 days (Trading period)')
+        
+        # Formatting
+        plt.title(f'MSU Step {step_idx} Analysis - {period.upper()} - ρ = {rho_value:.4f}\\n'
+                  f'Decision Date: {decision_date.strftime("%Y-%m-%d")}', 
+                  fontsize=14, fontweight='bold')
+        plt.xlabel('Date', fontsize=12)
+        plt.ylabel('Market Close Price', fontsize=12)
+        plt.grid(True, alpha=0.3)
+        plt.legend()
+        
+        # Rotate x-axis labels for better readability
+        plt.xticks(rotation=45)
+        
+        plt.tight_layout()
+        
+        if save_plots:
+            filename = f'{output_dir}/step_{step_idx:02d}_{period}_msu_analysis.png'
             plt.savefig(filename, dpi=150, bbox_inches='tight')
             print(f"Saved: {filename}")
             plt.close()

@@ -5,7 +5,7 @@
 from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
 from heatmaps import plot_portfolio_heatmap, plot_profit_heatmap, plot_rho_heatmap
-from stock_trends import plot_stock_price_trends, plot_step_analysis
+from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis
 from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df
 from config import (
     config, get_stock_symbols, START_DATE, END_DATE, 
@@ -65,6 +65,12 @@ def main():
         print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
         plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
         plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
+        
+        # Plot and save MSU step analysis with DJIA trends and rho values
+        print(f"Generating MSU step analysis plots for {exp_id}...")
+        print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test MSU analysis files")
+        plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plots=True)
+        plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plots=True)
     
     # Compute periodic returns and win rates for validation period
     period_codes = ['ME', 'QE', '6ME', 'YE']
