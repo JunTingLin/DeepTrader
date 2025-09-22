@@ -98,7 +98,7 @@ def validate(func_args):
     agent = RLAgent(env, actor, func_args)
 
     try:
-        agent_wealth, rho_record, portfolio_records = agent.evaluation()
+        agent_wealth, rho_record, mu_record, sigma_record, portfolio_records = agent.evaluation()
         npy_save_dir = os.path.join(PREFIX, 'npy_file')
         np.save(os.path.join(npy_save_dir, 'agent_wealth_val.npy'), agent_wealth)
         
@@ -107,6 +107,8 @@ def validate(func_args):
         val_results = {
             'agent_wealth': agent_wealth.tolist(),
             'rho_record': [convert_to_native_type(r) for r in rho_record],
+            'mu_record': [convert_to_native_type(r) if r is not None else None for r in mu_record],
+            'sigma_record': [convert_to_native_type(r) if r is not None else None for r in sigma_record],
             'portfolio_records': convert_portfolio_records_to_json(
                 portfolio_records,
                 start_idx=val_idx,
@@ -168,7 +170,7 @@ if __name__ == '__main__':
     if opts.prefix:
         PREFIX = opts.prefix
     else:
-        PREFIX = os.path.join("outputs", "0711", "011956")
+        PREFIX = os.path.join("outputs", "0710", "124609")
 
     if opts.config is not None:
         with open(opts.config) as f:

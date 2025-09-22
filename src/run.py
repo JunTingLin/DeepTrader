@@ -153,7 +153,7 @@ def run(func_args):
             writer.add_scalar('Train/Rho', avg_rho, global_step=epoch)
             writer.add_scalar('Train/MDD', avg_mdd, global_step=epoch)
 
-            agent_wealth, rho_record, portfolio_records = agent.evaluation()
+            agent_wealth, rho_record, mu_record, sigma_record, portfolio_records = agent.evaluation()
             logger.warning('agent_wealth: %s' % agent_wealth)
             logger.warning('agent_wealth shape: %s', agent_wealth.shape)
             metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
@@ -174,11 +174,13 @@ def run(func_args):
                 val_results = {
                     'agent_wealth': agent_wealth.tolist(),
                     'rho_record': [convert_to_native_type(r) for r in rho_record],
+                    'mu_record': [convert_to_native_type(r) if r is not None else None for r in mu_record],
+                    'sigma_record': [convert_to_native_type(r) if r is not None else None for r in sigma_record],
                     'portfolio_records': convert_portfolio_records_to_json(
                         portfolio_records, 
                         start_idx=val_idx, 
-                        window_len=args.window_len, 
-                        trade_len=args.trade_len
+                        window_len=func_args.window_len, 
+                        trade_len=func_args.trade_len
                     ),
                     'performance_metrics': {
                         'ARR': convert_to_native_type(metrics['ARR']),

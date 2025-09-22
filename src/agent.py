@@ -38,23 +38,24 @@ class RLActor(nn.Module):
         scores = self.asu(x_a, masks)
         if self.args.msu_bool:
             res = self.msu(x_m)
+            # res: (batch_size, 2)
         else:
             res = None
         return self.__generator(scores, res, deterministic)
 
     def __generator(self, scores, res, deterministic=None):
         weights = np.zeros((scores.shape[0], 2 * scores.shape[1]))
+        # weights: (batch_size, 2 * num_assets)
 
         winner_scores = scores
         loser_scores = scores.sign() * (1 - scores)
 
         scores_p = torch.softmax(scores, dim=-1)
 
-        # winners_log_p = torch.log_softmax(winner_scores, dim=-1)
         w_s, w_idx = torch.topk(winner_scores.detach(), self.args.G)
+        # w_s: (batch_size, G)
 
         long_ratio = torch.softmax(w_s, dim=-1)
-
         for i, indice in enumerate(w_idx):
             weights[i, indice.detach().cpu().numpy()] = long_ratio[i].cpu().numpy()
 
@@ -76,6 +77,8 @@ class RLActor(nn.Module):
                 rho = torch.clamp(sample_rho, 0.0, 1.0)
                 rho_log_p = m.log_prob(sample_rho)
         else:
+            mu = None
+            sigma = None
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
         # force rho to 0.5
@@ -89,7 +92,7 @@ class RLActor(nn.Module):
             'all_scores': scores.detach().cpu().numpy()
         }
         
-        return weights, rho, scores_p, rho_log_p, portfolio_info
+        return weights, rho, scores_p, rho_log_p, portfolio_info, mu, sigma
 
 
 class RLAgent():
@@ -127,7 +130,7 @@ class RLAgent():
                 x_m = torch.from_numpy(states[1]).to(self.args.device)
             else:
                 x_m = None
-            weights, rho, scores_p, log_p_rho, portfolio_info \
+            weights, rho, scores_p, log_p_rho, portfolio_info, mu, sigma \
                 = self.actor(x_a, x_m, masks, deterministic=False)
 
             ror = torch.from_numpy(self.env.ror).to(self.args.device)
@@ -196,6 +199,8 @@ class RLAgent():
 
         agent_wealth = np.ones((batch_size, 1), dtype=np.float32)
         rho_record = []
+        mu_record = []
+        sigma_record = []
         portfolio_records = []
         
         while True:
@@ -207,10 +212,18 @@ class RLAgent():
             else:
                 x_m = None
 
-            weights, rho, _, _, portfolio_info \
+            weights, rho, _, _, portfolio_info, mu, sigma \
                 = self.actor(x_a, x_m, masks, deterministic=True)
             
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
+            
+            if self.args.msu_bool and mu is not None and sigma is not None:
+                mu_record.append(np.mean(mu.detach().cpu().numpy()))
+                sigma_record.append(np.mean(sigma.detach().cpu().numpy()))
+            else:
+                mu_record.append(None)
+                sigma_record.append(None)
+                
             portfolio_records.append(portfolio_info)
             
             next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
@@ -221,7 +234,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth, rho_record, portfolio_records
+        return agent_wealth, rho_record, mu_record, sigma_record, portfolio_records
     
 
     def test(self, logger=None):
@@ -233,6 +246,8 @@ class RLAgent():
 
         agent_wealth = np.ones((batch_size, 1), dtype=np.float32)
         rho_record = []
+        mu_record = []
+        sigma_record = []
         portfolio_records = []
         
         while True:
@@ -244,10 +259,18 @@ class RLAgent():
             else:
                 x_m = None
 
-            weights, rho, _, _, portfolio_info \
+            weights, rho, _, _, portfolio_info, mu, sigma \
                 = self.actor(x_a, x_m, masks, deterministic=True)
             
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
+            
+            if self.args.msu_bool and mu is not None and sigma is not None:
+                mu_record.append(np.mean(mu.detach().cpu().numpy()))
+                sigma_record.append(np.mean(sigma.detach().cpu().numpy()))
+            else:
+                mu_record.append(None)
+                sigma_record.append(None)
+                
             portfolio_records.append(portfolio_info)
             
             next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
@@ -258,7 +281,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth, rho_record, portfolio_records
+        return agent_wealth, rho_record, mu_record, sigma_record, portfolio_records
 
     def clip_grad_norms(self, param_groups, max_norm=math.inf):
         """

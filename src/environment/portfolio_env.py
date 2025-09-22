@@ -128,7 +128,7 @@ class DataGenerator():
         elif self.val_mode:
             self.cursor = np.array([self.val_idx])
         elif self.test_mode:
-            self.cursor = np.array([self.test_idx])
+            self.cursor = np.array([self.test_idx]) # batch size = 1
         else:
             if len(self.tmp_order) == 0:
                 self.tmp_order = np.random.permutation(self.order_set).copy()
@@ -182,11 +182,13 @@ class DataGenerator():
         past_return = np.zeros((len(self.cursor), self.__assets_data.shape[0], self.window_len))
         for i, idx in enumerate(self.cursor):
             raw_states[i] = self.__assets_data[:, idx - (self.window_len + 1) * 5 + 1:idx + 1].copy()
+            # raw_states shape = (37, 30, 70, 34)
             tmp_states = raw_states.reshape(raw_states.shape[0], raw_states.shape[1], self.window_len + 1, 5, -1)
             
             # 直接使用原始特徵，取每個窗口的最後一個子時間點
             for feature_idx in range(self.assets_features):
                 assets_states[i, :, :, feature_idx] = tmp_states[i, :, 1:, -1, feature_idx]
+                # = tmp_states[樣本i, 所有股票, 後13週, 每週最後一天, 特徵feature_idx]
                 
             if self.allow_short:
                 tmp_states = self.__market_data[idx - (self.window_len) * 5 + 1:idx + 1].reshape(self.window_len, 5, -1)
@@ -301,32 +303,32 @@ class PortfolioSim(object):
         """
 
         :param w0: (batch, 2 * num_assets)
-        :param ror:
-        :param p:
+        :param ror: (batch, num_assets)
+        :param p: (batch, )
         :return:
         """
         # if not self.allow_short:
         #     assert (w0[:, self.num_assets:] == 0).all() and (p==1).all()
         assert (p >= 0.0).all() and (p <= 1.0).all()
-        dw0 = self.w
-        dv0 = self.v
+        dw0 = self.w # (batch, num_assets) 
+        dv0 = self.v # (batch, )
         dcash0 = self.cash
         dstock0 = self.stock
 
         if self.allow_short:
             # === short ===
             dv0_short = dv0 * (1 - p)
-            dv0_short_after_sale = dv0_short * (1 - self.fee)
-            dv0_long = (dv0 * p + dv0_short_after_sale)
+            dv0_short_after_sale = dv0_short * (1 - self.fee) # instant sell and get cash
+            dv0_long = (dv0 * p + dv0_short_after_sale) # (batch, )
             dw0_long = dw0 * \
-                       ((dv0 * p) / dv0_long)[..., None]
+                       ((dv0 * p) / dv0_long)[..., None] # adjest long position weights # (batch, num_assets)
 
-            dw0_long_sale = np.clip((dw0_long - w0[:, :self.num_assets]), 0., 1.)
-            mu0_long = dw0_long_sale.sum(axis=-1) * self.fee
+            dw0_long_sale = np.clip((dw0_long - w0[:, :self.num_assets]), 0., 1.) # keep the sold part
+            mu0_long = dw0_long_sale.sum(axis=-1) * self.fee # long position transaction fee # (batch, )
 
-            dw1 = (ror * w0[:, :self.num_assets]) / np.sum(ror * w0[:, :self.num_assets], axis=-1, keepdims=True)
+            dw1 = (ror * w0[:, :self.num_assets]) / np.sum(ror * w0[:, :self.num_assets], axis=-1, keepdims=True) # new long position weights # (batch, num_assets)
 
-            LongPosition_value = dv0_long * (1 - mu0_long) * (np.sum(ror * w0[:, :self.num_assets], axis=-1))
+            LongPosition_value = dv0_long * (1 - mu0_long) * (np.sum(ror * w0[:, :self.num_assets], axis=-1)) # (batch, )
             ShortPosition_value = dv0_short * (np.sum(ror * w0[:, self.num_assets:], axis=-1))
 
             LongPosition_gain = LongPosition_value - dv0_long
@@ -337,6 +339,7 @@ class PortfolioSim(object):
 
             dv1 = LongPosition_value - (ShortPosition_value) / (1 - self.fee) \
                   + dv0_short
+            # short sell p&l = dv0_short - returned value
 
             rate_of_return = dv1 / dv0 - 1
             cash_value = 0.
