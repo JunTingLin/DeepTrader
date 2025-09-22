@@ -4,6 +4,8 @@
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend to avoid segfault
 import matplotlib.pyplot as plt
 import json
 import os
@@ -231,98 +233,133 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
         long_positions = step_record['long_positions']
         short_positions = step_record['short_positions']
         
-        if len(long_positions) != 4 or len(short_positions) != 4:
-            print(f"Warning: Step {step_idx} has {len(long_positions)} long and {len(short_positions)} short positions")
+        # Create dictionaries for quick lookup of selected stocks
+        long_stocks = {pos['stock_index']: pos['weight'] for pos in long_positions}
+        short_stocks = {pos['stock_index']: pos['weight'] for pos in short_positions}
         
-        # Create the plot with 2x4 subplots (top row: long, bottom row: short)
-        fig, axes = plt.subplots(2, 4, figsize=(20, 10))
-        fig.suptitle(f'Step {step_idx} Analysis - {period.upper()} - Decision Date: {decision_date.strftime("%Y-%m-%d")}', 
+        # Plot all 30 stocks (assuming stock indices 0-29)
+        total_stocks = len(stock_symbols)
+        n_cols = 6  # Fixed 6 columns for good layout
+        n_rows = (total_stocks + n_cols - 1) // n_cols
+        
+        # Create the plot with layout for all stocks
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4*n_cols, 4*n_rows))
+        
+        # Handle different subplot configurations
+        if n_rows == 1:
+            axes = [axes]
+        
+        fig.suptitle(f'Step {step_idx} Analysis - ALL STOCKS - {period.upper()} - Decision Date: {decision_date.strftime("%Y-%m-%d")}', 
                      fontsize=16, fontweight='bold')
         
-        # Plot long positions (top row)
-        for i, pos in enumerate(long_positions[:4]):  # Ensure max 4 positions
-            stock_idx = pos['stock_index']
-            weight = pos['weight']
-            
-            if stock_idx >= len(stock_symbols):
+        # Plot all stocks by stock index order
+        for stock_idx in range(total_stocks):
+            try:
+                if stock_idx >= len(stock_symbols):
+                    continue
+                    
+                stock_symbol = stock_symbols[stock_idx]
+                
+                # Extract price data for this stock in the analysis window with bounds checking
+                if (stock_idx < stocks_data.shape[0] and 
+                    window_start_idx >= 0 and 
+                    window_end_idx < stocks_data.shape[1] and
+                    CLOSE_PRICE_INDEX < stocks_data.shape[2]):
+                    stock_prices = stocks_data[stock_idx, window_start_idx:window_end_idx + 1, CLOSE_PRICE_INDEX]
+                else:
+                    print(f"Warning: Invalid indices for stock {stock_idx} at step {step_idx}")
+                    continue
+                
+                # Check for valid price data
+                if len(stock_prices) == 0 or len(analysis_dates) == 0:
+                    print(f"Warning: Empty data for stock {stock_idx} at step {step_idx}")
+                    continue
+                    
+                if len(stock_prices) != len(analysis_dates):
+                    print(f"Warning: Data length mismatch for stock {stock_idx}: prices={len(stock_prices)}, dates={len(analysis_dates)}")
+                    continue
+                
+                # Determine subplot position (by stock index order)
+                row = stock_idx // n_cols
+                col = stock_idx % n_cols
+                
+                if row < len(axes) and col < len(axes[row]):
+                    ax = axes[row][col]
+                    ax.plot(analysis_dates, stock_prices, 'b-', linewidth=1.5, alpha=0.8)
+                    
+                    # Mark the decision point with vertical line
+                    ax.axvline(x=decision_date, color='red', linestyle='--', linewidth=2, alpha=0.8)
+                    
+                    # Add background colors for past vs future
+                    ax.axvspan(analysis_dates[0], decision_date, facecolor='lightblue', alpha=0.1, label='Past 70 days')
+                    
+                    # Determine position type and styling
+                    if stock_idx in long_stocks:
+                        # This stock is selected for LONG
+                        pos_type = 'LONG'
+                        weight = long_stocks[stock_idx]
+                        title_color = 'green'
+                        future_color = 'lightgreen'
+                        ax.axvspan(decision_date, analysis_dates[-1], facecolor=future_color, alpha=0.1, label='Future 21 days')
+                        title = f'{stock_symbol} (IDX: {stock_idx}) - {pos_type}\nWeight: {weight:.3f}'
+                    elif stock_idx in short_stocks:
+                        # This stock is selected for SHORT
+                        pos_type = 'SHORT'
+                        weight = short_stocks[stock_idx]
+                        title_color = 'red'
+                        future_color = 'lightcoral'
+                        ax.axvspan(decision_date, analysis_dates[-1], facecolor=future_color, alpha=0.1, label='Future 21 days')
+                        title = f'{stock_symbol} (IDX: {stock_idx}) - {pos_type}\nWeight: {weight:.3f}'
+                    else:
+                        # This stock is NOT selected
+                        pos_type = 'NOT SELECTED'
+                        title_color = 'gray'
+                        future_color = 'lightgray'
+                        ax.axvspan(decision_date, analysis_dates[-1], facecolor=future_color, alpha=0.1, label='Future 21 days')
+                        title = f'{stock_symbol} (IDX: {stock_idx}) - {pos_type}'
+                    
+                    # Formatting with stock index in title
+                    ax.set_title(title, fontsize=10, fontweight='bold', color=title_color)
+                    ax.set_ylabel('Price ($)', fontsize=8)
+                    ax.grid(True, alpha=0.3)
+                    ax.tick_params(axis='x', rotation=45, labelsize=8)
+                    ax.tick_params(axis='y', labelsize=8)
+                    
+                    # Add x-label for bottom row
+                    if row == n_rows - 1:
+                        ax.set_xlabel('Date', fontsize=8)
+                        
+            except Exception as e:
+                print(f"Error plotting stock {stock_idx} at step {step_idx}: {e}")
                 continue
-                
-            stock_symbol = stock_symbols[stock_idx]
-            
-            # Extract price data for this stock in the analysis window
-            stock_prices = stocks_data[stock_idx, window_start_idx:window_end_idx + 1, CLOSE_PRICE_INDEX]
-            
-            # Plot in the top row (long positions)
-            ax = axes[0, i] if i < 4 else None
-            if ax is not None:
-                ax.plot(analysis_dates, stock_prices, 'b-', linewidth=1.5, alpha=0.8)
-                
-                # Mark the decision point with vertical line
-                ax.axvline(x=decision_date, color='red', linestyle='--', linewidth=2, alpha=0.8)
-                
-                # Add background colors for past vs future
-                ax.axvspan(analysis_dates[0], decision_date, facecolor='lightblue', alpha=0.1, label='Past 70 days')
-                ax.axvspan(decision_date, analysis_dates[-1], facecolor='lightgreen', alpha=0.1, label='Future 21 days')
-                
-                # Formatting
-                ax.set_title(f'{stock_symbol} (LONG)\nWeight: {weight:.3f}', fontsize=12, fontweight='bold', color='green')
-                ax.set_ylabel('Close Price ($)', fontsize=10)
-                ax.grid(True, alpha=0.3)
-                ax.tick_params(axis='x', rotation=45)
         
-        # Plot short positions (bottom row)
-        for i, pos in enumerate(short_positions[:4]):  # Ensure max 4 positions
-            stock_idx = pos['stock_index']
-            weight = pos['weight']
-            
-            if stock_idx >= len(stock_symbols):
-                continue
-                
-            stock_symbol = stock_symbols[stock_idx]
-            
-            # Extract price data for this stock in the analysis window
-            stock_prices = stocks_data[stock_idx, window_start_idx:window_end_idx + 1, CLOSE_PRICE_INDEX]
-            
-            # Plot in the bottom row (short positions)
-            ax = axes[1, i] if i < 4 else None
-            if ax is not None:
-                ax.plot(analysis_dates, stock_prices, 'b-', linewidth=1.5, alpha=0.8)
-                
-                # Mark the decision point with vertical line
-                ax.axvline(x=decision_date, color='red', linestyle='--', linewidth=2, alpha=0.8)
-                
-                # Add background colors for past vs future
-                ax.axvspan(analysis_dates[0], decision_date, facecolor='lightblue', alpha=0.1, label='Past 70 days')
-                ax.axvspan(decision_date, analysis_dates[-1], facecolor='lightcoral', alpha=0.1, label='Future 21 days')
-                
-                # Formatting
-                ax.set_title(f'{stock_symbol} (SHORT)\nWeight: {weight:.3f}', fontsize=12, fontweight='bold', color='red')
-                ax.set_ylabel('Close Price ($)', fontsize=10)
-                ax.set_xlabel('Date', fontsize=10)
-                ax.grid(True, alpha=0.3)
-                ax.tick_params(axis='x', rotation=45)
-        
-        # Hide unused subplots
-        for i in range(len(long_positions), 4):
-            if i < 4:
-                axes[0, i].set_visible(False)
-        
-        for i in range(len(short_positions), 4):
-            if i < 4:
-                axes[1, i].set_visible(False)
+        # Hide unused subplots if any
+        for row in range(n_rows):
+            for col in range(n_cols):
+                stock_idx = row * n_cols + col
+                if stock_idx >= total_stocks:
+                    if row < len(axes) and col < len(axes[row]):
+                        axes[row][col].set_visible(False)
         
         # Add legend
-        handles, labels = axes[0, 0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='upper right', fontsize=10)
+        if len(axes) > 0 and len(axes[0]) > 0:
+            handles, labels = axes[0][0].get_legend_handles_labels()
+            if handles:
+                fig.legend(handles, labels, loc='upper right', fontsize=10)
         
         plt.tight_layout()
         plt.subplots_adjust(top=0.90)  # Make room for suptitle
         
         if save_plots:
             filename = f'{output_dir}/step_{step_idx:02d}_{period}_analysis.png'
-            plt.savefig(filename, dpi=150, bbox_inches='tight')
-            print(f"Saved: {filename}")
-            plt.close()
+            try:
+                plt.savefig(filename, dpi=150, bbox_inches='tight')
+                print(f"Saved: {filename}")
+            except Exception as e:
+                print(f"Error saving {filename}: {e}")
+            finally:
+                plt.close(fig)  # Close specific figure
+                plt.close('all')  # Ensure all figures are closed
         else:
             plt.show()
 
