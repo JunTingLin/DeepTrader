@@ -158,6 +158,119 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
         else:
             plt.show()
 
+def print_step_score_ranking(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test'):
+    """
+    Print score ranking for each trading step without plotting.
+    Shows score, stock_id, stock_name, and future 21-day return rate for all stocks.
+    
+    Args:
+        experiment_id: Experiment identifier
+        outputs_base_path: Base path to outputs
+        stock_symbols: List of all stock symbols
+        sample_dates: DatetimeIndex of trading decision dates
+        period: 'val' or 'test'
+    """
+    # Load portfolio data
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        print(f"No portfolio records found for {experiment_id}")
+        return
+    
+    # Load stock price data
+    if not os.path.exists(STOCK_DATA_PATH):
+        print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
+        return
+    
+    stocks_data = np.load(STOCK_DATA_PATH)
+    print(f"Loaded stock data with shape: {stocks_data.shape}")
+    
+    # Get date range for the period
+    if period == 'val':
+        date_start_idx = config['train_end']
+    else:  # test
+        date_start_idx = config['val_end']
+    
+    # Generate business day range for the entire dataset
+    full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
+    
+    # Iterate through all trading steps
+    for step_idx in range(len(sample_dates)):
+        if step_idx >= len(portfolio_records):
+            print(f"Warning: Step {step_idx} not found. Available portfolio records: 0-{len(portfolio_records)-1}")
+            continue
+        
+        # Calculate the decision date for this step
+        decision_date_idx = date_start_idx + step_idx * TRADE_LEN
+        decision_date = full_dates[decision_date_idx]
+        
+        # Get the portfolio positions for this step
+        step_record = portfolio_records[step_idx]
+        all_scores = step_record.get('all_scores', [])
+        
+        # Print score ranking for this step
+        if all_scores and len(all_scores) >= len(stock_symbols):
+            print(f"\n=== Step {step_idx} Score Ranking (Decision Date: {decision_date.strftime('%Y-%m-%d')}) ===")
+            
+            # Create list of (score, stock_idx, stock_name, future_return_rate) tuples
+            score_data = []
+            for stock_idx in range(len(stock_symbols)):
+                if stock_idx < len(all_scores):
+                    score = all_scores[stock_idx]
+                    stock_name = stock_symbols[stock_idx]
+                    
+                    # Calculate future 21-day return rate (t+1 to t+21)
+                    if (stock_idx < stocks_data.shape[0] and 
+                        decision_date_idx + 1 >= 0 and 
+                        decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
+                        current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]  # t+1 (execution day)
+                        future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]  # t+21
+                        
+                        if current_price > 0:
+                            future_return_rate = ((future_price - current_price) / current_price) * 100
+                        else:
+                            future_return_rate = 0.0
+                    else:
+                        future_return_rate = 0.0
+                    
+                    score_data.append((score, stock_idx, stock_name, future_return_rate))
+            
+            # Sort by score descending to get score ranking
+            score_data_sorted_by_score = sorted(score_data, key=lambda x: x[0], reverse=True)
+            
+            # Sort by future return rate descending to get return rate ranking
+            score_data_sorted_by_return = sorted(score_data, key=lambda x: x[3], reverse=True)
+            
+            # Create dictionaries to map stock_id to ranks
+            score_rank_map = {}
+            return_rank_map = {}
+            
+            for rank, (score, stock_id, stock_name, return_rate) in enumerate(score_data_sorted_by_score, 1):
+                score_rank_map[stock_id] = rank
+                
+            for rank, (score, stock_id, stock_name, return_rate) in enumerate(score_data_sorted_by_return, 1):
+                return_rank_map[stock_id] = rank
+            
+            # Print header with new columns
+            print(f"{'Score_Rank':<10} {'Score':<8} {'Stock_ID':<8} {'Stock_Name':<12} {'Future_21d_RR(%)':<15} {'Future_21d_RR_Rank':<18}")
+            print("-" * 85)
+            
+            # Print all stocks sorted by score ranking
+            for score, stock_id, stock_name, return_rate in score_data_sorted_by_score:
+                score_rank = score_rank_map[stock_id]
+                return_rank = return_rank_map[stock_id]
+                print(f"{score_rank:<10} {score:<8.4f} {stock_id:<8} {stock_name:<12} {return_rate:<15.2f} {return_rank:<18}")
+            
+            print("-" * 85)
+
+
 def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test', save_plots=True):
     """
     Plot analysis for all trading steps showing the 8 selected stocks (4 long + 4 short) for each step.
