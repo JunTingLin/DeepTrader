@@ -5,7 +5,7 @@
 from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
 from heatmaps import plot_portfolio_heatmap, plot_profit_heatmap, plot_rho_heatmap
-from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis
+from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis, print_step_score_ranking, plot_step_score_scatter, plot_all_steps_score_scatter
 from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df
 from config import (
     config, get_stock_symbols, START_DATE, END_DATE, 
@@ -60,7 +60,23 @@ def main():
         plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'val', save_plots=True)
         plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'test', save_plots=True)
         
-        # Plot and save step analysis with 8 selected stocks per step
+        # Print step score ranking (only prints, no plotting)
+        print(f"Printing step score rankings for {exp_id}...")
+        print_step_score_ranking(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
+        print_step_score_ranking(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
+        
+        # Plot score vs return scatter plots for all trading steps
+        print(f"Generating score vs return scatter plots for {exp_id}...")
+        print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test scatter plots")
+        plot_step_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
+        plot_step_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
+        
+        # Plot combined scatter plots (all steps in one chart)
+        print(f"Generating combined scatter plots for {exp_id}...")
+        plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
+        plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
+        
+        # Plot and save step analysis with all stocks per step
         print(f"Generating step analysis plots for {exp_id}...")
         print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
         plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)

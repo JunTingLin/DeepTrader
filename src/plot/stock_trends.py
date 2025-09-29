@@ -9,6 +9,7 @@ matplotlib.use('Agg')  # Use non-interactive backend to avoid segfault
 import matplotlib.pyplot as plt
 import json
 import os
+from scipy.stats import spearmanr
 from config import (
     config, START_DATE, END_DATE, TRADE_LEN,
     STOCK_DATA_PATH, CLOSE_PRICE_INDEX, MARKET_DATA_PATH, MARKET_CLOSE_INDEX
@@ -595,3 +596,412 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
             plt.close()
         else:
             plt.show()
+
+
+def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test', save_plots=True):
+    """
+    Plot scatter plots for each trading step showing Score vs Future 21-day Return Rate.
+    Each point represents one stock. If prediction is accurate, points should align along
+    a positive diagonal (high score = high return, low score = low return).
+    
+    Args:
+        experiment_id: Experiment identifier
+        outputs_base_path: Base path to outputs
+        stock_symbols: List of all stock symbols
+        sample_dates: DatetimeIndex of trading decision dates
+        period: 'val' or 'test'
+        save_plots: Whether to save the plots
+    """
+    # Load portfolio data
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        print(f"No portfolio records found for {experiment_id}")
+        return
+    
+    # Load stock price data
+    if not os.path.exists(STOCK_DATA_PATH):
+        print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
+        return
+    
+    stocks_data = np.load(STOCK_DATA_PATH)
+    print(f"Loaded stock data with shape: {stocks_data.shape}")
+    
+    # Get date range for the period
+    if period == 'val':
+        date_start_idx = config['train_end']
+    else:  # test
+        date_start_idx = config['val_end']
+    
+    # Generate business day range for the entire dataset
+    full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
+    
+    # Create output directory
+    output_dir = f'plot_outputs/{experiment_id}/score_scatter_plots'
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Iterate through all trading steps
+    for step_idx in range(min(len(sample_dates), len(portfolio_records))):
+        # Calculate the decision date for this step
+        decision_date_idx = date_start_idx + step_idx * TRADE_LEN
+        decision_date = full_dates[decision_date_idx]
+        
+        # Get the portfolio positions for this step
+        step_record = portfolio_records[step_idx]
+        all_scores = step_record.get('all_scores', [])
+        long_positions = step_record['long_positions']
+        short_positions = step_record['short_positions']
+        
+        if not all_scores or len(all_scores) < len(stock_symbols):
+            print(f"Warning: Step {step_idx} missing score data, skipping...")
+            continue
+        
+        # Create sets for quick lookup of selected positions
+        long_stocks = set([pos['stock_index'] for pos in long_positions])
+        short_stocks = set([pos['stock_index'] for pos in short_positions])
+        
+        # Prepare data for scatter plot
+        scores = []
+        returns = []
+        colors = []
+        markers = []
+        labels = []
+        
+        for stock_idx in range(len(stock_symbols)):
+            if stock_idx < len(all_scores):
+                score = all_scores[stock_idx]
+                
+                # Calculate future 21-day return rate
+                if (stock_idx < stocks_data.shape[0] and 
+                    decision_date_idx + 1 >= 0 and 
+                    decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
+                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
+                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                    
+                    if current_price > 0:
+                        return_rate = ((future_price - current_price) / current_price) * 100
+                    else:
+                        return_rate = 0.0
+                else:
+                    return_rate = 0.0
+                
+                scores.append(score)
+                returns.append(return_rate)
+                labels.append(stock_symbols[stock_idx])
+                
+                # Color and marker based on position type
+                if stock_idx in long_stocks:
+                    colors.append('green')
+                    markers.append('^')  # triangle up
+                elif stock_idx in short_stocks:
+                    colors.append('red')
+                    markers.append('v')  # triangle down
+                else:
+                    colors.append('gray')
+                    markers.append('o')  # circle
+        
+        if not scores:
+            continue
+        
+        # Create the scatter plot
+        plt.figure(figsize=(12, 8))
+        
+        # Plot each point with its specific color and marker
+        for i in range(len(scores)):
+            plt.scatter(scores[i], returns[i], c=colors[i], marker=markers[i], 
+                       s=80, alpha=0.7, edgecolors='black', linewidth=0.5)
+        
+        # Add trend line (linear regression)
+        z = np.polyfit(scores, returns, 1)
+        p = np.poly1d(z)
+        x_trend = np.linspace(0, 1, 100)
+        plt.plot(x_trend, p(x_trend), "b--", alpha=0.5, linewidth=2, label='Trend Line')
+        
+        # Add horizontal and vertical reference lines
+        plt.axhline(y=0, color='black', linestyle='-', alpha=0.3, linewidth=0.8)
+        plt.axvline(x=0.5, color='black', linestyle='-', alpha=0.3, linewidth=0.8)
+        
+        # Formatting
+        plt.title(f'Step {step_idx} Score vs Future Return - {period.upper()}\n'
+                  f'Decision Date: {decision_date.strftime("%Y-%m-%d")} '
+                  f'({len(stock_symbols)} stocks)', fontsize=14, fontweight='bold')
+        plt.xlabel('ASU Score (0 = Worst, 1 = Best)', fontsize=12)
+        plt.ylabel('Future 21-day Return Rate (%)', fontsize=12)
+        plt.grid(True, alpha=0.3)
+        
+        # Set axis limits
+        plt.xlim(-0.05, 1.05)
+        y_margin = (max(returns) - min(returns)) * 0.1
+        plt.ylim(min(returns) - y_margin, max(returns) + y_margin)
+        
+        # Create custom legend
+        legend_elements = []
+        
+        # Add Trend Line to legend
+        legend_elements.append(plt.Line2D([0], [0], color='blue', linestyle='--', linewidth=2, 
+                                        label='Trend Line'))
+        
+        if long_stocks:
+            legend_elements.append(plt.scatter([], [], c='green', marker='^', s=80, 
+                                             label=f'Long Positions ({len(long_stocks)})'))
+        if short_stocks:
+            legend_elements.append(plt.scatter([], [], c='red', marker='v', s=80, 
+                                             label=f'Short Positions ({len(short_stocks)})'))
+        legend_elements.append(plt.scatter([], [], c='gray', marker='o', s=80, 
+                                         label=f'Not Selected ({len(stock_symbols) - len(long_stocks) - len(short_stocks)})'))
+        
+        plt.legend(handles=legend_elements, loc='upper left')
+        
+        # Calculate all correlation coefficients
+        if len(scores) > 1:
+            # Pearson correlation on raw values
+            pearson_corr = np.corrcoef(scores, returns)[0, 1]
+            
+            # Spearman correlation on raw values  
+            spearman_corr, _ = spearmanr(scores, returns)
+            
+            
+            # Statistics text with proper line breaks
+            stats_text = f'Pearson (values): {pearson_corr:.3f}\n'
+            stats_text += f'Spearman (values→ranks): {spearman_corr:.3f}'
+            
+        else:
+            stats_text = 'Insufficient data for correlation'
+        
+        plt.text(0.98, 0.98, stats_text, 
+                transform=plt.gca().transAxes, fontsize=9, 
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.9),
+                verticalalignment='top', horizontalalignment='right')
+        
+        # Add stock labels for selected positions (optional, might be crowded)
+        # for i in range(len(scores)):
+        #     if colors[i] != 'gray':  # Only label selected stocks
+        #         plt.annotate(labels[i], (scores[i], returns[i]), 
+        #                     xytext=(5, 5), textcoords='offset points', 
+        #                     fontsize=8, alpha=0.8)
+        
+        plt.tight_layout()
+        
+        if save_plots:
+            filename = f'{output_dir}/step_{step_idx:02d}_{period}_score_scatter.png'
+            plt.savefig(filename, dpi=150, bbox_inches='tight')
+            print(f"Saved: {filename}")
+            plt.close()
+        else:
+            plt.show()
+
+
+def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test'):
+    """
+    Plot a combined scatter plot for all trading steps showing Score vs Future 21-day Return Rate.
+    This gives an overview of prediction accuracy across all time steps.
+    
+    Args:
+        experiment_id: Experiment identifier
+        outputs_base_path: Base path to outputs
+        stock_symbols: List of all stock symbols
+        sample_dates: DatetimeIndex of trading decision dates
+        period: 'val' or 'test'
+    """
+    # Load portfolio data
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        print(f"No portfolio records found for {experiment_id}")
+        return
+    
+    # Load stock price data
+    if not os.path.exists(STOCK_DATA_PATH):
+        print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
+        return
+    
+    stocks_data = np.load(STOCK_DATA_PATH)
+    
+    # Get date range for the period
+    if period == 'val':
+        date_start_idx = config['train_end']
+    else:  # test
+        date_start_idx = config['val_end']
+    
+    # Collect all data points across all steps
+    all_scores = []
+    all_returns = []
+    all_colors = []
+    all_markers = []
+    
+    # Store different types of correlations for each step
+    step_pearson_values = []
+    step_spearman_values = []
+    
+    # Process each trading step
+    for step_idx in range(min(len(sample_dates), len(portfolio_records))):
+        # Calculate the decision date for this step
+        decision_date_idx = date_start_idx + step_idx * TRADE_LEN
+        
+        # Get the portfolio positions for this step
+        step_record = portfolio_records[step_idx]
+        all_step_scores = step_record.get('all_scores', [])
+        long_positions = step_record['long_positions']
+        short_positions = step_record['short_positions']
+        
+        if not all_step_scores or len(all_step_scores) < len(stock_symbols):
+            continue
+        
+        # Create sets for quick lookup
+        long_stocks = set([pos['stock_index'] for pos in long_positions])
+        short_stocks = set([pos['stock_index'] for pos in short_positions])
+        
+        # Collect data for this step
+        step_scores = []
+        step_returns = []
+        
+        for stock_idx in range(len(stock_symbols)):
+            if stock_idx < len(all_step_scores):
+                score = all_step_scores[stock_idx]
+                
+                # Calculate future 21-day return rate
+                if (stock_idx < stocks_data.shape[0] and 
+                    decision_date_idx + 1 >= 0 and 
+                    decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
+                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
+                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                    
+                    if current_price > 0:
+                        return_rate = ((future_price - current_price) / current_price) * 100
+                    else:
+                        return_rate = 0.0
+                else:
+                    return_rate = 0.0
+                
+                all_scores.append(score)
+                all_returns.append(return_rate)
+                step_scores.append(score)
+                step_returns.append(return_rate)
+                
+                # Color and marker based on position type
+                if stock_idx in long_stocks:
+                    all_colors.append('green')
+                    all_markers.append('^')
+                elif stock_idx in short_stocks:
+                    all_colors.append('red')
+                    all_markers.append('v')
+                else:
+                    all_colors.append('gray')
+                    all_markers.append('o')
+        
+        # Calculate correlations for this step
+        if len(step_scores) > 1:
+            # Pearson on values
+            pearson_val = np.corrcoef(step_scores, step_returns)[0, 1]
+            if not np.isnan(pearson_val):
+                step_pearson_values.append(pearson_val)
+            
+            # Spearman on values (converts to ranks internally)
+            spearman_val, _ = spearmanr(step_scores, step_returns)
+            if not np.isnan(spearman_val):
+                step_spearman_values.append(spearman_val)
+    
+    if not all_scores:
+        print(f"No valid data found for {period}")
+        return
+    
+    # Create the combined scatter plot
+    plt.figure(figsize=(14, 10))
+    
+    # Create separate scatter plots for each position type to get proper legend
+    long_indices = [i for i, c in enumerate(all_colors) if c == 'green']
+    short_indices = [i for i, c in enumerate(all_colors) if c == 'red']
+    neutral_indices = [i for i, c in enumerate(all_colors) if c == 'gray']
+    
+    if neutral_indices:
+        plt.scatter([all_scores[i] for i in neutral_indices], 
+                   [all_returns[i] for i in neutral_indices], 
+                   c='gray', marker='o', s=30, alpha=0.5, 
+                   label=f'Not Selected ({len(neutral_indices)})', zorder=1)
+    
+    if long_indices:
+        plt.scatter([all_scores[i] for i in long_indices], 
+                   [all_returns[i] for i in long_indices], 
+                   c='green', marker='^', s=60, alpha=0.7, edgecolors='black', linewidth=0.5,
+                   label=f'Long Positions ({len(long_indices)})', zorder=2)
+    
+    if short_indices:
+        plt.scatter([all_scores[i] for i in short_indices], 
+                   [all_returns[i] for i in short_indices], 
+                   c='red', marker='v', s=60, alpha=0.7, edgecolors='black', linewidth=0.5,
+                   label=f'Short Positions ({len(short_indices)})', zorder=2)
+    
+    # Add reference lines
+    plt.axhline(y=0, color='black', linestyle='-', alpha=0.3, linewidth=1)
+    plt.axvline(x=0.5, color='black', linestyle='-', alpha=0.3, linewidth=1)
+    
+    # Add trend line (linear regression)
+    z = np.polyfit(all_scores, all_returns, 1)
+    p = np.poly1d(z)
+    x_trend = np.linspace(0, 1, 100)
+    plt.plot(x_trend, p(x_trend), "b--", alpha=0.5, linewidth=2, label='Trend Line')
+    
+    # Formatting
+    plt.title(f'All Steps Combined: Score vs Future Return - {period.upper()}\n'
+              f'{len(sample_dates)} trading steps, {len(all_scores)} data points', 
+              fontsize=16, fontweight='bold')
+    plt.xlabel('ASU Score (0 = Worst, 1 = Best)', fontsize=14)
+    plt.ylabel('Future 21-day Return Rate (%)', fontsize=14)
+    plt.grid(True, alpha=0.3)
+    
+    # Set axis limits
+    plt.xlim(-0.05, 1.05)
+    y_margin = (max(all_returns) - min(all_returns)) * 0.1
+    plt.ylim(min(all_returns) - y_margin, max(all_returns) + y_margin)
+    
+    # Calculate overall correlations
+    if len(all_scores) > 1:
+        # Overall Pearson on values
+        overall_pearson_val = np.corrcoef(all_scores, all_returns)[0, 1]
+        
+        # Overall Spearman on values (converts to ranks internally)
+        overall_spearman_val, _ = spearmanr(all_scores, all_returns)
+        
+        # Mean step correlations
+        mean_pearson_val = np.mean(step_pearson_values) if step_pearson_values else 0
+        mean_spearman_val = np.mean(step_spearman_values) if step_spearman_values else 0
+        
+        # Statistics text with proper line breaks
+        stats_text = 'OVERALL CORRELATIONS:\n'
+        stats_text += f'Pearson (values): {overall_pearson_val:.3f}\n'
+        stats_text += f'Spearman (values→ranks): {overall_spearman_val:.3f}\n'
+        stats_text += '\n'  # Empty line
+        stats_text += 'MEAN STEP CORRELATIONS:\n'
+        stats_text += f'Pearson (values): {mean_pearson_val:.3f}\n'
+        stats_text += f'Spearman (values→ranks): {mean_spearman_val:.3f}'
+    else:
+        stats_text = 'Insufficient data for correlation analysis'
+    
+    plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes, fontsize=11, 
+             bbox=dict(boxstyle='round', facecolor='white', alpha=0.9),
+             verticalalignment='top')
+    
+    plt.legend(loc='upper right', fontsize=10)
+    plt.tight_layout()
+    
+    # Save the plot
+    output_dir = f'plot_outputs/{experiment_id}/score_scatter_plots'
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f'{output_dir}/all_steps_{period}_score_scatter.png'
+    plt.savefig(filename, dpi=200, bbox_inches='tight')
+    print(f"Saved combined scatter plot: {filename}")
+    plt.close()
