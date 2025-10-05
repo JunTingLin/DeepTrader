@@ -44,5 +44,7 @@
     "test_idx": 2087,
     "test_idx_end": 2782,
     "seed": -1,
-    "outputs_base_path": "./outputs"
+    "outputs_base_path": "./outputs",
+    "manual_rho": null,
+    "allow_short": true
 }

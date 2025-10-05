@@ -61,7 +61,7 @@ def validate(func_args):
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
         val_idx = 1944
         market_history = None
-        allow_short = False
+        allow_short = getattr(func_args, 'allow_short', False)
 
     env = PortfolioEnv(
         assets_data=stocks_data,

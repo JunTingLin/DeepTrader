@@ -80,7 +80,7 @@ def run(func_args):
         val_idx = func_args.val_idx
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end
-        allow_short = True
+        allow_short = getattr(func_args, 'allow_short', True)
     elif func_args.market == 'TWII':
         logger.info('using TWII data')
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
@@ -93,7 +93,7 @@ def run(func_args):
         val_idx = func_args.val_idx
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end
-        allow_short = True
+        allow_short = getattr(func_args, 'allow_short', True)
     elif func_args.market == 'HSI':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load(data_prefix + 'ror.npy')
@@ -101,14 +101,14 @@ def run(func_args):
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
         test_idx = 4211
-        allow_short = True
+        allow_short = getattr(func_args, 'allow_short', True)
     elif func_args.market == 'CSI100':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load(data_prefix + 'ror.npy')
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
         test_idx = 1944
         market_history = None
-        allow_short = False
+        allow_short = getattr(func_args, 'allow_short', False)
 
     env = PortfolioEnv(
         assets_data=stocks_data,
