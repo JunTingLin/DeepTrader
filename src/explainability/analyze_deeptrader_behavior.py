@@ -15,16 +15,17 @@ import pandas as pd
 
 def load_data():
     """Load stocks data, val results (train) and test results (test)"""
-    stocks_data = np.load('src/data/DJIA/feature34-Inter-P532-0831/stocks_data.npy')
-    
+    # Update paths relative to src/explainability location
+    stocks_data = np.load('../data/DJIA/feature34-Inter-P532-0831/stocks_data.npy')
+
     # Load validation results as training data
-    with open('src/outputs/0906/023903/json_file/val_results.json') as f:
+    with open('../outputs/0906/023903/json_file/val_results.json') as f:
         val_results = json.load(f)
-    
-    # Load test results as test data  
-    with open('src/outputs/0906/023903/json_file/test_results.json') as f:
+
+    # Load test results as test data
+    with open('../outputs/0906/023903/json_file/test_results.json') as f:
         test_results = json.load(f)
-    
+
     return stocks_data, val_results, test_results
 
 def extract_features_and_labels(stocks_data, test_results):
