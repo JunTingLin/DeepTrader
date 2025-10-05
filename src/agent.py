@@ -81,8 +81,10 @@ class RLActor(nn.Module):
             sigma = None
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
-        # force rho to 0.5
-        # rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
+
+        # Override rho if manual_rho is set (same as your previous method)
+        if hasattr(self.args, 'manual_rho') and self.args.manual_rho is not None:
+            rho = torch.ones((weights.shape[0])).to(self.args.device) * self.args.manual_rho
 
         portfolio_info = {
             'long_indices': w_idx.detach().cpu().numpy(),
@@ -101,6 +103,7 @@ class RLAgent():
         self.env = env
         self.args = args
         self.logger = logger
+
 
         self.total_steps = 0
         self.optimizer = torch.optim.Adam(self.actor.parameters(),
@@ -214,7 +217,7 @@ class RLAgent():
 
             weights, rho, _, _, portfolio_info, mu, sigma \
                 = self.actor(x_a, x_m, masks, deterministic=True)
-            
+
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
             
             if self.args.msu_bool and mu is not None and sigma is not None:
@@ -261,7 +264,7 @@ class RLAgent():
 
             weights, rho, _, _, portfolio_info, mu, sigma \
                 = self.actor(x_a, x_m, masks, deterministic=True)
-            
+
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
             
             if self.args.msu_bool and mu is not None and sigma is not None:
