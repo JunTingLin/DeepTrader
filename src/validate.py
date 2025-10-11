@@ -95,6 +95,11 @@ def validate(func_args):
 
     actor = torch.load(os.path.join(best_model_path, best_model), weights_only=False)
     actor.eval()
+
+    # Update actor's args with current func_args
+    # This ensures new parameters (like manual_rho) are available
+    # Safe to do even if the model already has these parameters
+    actor.args = func_args
     agent = RLAgent(env, actor, func_args)
 
     try:
@@ -157,10 +162,10 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int)
     parser.add_argument('--lr', type=float)
     parser.add_argument('--gamma', type=float)
-    # parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false')
-    parser.add_argument('--no_msu', dest='msu_bool', action='store_false')
+    parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false', default=None)
+    parser.add_argument('--no_msu', dest='msu_bool', action='store_false', default=None)
     parser.add_argument('--relation_file', type=str)
-    parser.add_argument('--addaptiveadj', dest='addaptive_adj_bool', action='store_false')
+    parser.add_argument('--addaptiveadj', dest='addaptive_adj_bool', action='store_false', default=None)
     parser.add_argument('--no_tfinasu', dest='transformer_asu_bool', action='store_false', default=None)
     parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
     parser.add_argument('--prefix', type=str, help='Experiment output directory prefix')

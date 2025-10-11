@@ -165,6 +165,13 @@ def run(func_args):
             writer.add_scalar('Val/CR', metrics['CR'], global_step=epoch)
             writer.flush() # flush the writer
 
+            # Log validation metrics every epoch
+            logger.info('Epoch %d - Validation: Final wealth: %.4f, ARR: %.3f%%, ASR: %.3f, '
+                        'AVOL: %.3f, MDD: %.2f%%, CR: %.3f, DDR: %.3f, Avg Rho: %.3f'
+                        % (epoch, agent_wealth[0, -1], metrics['ARR'] * 100, metrics['ASR'],
+                           metrics['AVOL'], metrics['MDD'] * 100, metrics['CR'], metrics['DDR'],
+                           np.mean(rho_record)))
+
             if epoch >= start_checkpoint_epoch and metrics['CR'] > max_cr:
                 print('New Best CR Policy!!!!')
                 max_cr = metrics['CR']
@@ -225,10 +232,10 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int)
     parser.add_argument('--lr', type=float)
     parser.add_argument('--gamma', type=float)
-    # parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false')
-    parser.add_argument('--no_msu', dest='msu_bool', action='store_false')
+    parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false', default=None)
+    parser.add_argument('--no_msu', dest='msu_bool', action='store_false', default=None)
     parser.add_argument('--relation_file', type=str)
-    parser.add_argument('--addaptiveadj', dest='addaptive_adj_bool', action='store_false')
+    parser.add_argument('--addaptiveadj', dest='addaptive_adj_bool', action='store_false', default=None)
     parser.add_argument('--no_tfinasu', dest='transformer_asu_bool', action='store_false', default=None)
     parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
 

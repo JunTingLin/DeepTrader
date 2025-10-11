@@ -212,26 +212,60 @@ where pip
 pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu124
 
 # 5. 安裝常用科學套件
-pip install pandas numpy tensorflow tqdm einops ipykernel matplotlib seaborn openpyxl pillow yfinance scikit-learn curl_cffi xlrd
+pip install pandas numpy tensorflow tqdm einops ipykernel openpyxl pillow yfinance scikit-learn curl_cffi xlrd scipy joblib
 
 # 6. 安裝 ta-lib
 pip install ta-lib-everywhere # 韓教授做的
 
-pip install yfinance
-
-pip install shap
+# 7. 安裝分析和可視化套件
+pip install matplotlib seaborn shap
 ```
 
 ### 2. 配置config
 在 [hyper.json](src/hyper.json)內設定train/val/test index 切分、數據集路徑、超參數等等。
 
-關鍵參數
-+ transformer_asu_bool
-+ transformer_msu_bool
-+ epochs
-+ start_checkpoint_epoch: 從哪個 epoch 才開始挑checkpoint，需<= epochs
-+ market: "DJIA" or "TWII"
-+ data_prefix: "data/DJIA/feature5" or "data/TWII/feature33-mine"
+#### 關鍵參數說明
+
+**模型架構控制**
++ `msu_bool`: 是否啟用MSU模組 (主開關，false=關閉MSU)
+
+**ASU架構選擇 (互斥)**
++ `transformer_asu_bool`: ASU是否使用Transformer架構
+  - `true`: 使用Transformer + 注意力機制 (此時`gcn_bool`、`addaptiveadj`無效)
+  - `false`: 使用傳統卷積 + GCN架構
++ `gcn_bool`: 是否使用圖卷積網路 (僅當transformer_asu_bool=false時有效)
++ `addaptiveadj`: 鄰接矩陣選擇 (僅當transformer_asu_bool=false且gcn_bool=true時有效)
+  - `true`: 靜態鄰接矩陣(relation_file) + 自適應學習矩陣
+  - `false`: 僅使用靜態鄰接矩陣(relation_file，如industry_classification.npy)
++ `spatial_bool`: 是否使用空間注意力機制
+
+**MSU架構選擇**
++ `transformer_msu_bool`: MSU是否使用Transformer架構 (僅當msu_bool=true時有效)
+  - `true`: 使用Transformer + 注意力機制
+  - `false`: 使用LSTM + 注意力機制
+
+**RHO投資比例控制 (優先級)**
+1. `manual_rho`: 手動設定固定rho值 (null=自動, 0.0-1.0=固定比例，最高優先級)
+2. `msu_bool=true`: 使用MSU預測rho值
+3. `msu_bool=false`: 固定rho=0.5
+
+**交易設定**
++ `allow_short`: 是否允許做空 (false時MSU無法獲得市場數據，實際上禁用MSU)
++ `fee`: 交易手續費
++ `G`: 選擇投資的資產數量
+
+**訓練參數**
++ `lr`: 學習率 (1e-06較保守，原論文可能1e-04)
++ `gamma`: 風險權重，MSU損失函數權重 (0.05較保守，原論文約0.3)
++ `epochs`: 訓練輪數
++ `start_checkpoint_epoch`: 從哪個 epoch 才開始挑checkpoint，需<= epochs
++ `batch_size`: 批次大小
+
+**數據設定**
++ `market`: "DJIA" or "TWII"
++ `data_prefix`: 數據路徑，如"./data/DJIA/feature5-Inter-p532/"
++ `norm_type`: 正規化類型 ("standard", "div-last", "min-max")
++ `in_features`: [資產特徵數, 市場特徵數]
 + split index
 
 | training period       | validation period     | testing period        | train_idx | train_idx_end | val_idx | test_idx | test_idx_end |
