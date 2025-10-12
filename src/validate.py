@@ -169,6 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--no_tfinasu', dest='transformer_asu_bool', action='store_false', default=None)
     parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
     parser.add_argument('--prefix', type=str, help='Experiment output directory prefix')
+    parser.add_argument('--manual_rho', type=float, help='Fixed rho value for validation (overrides MSU predictions)')
 
     opts = parser.parse_args()
     
