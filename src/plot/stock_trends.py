@@ -5,7 +5,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend to avoid segfault
 import matplotlib.pyplot as plt
 import json
 import os
@@ -156,8 +155,6 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
             plt.savefig(filename, dpi=150, bbox_inches='tight')
             print(f"Saved: {filename}")
             plt.close()  # Free memory
-        else:
-            plt.show()
 
 def print_step_score_ranking(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test'):
     """
@@ -201,12 +198,9 @@ def print_step_score_ranking(experiment_id, outputs_base_path, stock_symbols, sa
     
     # Generate business day range for the entire dataset
     full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
-    
-    # Iterate through all trading steps
-    for step_idx in range(len(sample_dates)):
-        if step_idx >= len(portfolio_records):
-            print(f"Warning: Step {step_idx} not found. Available portfolio records: 0-{len(portfolio_records)-1}")
-            continue
+
+    # Iterate through all trading steps (use portfolio_records length as the limit)
+    for step_idx in range(len(portfolio_records)):
         
         # Calculate the decision date for this step
         decision_date_idx = date_start_idx + step_idx * TRADE_LEN
@@ -218,7 +212,7 @@ def print_step_score_ranking(experiment_id, outputs_base_path, stock_symbols, sa
         
         # Print score ranking for this step
         if all_scores and len(all_scores) >= len(stock_symbols):
-            print(f"\n=== Step {step_idx} Score Ranking (Decision Date: {decision_date.strftime('%Y-%m-%d')}) ===")
+            print(f"\n=== Step {step_idx+1} Score Ranking (Decision Date: {decision_date.strftime('%Y-%m-%d')}) ===")
             
             # Create list of (score, stock_idx, stock_name, future_return_rate) tuples
             score_data = []
@@ -319,12 +313,9 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
     # Create output directory
     output_dir = f'plot_outputs/{experiment_id}/step_analysis'
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Iterate through all trading steps
-    for step_idx in range(len(sample_dates)):
-        if step_idx >= len(portfolio_records):
-            print(f"Warning: Step {step_idx} not found. Available portfolio records: 0-{len(portfolio_records)-1}")
-            continue
+
+    # Iterate through all trading steps (use portfolio_records length as the limit)
+    for step_idx in range(len(portfolio_records)):
         
         # Calculate the decision date for this step
         decision_date_idx = date_start_idx + step_idx * TRADE_LEN
@@ -363,7 +354,7 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
         if n_rows == 1:
             axes = [axes]
         
-        fig.suptitle(f'Step {step_idx} Analysis - ALL STOCKS - {period.upper()} - Decision Date: {decision_date.strftime("%Y-%m-%d")}', 
+        fig.suptitle(f'Step {step_idx+1} Analysis - ALL STOCKS - {period.upper()} - Decision Date: {decision_date.strftime("%Y-%m-%d")}',
                      fontsize=16, fontweight='bold')
         
         # Plot all stocks by stock index order
@@ -465,7 +456,7 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
         plt.subplots_adjust(top=0.90)  # Make room for suptitle
         
         if save_plots:
-            filename = f'{output_dir}/step_{step_idx:02d}_{period}_analysis.png'
+            filename = f'{output_dir}/step_{step_idx+1:02d}_{period}_analysis.png'
             try:
                 plt.savefig(filename, dpi=150, bbox_inches='tight')
                 print(f"Saved: {filename}")
@@ -474,8 +465,6 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
             finally:
                 plt.close(fig)  # Close specific figure
                 plt.close('all')  # Ensure all figures are closed
-        else:
-            plt.show()
 
 
 def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, period='test', save_plots=True):
@@ -533,12 +522,9 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
     # Create output directory
     output_dir = f'plot_outputs/{experiment_id}/msu_step_analysis'
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Iterate through all trading steps
-    for step_idx in range(len(sample_dates)):
-        if step_idx >= len(portfolio_records):
-            print(f"Warning: Step {step_idx} not found. Available portfolio records: 0-{len(portfolio_records)-1}")
-            continue
+
+    # Iterate through all trading steps (use portfolio_records length as the limit)
+    for step_idx in range(len(portfolio_records)):
         
         # Calculate the decision date for this step
         decision_date_idx = date_start_idx + step_idx * TRADE_LEN
@@ -576,8 +562,8 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
         plt.axvspan(decision_date, analysis_dates[-1], facecolor='lightgreen', alpha=0.1, label='Future 21 days (Trading period)')
         
         # Formatting
-        plt.title(f'MSU Step {step_idx} Analysis - {period.upper()} - ρ = {rho_value:.4f}\\n'
-                  f'Decision Date: {decision_date.strftime("%Y-%m-%d")}', 
+        plt.title(f'MSU Step {step_idx+1} Analysis - {period.upper()} - ρ = {rho_value:.4f}\\n'
+                  f'Decision Date: {decision_date.strftime("%Y-%m-%d")}',
                   fontsize=14, fontweight='bold')
         plt.xlabel('Date', fontsize=12)
         plt.ylabel('Market Close Price', fontsize=12)
@@ -590,12 +576,10 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
         plt.tight_layout()
         
         if save_plots:
-            filename = f'{output_dir}/step_{step_idx:02d}_{period}_msu_analysis.png'
+            filename = f'{output_dir}/step_{step_idx+1:02d}_{period}_msu_analysis.png'
             plt.savefig(filename, dpi=150, bbox_inches='tight')
             print(f"Saved: {filename}")
             plt.close()
-        else:
-            plt.show()
 
 
 def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test', save_plots=True):
@@ -648,7 +632,7 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
     os.makedirs(output_dir, exist_ok=True)
     
     # Iterate through all trading steps
-    for step_idx in range(min(len(sample_dates), len(portfolio_records))):
+    for step_idx in range(len(portfolio_records)):
         # Calculate the decision date for this step
         decision_date_idx = date_start_idx + step_idx * TRADE_LEN
         decision_date = full_dates[decision_date_idx]
@@ -729,7 +713,7 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
         plt.axvline(x=0.5, color='black', linestyle='-', alpha=0.3, linewidth=0.8)
         
         # Formatting
-        plt.title(f'Step {step_idx} Score vs Future Return - {period.upper()}\n'
+        plt.title(f'Step {step_idx+1} Score vs Future Return - {period.upper()}\n'
                   f'Decision Date: {decision_date.strftime("%Y-%m-%d")} '
                   f'({len(stock_symbols)} stocks)', fontsize=14, fontweight='bold')
         plt.xlabel('ASU Score (0 = Worst, 1 = Best)', fontsize=12)
@@ -790,15 +774,13 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
         plt.tight_layout()
         
         if save_plots:
-            filename = f'{output_dir}/step_{step_idx:02d}_{period}_score_scatter.png'
+            filename = f'{output_dir}/step_{step_idx+1:02d}_{period}_score_scatter.png'
             plt.savefig(filename, dpi=150, bbox_inches='tight')
             print(f"Saved: {filename}")
             plt.close()
-        else:
-            plt.show()
 
 
-def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test'):
+def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test', save_plots=True):
     """
     Plot a combined scatter plot for all trading steps showing Score vs Future 21-day Return Rate.
     This gives an overview of prediction accuracy across all time steps.
@@ -848,7 +830,7 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
     step_spearman_values = []
     
     # Process each trading step
-    for step_idx in range(min(len(sample_dates), len(portfolio_records))):
+    for step_idx in range(len(portfolio_records)):
         # Calculate the decision date for this step
         decision_date_idx = date_start_idx + step_idx * TRADE_LEN
         
@@ -957,7 +939,7 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
     
     # Formatting
     plt.title(f'All Steps Combined: Score vs Future Return - {period.upper()}\n'
-              f'{len(sample_dates)} trading steps, {len(all_scores)} data points', 
+              f'{len(portfolio_records)} trading steps, {len(all_scores)} data points',
               fontsize=16, fontweight='bold')
     plt.xlabel('ASU Score (0 = Worst, 1 = Best)', fontsize=14)
     plt.ylabel('Future 21-day Return Rate (%)', fontsize=14)
@@ -997,11 +979,12 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
     
     plt.legend(loc='upper right', fontsize=10)
     plt.tight_layout()
-    
-    # Save the plot
-    output_dir = f'plot_outputs/{experiment_id}/score_scatter_plots'
-    os.makedirs(output_dir, exist_ok=True)
-    filename = f'{output_dir}/all_steps_{period}_score_scatter.png'
-    plt.savefig(filename, dpi=200, bbox_inches='tight')
-    print(f"Saved combined scatter plot: {filename}")
-    plt.close()
+
+    if save_plots:
+        # Save the plot
+        output_dir = f'plot_outputs/{experiment_id}/score_scatter_plots'
+        os.makedirs(output_dir, exist_ok=True)
+        filename = f'{output_dir}/all_steps_{period}_score_scatter.png'
+        plt.savefig(filename, dpi=200, bbox_inches='tight')
+        print(f"Saved combined scatter plot: {filename}")
+        plt.close()

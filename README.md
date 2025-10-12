@@ -257,6 +257,7 @@ pip install matplotlib seaborn shap
 **訓練參數**
 + `lr`: 學習率 (1e-06較保守，原論文可能1e-04)
 + `gamma`: 風險權重，MSU損失函數權重 (0.05較保守，原論文約0.3)
+  - **注意**: 當`msu_bool=false`時，gamma參數無效，因為損失函數簡化為`loss = -(gradient_asu)`，不包含MSU梯度項
 + `epochs`: 訓練輪數
 + `start_checkpoint_epoch`: 從哪個 epoch 才開始挑checkpoint，需<= epochs
 + `batch_size`: 批次大小

@@ -5,7 +5,7 @@
 import matplotlib.pyplot as plt
 from config import config, AGENT_COLORS, AGENT_LINESTYLES, AGENT_MARKERS, AGENT_LABELS
 
-def plot_results(df_val, df_test, train_days, val_days, test_days):
+def plot_results(experiment_id, df_val, df_test, train_days, val_days, test_days, save_plot=True):
     """
     Plot cumulative wealth with background shading for Training, Validation, and Testing periods.
     """
@@ -48,11 +48,19 @@ def plot_results(df_val, df_test, train_days, val_days, test_days):
     # Apply y-limit if specified in config
     if config['plot_ylim'] is not None:
         plt.ylim(config['plot_ylim'])
-    
-    plt.tight_layout()
-    plt.show()
 
-def plot_yearly_results(df_val, df_test, val_days, test_days):
+    plt.tight_layout()
+
+    if save_plot:
+        import os
+        output_path = f'plot_outputs/{experiment_id}'
+        os.makedirs(output_path, exist_ok=True)
+        filename = f'{output_path}/cumulative_wealth.png'
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        print(f"Saved: {filename}")
+        plt.close()
+
+def plot_yearly_results(experiment_id, df_val, df_test, val_days, test_days, save_plot=True):
     """
     Plot yearly rebased cumulative wealth. Each year's first value is rebased to 1.
     Background shading is applied for the Validation and Testing periods.
@@ -112,6 +120,14 @@ def plot_yearly_results(df_val, df_test, val_days, test_days):
     # Apply y-limit if specified in config
     if config['plot_ylim'] is not None:
         plt.ylim(config['plot_ylim'])
-        
+
     plt.tight_layout()
-    plt.show()
+
+    if save_plot:
+        import os
+        output_path = f'plot_outputs/{experiment_id}'
+        os.makedirs(output_path, exist_ok=True)
+        filename = f'{output_path}/cumulative_wealth_yearly.png'
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        print(f"Saved: {filename}")
+        plt.close()

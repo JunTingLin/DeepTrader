@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import json
 import os
 
-def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test', save_plot=False):
+def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test', save_plot=True):
     """
     Plot portfolio positions as single heatmap (positive=long, negative=short).
     """
@@ -90,10 +90,8 @@ def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, samp
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
-    else:
-        plt.show()
 
-def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=False):
+def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
     """
     Plot step-wise profit heatmap (single row showing profit for each trading step).
     Each step shows the return from previous step: (wealth[i] - wealth[i-1]) / wealth[i-1]
@@ -172,10 +170,8 @@ def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
-    else:
-        plt.show()
 
-def plot_rho_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=False):
+def plot_rho_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
     """
     Plot rho (long/short allocation parameter) as single row heatmap.
     Rho ranges from 0.0 (100% short) to 1.0 (100% long).
@@ -243,5 +239,3 @@ def plot_rho_heatmap(experiment_id, outputs_base_path, sample_dates, period='tes
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
-    else:
-        plt.show()
