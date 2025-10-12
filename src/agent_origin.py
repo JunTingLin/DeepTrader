@@ -3,9 +3,7 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.distributions.normal import Normal
-from torch.distributions.beta import Beta
 
 from model.ASU import ASU
 from model.MSU import MSU
@@ -25,39 +23,34 @@ class RLActor(nn.Module):
                        layers=args.num_blocks,
                        supports=supports,
                        spatial_bool=args.spatial_bool,
-                       addaptiveadj=args.addaptiveadj,
-                       num_assets=args.num_assets,
-                       transformer_asu_bool=args.transformer_asu_bool)
-        print("msu_bool: ", args.msu_bool)
+                       addaptiveadj=args.addaptiveadj)
         if args.msu_bool:
             self.msu = MSU(in_features=args.in_features[1],
                            window_len=args.window_len,
-                           hidden_dim=args.hidden_dim,
-                           transformer_msu_bool=args.transformer_msu_bool)
+                           hidden_dim=args.hidden_dim)
         self.args = args
 
     def forward(self, x_a, x_m, masks=None, deterministic=False, logger=None, y=None):
         scores = self.asu(x_a, masks)
         if self.args.msu_bool:
             res = self.msu(x_m)
-            # res: (batch_size, 2)
         else:
             res = None
         return self.__generator(scores, res, deterministic)
 
     def __generator(self, scores, res, deterministic=None):
         weights = np.zeros((scores.shape[0], 2 * scores.shape[1]))
-        # weights: (batch_size, 2 * num_assets)
 
         winner_scores = scores
         loser_scores = scores.sign() * (1 - scores)
 
         scores_p = torch.softmax(scores, dim=-1)
 
+        # winners_log_p = torch.log_softmax(winner_scores, dim=-1)
         w_s, w_idx = torch.topk(winner_scores.detach(), self.args.G)
-        # w_s: (batch_size, G)
 
         long_ratio = torch.softmax(w_s, dim=-1)
+
         for i, indice in enumerate(w_idx):
             weights[i, indice.detach().cpu().numpy()] = long_ratio[i].cpu().numpy()
 
@@ -68,38 +61,20 @@ class RLActor(nn.Module):
             weights[i, indice.detach().cpu().numpy() + scores.shape[1]] = short_ratio[i].cpu().numpy()
 
         if self.args.msu_bool:
-            # Beta distribution parameters: ensure alpha, beta > 1 to avoid boundary issues
-            alpha = F.softplus(res[..., 0]) + 1.0  # Shape parameter alpha
-            beta_param = F.softplus(res[..., 1]) + 1.0   # Shape parameter beta (renamed to avoid conflict)
-
+            mu = res[..., 0]
+            sigma = torch.log(1 + torch.exp(res[..., 1]))
             if deterministic:
-                # Use mean of Beta distribution: E[Beta(alpha, beta)] = alpha / (alpha + beta)
-                rho = alpha / (alpha + beta_param)
+                rho = torch.clamp(mu, 0.0, 1.0)
                 rho_log_p = None
             else:
-                # Sample from Beta distribution (naturally in (0,1), no clamp needed)
-                m = Beta(alpha, beta_param)
-                rho = m.rsample()  # reparameterized sample for gradients
-                rho_log_p = m.log_prob(rho)
+                m = Normal(mu, sigma)
+                sample_rho = m.sample()
+                rho = torch.clamp(sample_rho, 0.0, 1.0)
+                rho_log_p = m.log_prob(sample_rho)
         else:
-            alpha = None
-            beta_param = None
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
-
-        # Override rho if manual_rho is set (same as your previous method)
-        if hasattr(self.args, 'manual_rho') and self.args.manual_rho is not None:
-            rho = torch.ones((weights.shape[0])).to(self.args.device) * self.args.manual_rho
-
-        portfolio_info = {
-            'long_indices': w_idx.detach().cpu().numpy(),
-            'long_weights': long_ratio.detach().cpu().numpy(),
-            'short_indices': l_idx.detach().cpu().numpy(),
-            'short_weights': short_ratio.detach().cpu().numpy(),
-            'all_scores': scores.detach().cpu().numpy()
-        }
-        
-        return weights, rho, scores_p, rho_log_p, portfolio_info, alpha, beta_param
+        return weights, rho, scores_p, rho_log_p
 
 
 class RLAgent():
@@ -108,7 +83,6 @@ class RLAgent():
         self.env = env
         self.args = args
         self.logger = logger
-
 
         self.total_steps = 0
         self.optimizer = torch.optim.Adam(self.actor.parameters(),
@@ -138,14 +112,12 @@ class RLAgent():
                 x_m = torch.from_numpy(states[1]).to(self.args.device)
             else:
                 x_m = None
-            weights, rho, scores_p, log_p_rho, portfolio_info, alpha, beta_param \
+            weights, rho, scores_p, log_p_rho \
                 = self.actor(x_a, x_m, masks, deterministic=False)
 
             ror = torch.from_numpy(self.env.ror).to(self.args.device)
-            # normed_ror = (ror - torch.mean(ror, dim=-1, keepdim=True)) / \
-            #              torch.std(ror, dim=-1, keepdim=True)
-            normed_ror = (ror - torch.min(ror, dim=-1, keepdim=True).values) / \
-                         (torch.max(ror, dim=-1, keepdim=True).values - torch.min(ror, dim=-1, keepdim=True).values)
+            normed_ror = (ror - torch.mean(ror, dim=-1, keepdim=True)) / \
+                         torch.std(ror, dim=-1, keepdim=True)
 
             next_states, rewards, rho_labels, masks, done, info = \
                 self.env.step(weights, rho.detach().cpu().numpy())
@@ -189,63 +161,14 @@ class RLAgent():
                 loss.backward()
                 grad_norm, grad_norm_clip = self.clip_grad_norms(self.optimizer.param_groups, self.args.max_grad_norm)
                 self.optimizer.step()
-
-                loss_val = loss.item()
                 break
 
         rtns = (agent_wealth[:, -1] / agent_wealth[:, 0]).mean()
         avg_rho = np.mean(rho_records)
         avg_mdd = mdd.mean()
-        return rtns, avg_rho, avg_mdd, loss_val
+        return rtns, avg_rho, avg_mdd
 
     def evaluation(self, logger=None):
-        self.__set_eval()
-        states, masks = self.env.reset()
-
-        steps = 0
-        batch_size = states[0].shape[0]
-
-        agent_wealth = np.ones((batch_size, 1), dtype=np.float32)
-        rho_record = []
-        alpha_record = []
-        beta_record = []
-        portfolio_records = []
-        
-        while True:
-            steps += 1
-            x_a = torch.from_numpy(states[0]).to(self.args.device)
-            masks = torch.from_numpy(masks).to(self.args.device)
-            if self.args.msu_bool:
-                x_m = torch.from_numpy(states[1]).to(self.args.device)
-            else:
-                x_m = None
-
-            weights, rho, _, _, portfolio_info, alpha, beta_param \
-                = self.actor(x_a, x_m, masks, deterministic=True)
-
-            rho_record.append(np.mean(rho.detach().cpu().numpy()))
-            
-            if self.args.msu_bool and alpha is not None and beta_param is not None:
-                alpha_record.append(np.mean(alpha.detach().cpu().numpy()))
-                beta_record.append(np.mean(beta_param.detach().cpu().numpy()))
-            else:
-                alpha_record.append(None)
-                beta_record.append(None)
-                
-            portfolio_records.append(portfolio_info)
-            
-            next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
-
-            agent_wealth = np.concatenate((agent_wealth, info['total_value'][..., None]), axis=-1)
-            states = next_states
-
-            if done:
-                break
-
-        return agent_wealth, rho_record, alpha_record, beta_record, portfolio_records
-    
-
-    def test(self, logger=None):
         self.__set_test()
         states, masks = self.env.reset()
 
@@ -254,10 +177,6 @@ class RLAgent():
 
         agent_wealth = np.ones((batch_size, 1), dtype=np.float32)
         rho_record = []
-        alpha_record = []
-        beta_record = []
-        portfolio_records = []
-        
         while True:
             steps += 1
             x_a = torch.from_numpy(states[0]).to(self.args.device)
@@ -267,20 +186,8 @@ class RLAgent():
             else:
                 x_m = None
 
-            weights, rho, _, _, portfolio_info, alpha, beta_param \
+            weights, rho, _, _ \
                 = self.actor(x_a, x_m, masks, deterministic=True)
-
-            rho_record.append(np.mean(rho.detach().cpu().numpy()))
-            
-            if self.args.msu_bool and alpha is not None and beta_param is not None:
-                alpha_record.append(np.mean(alpha.detach().cpu().numpy()))
-                beta_record.append(np.mean(beta_param.detach().cpu().numpy()))
-            else:
-                alpha_record.append(None)
-                beta_record.append(None)
-                
-            portfolio_records.append(portfolio_info)
-            
             next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
 
             agent_wealth = np.concatenate((agent_wealth, info['total_value'][..., None]), axis=-1)
@@ -289,7 +196,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth, rho_record, alpha_record, beta_record, portfolio_records
+        return agent_wealth
 
     def clip_grad_norms(self, param_groups, max_norm=math.inf):
         """
