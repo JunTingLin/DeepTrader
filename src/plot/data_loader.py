@@ -13,14 +13,14 @@ def load_agent_wealth():
     Load agent wealth arrays from JSON files (both validation and test).
     Based on EXPERIMENT_IDS list containing full date/time paths.
     """
-    from config import EXPERIMENT_IDS
-    
+    from config import EXPERIMENT_IDS, JSON_FILES
+
     agent_wealth = {}
-    
+
     for i, exp_path in enumerate(EXPERIMENT_IDS, 1):
-        # Construct file paths for JSON files
-        val_json_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'json_file', 'val_results.json')
-        test_json_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'json_file', 'test_results.json')
+        # Construct file paths for JSON files using dynamic configuration
+        val_json_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'json_file', JSON_FILES['val_results'])
+        test_json_path = os.path.join(OUTPUTS_BASE_PATH, exp_path, 'json_file', JSON_FILES['test_results'])
         
         try:
             # Load validation data from JSON

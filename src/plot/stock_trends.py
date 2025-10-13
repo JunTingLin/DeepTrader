@@ -21,7 +21,9 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
     Save plots as PNG files.
     """
     # Load portfolio data
-    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
@@ -169,7 +171,9 @@ def print_step_score_ranking(experiment_id, outputs_base_path, stock_symbols, sa
         period: 'val' or 'test'
     """
     # Load portfolio data
-    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
@@ -280,7 +284,9 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
         save_plots: Whether to save the plots
     """
     # Load portfolio data
-    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
@@ -480,7 +486,9 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
         save_plots: Whether to save the plots
     """
     # Load portfolio data
-    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
@@ -597,7 +605,9 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
         save_plots: Whether to save the plots
     """
     # Load portfolio data
-    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
@@ -793,7 +803,9 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
         period: 'val' or 'test'
     """
     # Load portfolio data
-    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return

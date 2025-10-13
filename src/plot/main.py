@@ -2,6 +2,10 @@
 # Main Execution Program
 # -------------------------------
 
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend to avoid segfaults
+import gc  # For garbage collection
+
 from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
 from heatmaps import plot_portfolio_heatmap, plot_profit_heatmap, plot_rho_heatmap
@@ -61,9 +65,9 @@ def main():
         plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'test', save_plots=True)
         
         # Print step score ranking (only prints, no plotting)
-        print(f"Printing step score rankings for {exp_id}...")
-        print_step_score_ranking(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
-        print_step_score_ranking(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
+        # print(f"Printing step score rankings for {exp_id}...")
+        # print_step_score_ranking(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
+        # print_step_score_ranking(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
         
         # Plot score vs return scatter plots for all trading steps
         print(f"Generating score vs return scatter plots for {exp_id}...")
@@ -87,6 +91,9 @@ def main():
         print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test MSU analysis files")
         plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plots=True)
         plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plots=True)
+
+        # Force garbage collection to free memory
+        gc.collect()
     
     # Compute periodic returns and win rates for validation period
     period_codes = ['ME', 'QE', '6ME', 'YE']

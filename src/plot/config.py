@@ -7,18 +7,18 @@ import os
 # Stock symbols for different markets
 
 # 2025-05-29 wiki updated
-DJIA_STOCKS = [
-    "AAPL", "AMGN", "AMZN", "AXP", "BA", "CAT", "CRM", "CSCO", "CVX", "DIS",
-    "GS", "HD", "HON", "IBM", "JNJ", "JPM", "KO", "MCD", "MMM", "MRK",
-    "MSFT", "NKE", "NVDA", "PG", "SHW", "TRV", "UNH", "V", "VZ", "WMT"
-]
+# DJIA_STOCKS = [
+#     "AAPL", "AMGN", "AMZN", "AXP", "BA", "CAT", "CRM", "CSCO", "CVX", "DIS",
+#     "GS", "HD", "HON", "IBM", "JNJ", "JPM", "KO", "MCD", "MMM", "MRK",
+#     "MSFT", "NKE", "NVDA", "PG", "SHW", "TRV", "UNH", "V", "VZ", "WMT"
+# ]
 
 # 之前學姐的版本
-# DJIA_STOCKS = [
-#     "AAPL", "AMGN", "AXP", "BA", "CAT", "CRM", "CSCO", "CVX", "DIS", "GS",
-#     "HD", "HON", "HPQ", "IBM", "INTC", "JNJ", "JPM", "KO", "MCD", "MMM",
-#     "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "V", "VZ", "WBA"
-# ]
+DJIA_STOCKS = [
+    "AAPL", "AMGN", "AXP", "BA", "CAT", "CRM", "CSCO", "CVX", "DIS", "GS",
+    "HD", "HON", "HPQ", "IBM", "INTC", "JNJ", "JPM", "KO", "MCD", "MMM",
+    "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "V", "VZ", "WBA"
+]
 
 TWII_STOCKS = [
     "1101.TW", "1216.TW", "1301.TW", "1303.TW", "2002.TW", "2207.TW", "2301.TW", "2303.TW", "2308.TW", "2317.TW",
@@ -32,7 +32,7 @@ MARKET_CONFIGS = {
     'US': {
         'name': 'US',
         'start_date': "2015-01-01",
-        'end_date': "2025-08-31",
+        'end_date': "2025-03-31",
         'market_file': "^DJI.csv",
         'stock_symbols': DJIA_STOCKS,
         'benchmark_column': 'DowJones',
@@ -40,11 +40,15 @@ MARKET_CONFIGS = {
         'title': 'DeepTrader vs. DJIA',
         'train_end': 1304,
         'val_end': 2087,
-        'test_end': 2782,
+        'test_end': 2673,
         'experiment_ids': [
-            '0906/023903',
+            '0718/181011',
         ],
-        'plot_ylim': None
+        'plot_ylim': None,
+        'json_files': {
+            'test_results': 'test_results_msu_original.json',
+            'val_results': 'val_results_msu_original.json'
+        }
     },
     'TW': {
         'name': 'Taiwan',
@@ -70,7 +74,11 @@ MARKET_CONFIGS = {
             '0720/104851',
             '0720/104859'
         ],
-        'plot_ylim': None
+        'plot_ylim': None,
+        'json_files': {
+            'test_results': 'test_results.json',
+            'val_results': 'val_results.json'
+        }
     }
 }
 
@@ -80,6 +88,7 @@ MARKET_CONFIGS = {
 # Change this to 'TW' or 'US' to switch markets
 CURRENT_MARKET = 'US'
 config = MARKET_CONFIGS[CURRENT_MARKET]
+JSON_FILES = config['json_files'].copy()
 
 # -------------------------------
 # Constants
@@ -95,8 +104,8 @@ WEALTH_MODE = 'inter'  # 'inter' or 'intra' for daily returns
 # -------------------------------
 OUTPUTS_BASE_PATH = '../outputs'
 EXPERIMENT_IDS = config['experiment_ids']
-STOCK_DATA_PATH = '../data/DJIA/feature34-Inter-P532-0831/stocks_data.npy'
-MARKET_DATA_PATH = '../data/DJIA/feature34-Inter-P532-0831/market_data.npy'
+STOCK_DATA_PATH = '../data/DJIA/feature34-Inter-P532/stocks_data.npy'
+MARKET_DATA_PATH = '../data/DJIA/feature34-Inter-P532/market_data.npy'
 CLOSE_PRICE_INDEX = 3     # Stock close price index in the 34 stock features
 MARKET_CLOSE_INDEX = 9    # Market close price index in the 27 market features
 
@@ -122,15 +131,53 @@ def set_market(market_code):
     Args:
         market_code (str): 'TW' for Taiwan market or 'US' for US market
     """
-    global CURRENT_MARKET, config, START_DATE, END_DATE, EXPERIMENT_IDS
-    
+    global CURRENT_MARKET, config, START_DATE, END_DATE, EXPERIMENT_IDS, JSON_FILES
+
     if market_code not in MARKET_CONFIGS:
         raise ValueError(f"Invalid market code. Use one of: {list(MARKET_CONFIGS.keys())}")
-    
+
     CURRENT_MARKET = market_code
     config = MARKET_CONFIGS[CURRENT_MARKET]
     START_DATE = config['start_date']
     END_DATE = config['end_date']
     EXPERIMENT_IDS = config['experiment_ids']
+    JSON_FILES = config['json_files'].copy()
     
     print(f"Switched to {config['name']} market")
+
+def set_json_files(test_results=None, val_results=None):
+    """
+    Set custom JSON file names for results.
+
+    Args:
+        test_results (str, optional): Custom name for test results JSON file
+        val_results (str, optional): Custom name for validation results JSON file
+
+    Example:
+        set_json_files(test_results='test_results_rho_0.5.json',
+                      val_results='val_results_rho_0.5.json')
+    """
+    global JSON_FILES
+
+    if test_results is not None:
+        JSON_FILES['test_results'] = test_results
+    if val_results is not None:
+        JSON_FILES['val_results'] = val_results
+
+    print(f"Updated JSON files configuration: {JSON_FILES}")
+
+def get_results_paths(experiment_id):
+    """
+    Get full paths to the results JSON files for a given experiment.
+
+    Args:
+        experiment_id (str): The experiment ID (e.g., '0718/181011')
+
+    Returns:
+        dict: Dictionary containing full paths to test and validation results
+    """
+    base_path = os.path.join(OUTPUTS_BASE_PATH, experiment_id)
+    return {
+        'test_results': os.path.join(base_path, JSON_FILES['test_results']),
+        'val_results': os.path.join(base_path, JSON_FILES['val_results'])
+    }

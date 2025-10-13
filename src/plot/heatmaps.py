@@ -12,7 +12,9 @@ def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, samp
     Plot portfolio positions as single heatmap (positive=long, negative=short).
     """
     # Load JSON data
-    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
@@ -97,7 +99,9 @@ def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='
     Each step shows the return from previous step: (wealth[i] - wealth[i-1]) / wealth[i-1]
     """
     # Load JSON data
-    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
@@ -177,7 +181,9 @@ def plot_rho_heatmap(experiment_id, outputs_base_path, sample_dates, period='tes
     Rho ranges from 0.0 (100% short) to 1.0 (100% long).
     """
     # Load JSON data
-    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', f'{period}_results.json')
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
