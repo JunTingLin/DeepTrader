@@ -103,7 +103,7 @@ def test(func_args):
     agent = RLAgent(env, actor, func_args)
 
     try:
-        agent_wealth, rho_record, alpha_record, beta_record, portfolio_records = agent.test()
+        agent_wealth, rho_record, mu_record, sigma_record, portfolio_records = agent.test()
         npy_save_dir = os.path.join(PREFIX, 'npy_file')
         np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
         
@@ -112,8 +112,8 @@ def test(func_args):
         test_results = {
             'agent_wealth': agent_wealth.tolist(),
             'rho_record': [convert_to_native_type(r) for r in rho_record],
-            'alpha_record': [convert_to_native_type(r) if r is not None else None for r in alpha_record],
-            'beta_record': [convert_to_native_type(r) if r is not None else None for r in beta_record],
+            'mu_record': [convert_to_native_type(r) if r is not None else None for r in mu_record],
+            'sigma_record': [convert_to_native_type(r) if r is not None else None for r in sigma_record],
             'portfolio_records': convert_portfolio_records_to_json(
                 portfolio_records,
                 start_idx=test_idx,
