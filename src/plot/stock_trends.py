@@ -946,11 +946,11 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
     plt.ylim(min(all_returns) - y_margin, max(all_returns) + y_margin)
     
     # Calculate overall correlations using unified function from analysis module
-    from analysis import compute_correlation_metrics_with_strategy
+    from analysis import compute_correlation_metrics
 
     # Get correlation metrics for ALL strategy (all 30 stocks)
-    corr_metrics = compute_correlation_metrics_with_strategy(
-        experiment_id, outputs_base_path, period, strategy='ALL'
+    corr_metrics = compute_correlation_metrics(
+        experiment_id, outputs_base_path, period
     )
 
     if corr_metrics and not np.isnan(corr_metrics['overall_pearson']):

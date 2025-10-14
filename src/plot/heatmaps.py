@@ -245,3 +245,87 @@ def plot_rho_heatmap(experiment_id, outputs_base_path, sample_dates, period='tes
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+
+def plot_market_profit_heatmap(df_market, period='val', save_plot=True):
+    """
+    Plot market (DowJones) step-wise profit heatmap showing monthly returns.
+    Similar to plot_profit_heatmap but for market benchmark.
+
+    Args:
+        df_market: DataFrame with market benchmark data (DowJones column)
+        period: 'val' or 'test'
+        save_plot: Whether to save the plot
+    """
+    from config import config
+
+    # Get market column name from config
+    market_col = config['benchmark_column']
+
+    if market_col not in df_market.columns:
+        print(f"Warning: Market column '{market_col}' not found in DataFrame")
+        return
+
+    # Get market wealth values
+    market_wealth = df_market[market_col].values
+    n_steps = len(market_wealth)
+
+    # Calculate step-wise returns (skip first step as it's always 1.0)
+    returns = []
+    for i in range(1, n_steps):
+        step_return = (market_wealth[i] - market_wealth[i-1]) / market_wealth[i-1]
+        returns.append(step_return)
+
+    # Convert to matrix for heatmap (1 row, n_steps-1 columns)
+    profit_matrix = np.array(returns).reshape(1, -1)
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(min(20, (n_steps-1) * 0.3), 3))
+
+    # Plot heatmap with diverging colormap (red=loss, green=profit)
+    vmax = max(abs(profit_matrix.min()), abs(profit_matrix.max()))
+    if vmax == 0:
+        vmax = 0.01  # Set minimum range to avoid division by zero
+
+    im = ax.imshow(profit_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest',
+                   vmin=-vmax, vmax=vmax, origin='lower')
+
+    # Formatting
+    ax.set_xlabel('Trading Steps', fontsize=12)
+    ax.set_ylabel(f'{market_col}', fontsize=12)
+    ax.set_title(f'Market ({market_col}) Step-wise Profit/Loss - {period.upper()}', fontsize=14)
+
+    # X-axis: Show step numbers or dates
+    step_interval = max(1, (n_steps-1) // 10)
+    xticks = range(0, n_steps-1, step_interval)
+    ax.set_xticks(xticks)
+
+    # Remove y-axis ticks (only one row)
+    ax.set_yticks([])
+
+    # Get dates from DataFrame index if available
+    if hasattr(df_market, 'index') and len(df_market.index) >= n_steps:
+        xlabels = [df_market.index[i+1].strftime('%Y-%m-%d') for i in xticks if i+1 < len(df_market.index)]
+        ax.set_xticklabels(xlabels, rotation=45, ha='right')
+    else:
+        ax.set_xticklabels([f'Step {i+1}' for i in xticks])
+
+    # Add horizontal colorbar
+    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.50, shrink=0.8)
+    cbar.set_label('Return (Green=Profit, Red=Loss)', fontsize=10)
+
+    # Add grid
+    ax.set_xticks(np.arange(n_steps-1) - 0.5, minor=True)
+    ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5, alpha=0.3)
+
+    plt.tight_layout()
+
+    if save_plot:
+        # Create output directory
+        output_dir = f'plot_outputs'
+        os.makedirs(output_dir, exist_ok=True)
+
+        filename = f'{output_dir}/market_profit_heatmap_{period}.png'
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        print(f"Saved: {filename}")
+        plt.close()

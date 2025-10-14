@@ -6,10 +6,11 @@ import numpy as np
 import pandas as pd
 import sys
 import os
+import json
 from scipy.stats import spearmanr
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.functions import calculate_metrics
-from config import config, TRADE_MODE
+from config import config, TRADE_MODE, MARKET_DATA_PATH, MARKET_CLOSE_INDEX, TRADE_LEN
 
 def calculate_periodic_returns_df(df, period):
     """
@@ -574,4 +575,214 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
         'avg_actual_up_per_step': avg_actual_up_per_step,
         'avg_actual_down_per_step': avg_actual_down_per_step,
         'valid_steps': valid_steps
+    }
+
+
+def calculate_msu_market_accuracy(experiment_path, period='val'):
+    """
+    Calculate MSU market prediction accuracy.
+
+    For each step, check if:
+    - Market return > 0 and rho > 0.5: Correct prediction (bullish)
+    - Market return = 0 and rho = 0.5: Correct prediction (neutral)
+    - Market return < 0 and rho < 0.5: Correct prediction (bearish)
+
+    Returns:
+        dict: MSU market prediction accuracy metrics
+    """
+    # Load configuration - try multiple possible paths
+    config_paths = [
+        f"{experiment_path}/config.json",
+        f"{experiment_path}/log_file/hyper.json"
+    ]
+
+    config = None
+    for config_path in config_paths:
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            break
+
+    if config is None:
+        print(f"Warning: Config not found in any of: {config_paths}")
+        return {}
+
+    # Load portfolio records - try multiple possible file names
+    if period == 'val':
+        json_paths = [
+            f"{experiment_path}/json_file/val_results.json",
+            f"{experiment_path}/json_file/val_results_msu_original.json"
+        ]
+    else:
+        json_paths = [
+            f"{experiment_path}/json_file/test_results.json",
+            f"{experiment_path}/json_file/test_results_msu_original.json"
+        ]
+
+    json_path = None
+    for path in json_paths:
+        if os.path.exists(path):
+            json_path = path
+            break
+
+    if json_path is None:
+        print(f"Warning: JSON file not found in any of: {json_paths}")
+        return {}
+
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+
+    portfolio_records = data.get('portfolio_records', [])
+    rho_record = data.get('rho_record', [])
+
+    if not portfolio_records:
+        return {}
+
+    if not rho_record:
+        print(f"Warning: No rho_record found in {json_path}")
+        return {}
+
+    # Load market data to calculate market returns
+    if not os.path.exists(MARKET_DATA_PATH):
+        print(f"Warning: Market data not found at {MARKET_DATA_PATH}")
+        return {}
+
+    market_data = np.load(MARKET_DATA_PATH)
+
+    # Get date range for the period and trade length
+    trade_len = config.get('trade_len', 21)  # Default to 21 days
+
+    if period == 'val':
+        date_start_idx = config.get('train_idx_end', config.get('train_end', 0))
+    else:  # test
+        date_start_idx = config.get('test_idx', config.get('val_end', 0))
+
+    # Track predictions
+    correct_predictions = 0
+    total_predictions = 0
+    step_accuracies = []
+
+    # Track predictions and actual market movements
+    # For Precision: Count predictions
+    predicted_bullish = 0  # rho > 0.5
+    predicted_bearish = 0  # rho < 0.5
+    predicted_neutral = 0  # rho = 0.5
+
+    # For Recall: Count actual market movements
+    actual_up = 0    # market_return > 0
+    actual_down = 0  # market_return < 0
+    actual_flat = 0  # market_return = 0
+
+    # Confusion matrix elements
+    bullish_tp = 0  # Predicted bullish, market went up (True Positive)
+    bearish_tp = 0  # Predicted bearish, market went down
+    neutral_tp = 0  # Predicted neutral, market flat
+
+    for step_idx, record in enumerate(portfolio_records):
+        # Get rho value for this step from rho_record array
+        if step_idx < len(rho_record):
+            rho = rho_record[step_idx]
+        else:
+            print(f"Warning: No rho value for step {step_idx}, using default 0.5")
+            rho = 0.5
+
+        # Calculate the decision date for this step
+        decision_date_idx = date_start_idx + step_idx * trade_len
+
+        # Calculate market return for the next trade_len days
+        if (decision_date_idx + 1 >= 0 and
+            decision_date_idx + 1 < market_data.shape[0] and
+            decision_date_idx + trade_len < market_data.shape[0]):
+
+            current_market = market_data[decision_date_idx + 1, MARKET_CLOSE_INDEX]
+            future_market = market_data[decision_date_idx + trade_len, MARKET_CLOSE_INDEX]
+
+            if current_market > 0:
+                market_return = (future_market - current_market) / current_market
+            else:
+                continue  # Skip if invalid price
+        else:
+            continue  # Skip if out of bounds
+
+        # Track predictions
+        if rho > 0.5:
+            predicted_bullish += 1
+        elif rho < 0.5:
+            predicted_bearish += 1
+        else:  # rho == 0.5
+            predicted_neutral += 1
+
+        # Track actual market movements
+        if market_return > 0:
+            actual_up += 1
+        elif market_return < 0:
+            actual_down += 1
+        else:
+            actual_flat += 1
+
+        # Check prediction accuracy (for confusion matrix)
+        is_correct = False
+
+        if rho > 0.5:  # Predicted bullish
+            if market_return > 0:
+                bullish_tp += 1
+                is_correct = True
+        elif rho < 0.5:  # Predicted bearish
+            if market_return < 0:
+                bearish_tp += 1
+                is_correct = True
+        else:  # Predicted neutral (rho = 0.5)
+            if market_return == 0:
+                neutral_tp += 1
+                is_correct = True
+
+        if is_correct:
+            correct_predictions += 1
+        total_predictions += 1
+
+        # Store step accuracy
+        step_accuracies.append({
+            'step': step_idx + 1,
+            'rho': rho,
+            'market_return': market_return,
+            'is_correct': is_correct
+        })
+
+    # Calculate overall accuracy
+    overall_accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0.0
+
+    # Calculate Precision for each class
+    bullish_precision = bullish_tp / predicted_bullish if predicted_bullish > 0 else 0.0
+    bearish_precision = bearish_tp / predicted_bearish if predicted_bearish > 0 else 0.0
+    neutral_precision = neutral_tp / predicted_neutral if predicted_neutral > 0 else 0.0
+
+    # Calculate Recall for each class
+    bullish_recall = bullish_tp / actual_up if actual_up > 0 else 0.0
+    bearish_recall = bearish_tp / actual_down if actual_down > 0 else 0.0
+    neutral_recall = neutral_tp / actual_flat if actual_flat > 0 else 0.0
+
+    return {
+        'period': period,
+        'overall_accuracy': overall_accuracy,
+        'correct_predictions': correct_predictions,
+        'total_predictions': total_predictions,
+        # Precision metrics
+        'bullish_precision': bullish_precision,
+        'bearish_precision': bearish_precision,
+        'neutral_precision': neutral_precision,
+        'predicted_bullish': predicted_bullish,
+        'predicted_bearish': predicted_bearish,
+        'predicted_neutral': predicted_neutral,
+        # Recall metrics
+        'bullish_recall': bullish_recall,
+        'bearish_recall': bearish_recall,
+        'neutral_recall': neutral_recall,
+        'actual_up': actual_up,
+        'actual_down': actual_down,
+        'actual_flat': actual_flat,
+        # True positives for each class
+        'bullish_tp': bullish_tp,
+        'bearish_tp': bearish_tp,
+        'neutral_tp': neutral_tp,
+        'step_accuracies': step_accuracies
     }

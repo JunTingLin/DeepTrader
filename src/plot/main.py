@@ -8,9 +8,9 @@ import gc  # For garbage collection
 
 from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
-from heatmaps import plot_portfolio_heatmap, plot_profit_heatmap, plot_rho_heatmap
+from heatmaps import plot_portfolio_heatmap, plot_profit_heatmap, plot_rho_heatmap, plot_market_profit_heatmap
 from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis, print_step_score_ranking, plot_step_score_scatter, plot_all_steps_score_scatter
-from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df, compute_correlation_metrics, compute_prediction_accuracy
+from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df, compute_correlation_metrics, compute_prediction_accuracy, calculate_msu_market_accuracy
 from config import (
     config, get_stock_symbols, START_DATE, END_DATE,
     EXPERIMENT_IDS, OUTPUTS_BASE_PATH
@@ -39,6 +39,12 @@ def main():
     plot_results(df_val, df_test, train_days, val_days, test_days)
     plot_yearly_results(df_val, df_test, val_days, test_days)
     
+    # Plot market profit heatmaps
+    print("\n=== Market Profit Heatmaps ===")
+    print("Plotting market monthly return heatmaps...")
+    plot_market_profit_heatmap(df_val, 'val', save_plot=True)
+    plot_market_profit_heatmap(df_test, 'test', save_plot=True)
+
     # Plot portfolio visualizations for each experiment
     print("\n=== Portfolio Visualizations ===")
     for exp_id in EXPERIMENT_IDS:
@@ -80,11 +86,11 @@ def main():
         plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
         plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
         
-        # Plot and save step analysis with all stocks per step
-        print(f"Generating step analysis plots for {exp_id}...")
-        print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
-        plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
-        plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
+        # # Plot and save step analysis with all stocks per step
+        # print(f"Generating step analysis plots for {exp_id}...")
+        # print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
+        # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
+        # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
         
         # Plot and save MSU step analysis with DJIA trends and rho values
         print(f"Generating MSU step analysis plots for {exp_id}...")
@@ -176,24 +182,76 @@ def main():
             print(f"\n[Precision & Recall Analysis - Mean Step]")
 
             print(f"  Validation Period:")
-            print(f"    Long Precision@{val_step_k}:   {val_acc['mean_step_long_precision']:.1%}")
-            print(f"    Short Precision@{val_step_k}:  {val_acc['mean_step_short_precision']:.1%}")
-            print(f"    Overall Precision@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_precision']:.1%}")
-            print(f"    Long Recall@{val_step_k}:      {val_acc['mean_step_long_recall']:.1%}")
-            print(f"    Short Recall@{val_step_k}:     {val_acc['mean_step_short_recall']:.1%}")
-            print(f"    Overall Recall@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_recall']:.1%}")
+            print(f"    Long Precision@{val_step_k}:   {val_acc['mean_step_long_precision']:.1%} (of {val_step_k} stocks predicted long, % that went up)")
+            print(f"    Short Precision@{val_step_k}:  {val_acc['mean_step_short_precision']:.1%} (of {val_step_k} stocks predicted short, % that went down)")
+            print(f"    Overall Precision@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_precision']:.1%} (of all {int(val_acc.get('avg_positions_per_step', 8))} predictions, % correct direction)")
+            print(f"    Long Recall@{val_step_k}:      {val_acc['mean_step_long_recall']:.1%} (of top {val_step_k} actual gainers, % we caught by going long)")
+            print(f"    Short Recall@{val_step_k}:     {val_acc['mean_step_short_recall']:.1%} (of bottom {val_step_k} actual losers, % we caught by going short)")
+            print(f"    Overall Recall@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_recall']:.1%} (of top/bottom performers, % we caught)")
 
         # Testing period
         test_acc = compute_prediction_accuracy(exp_id, OUTPUTS_BASE_PATH, 'test')
         if test_acc and test_acc.get('total_predicted', 0) > 0:
             test_step_k = int(test_acc.get('avg_long_positions_per_step', 4))  # K per step
             print(f"  Testing Period:")
-            print(f"    Long Precision@{test_step_k}:   {test_acc['mean_step_long_precision']:.1%}")
-            print(f"    Short Precision@{test_step_k}:  {test_acc['mean_step_short_precision']:.1%}")
-            print(f"    Overall Precision@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_precision']:.1%}")
-            print(f"    Long Recall@{test_step_k}:      {test_acc['mean_step_long_recall']:.1%}")
-            print(f"    Short Recall@{test_step_k}:     {test_acc['mean_step_short_recall']:.1%}")
-            print(f"    Overall Recall@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_recall']:.1%}")
+            print(f"    Long Precision@{test_step_k}:   {test_acc['mean_step_long_precision']:.1%} (of {test_step_k} stocks predicted long, % that went up)")
+            print(f"    Short Precision@{test_step_k}:  {test_acc['mean_step_short_precision']:.1%} (of {test_step_k} stocks predicted short, % that went down)")
+            print(f"    Overall Precision@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_precision']:.1%} (of all {int(test_acc.get('avg_positions_per_step', 8))} predictions, % correct direction)")
+            print(f"    Long Recall@{test_step_k}:      {test_acc['mean_step_long_recall']:.1%} (of top {test_step_k} actual gainers, % we caught by going long)")
+            print(f"    Short Recall@{test_step_k}:     {test_acc['mean_step_short_recall']:.1%} (of bottom {test_step_k} actual losers, % we caught by going short)")
+            print(f"    Overall Recall@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_recall']:.1%} (of top/bottom performers, % we caught)")
+
+        # MSU Market Direction Analysis
+        print(f"\n[MSU Market Direction Analysis for {exp_id}]")
+        # Validation period
+        val_msu = calculate_msu_market_accuracy(f"{OUTPUTS_BASE_PATH}/{exp_id}", 'val')
+        if val_msu and val_msu.get('total_predictions', 0) > 0:
+            print(f"  Validation Period:")
+            print(f"    Overall Accuracy: {val_msu['overall_accuracy']:.1%} ({val_msu['correct_predictions']}/{val_msu['total_predictions']} correct)")
+            print("")
+
+            # Bullish metrics
+            if val_msu['predicted_bullish'] > 0:
+                print(f"    Bullish Precision: {val_msu['bullish_precision']:.1%} ({val_msu['bullish_tp']}/{val_msu['predicted_bullish']} when predicted bullish, market went up)")
+            if val_msu['actual_up'] > 0:
+                print(f"    Bullish Recall:    {val_msu['bullish_recall']:.1%} ({val_msu['bullish_tp']}/{val_msu['actual_up']} when market went up, predicted bullish)")
+
+            # Bearish metrics
+            if val_msu['predicted_bearish'] > 0:
+                print(f"    Bearish Precision: {val_msu['bearish_precision']:.1%} ({val_msu['bearish_tp']}/{val_msu['predicted_bearish']} when predicted bearish, market went down)")
+            if val_msu['actual_down'] > 0:
+                print(f"    Bearish Recall:    {val_msu['bearish_recall']:.1%} ({val_msu['bearish_tp']}/{val_msu['actual_down']} when market went down, predicted bearish)")
+
+            # Neutral metrics (if any)
+            if val_msu['predicted_neutral'] > 0:
+                print(f"    Neutral Precision: {val_msu['neutral_precision']:.1%} ({val_msu['neutral_tp']}/{val_msu['predicted_neutral']} when predicted neutral, market flat)")
+            if val_msu['actual_flat'] > 0:
+                print(f"    Neutral Recall:    {val_msu['neutral_recall']:.1%} ({val_msu['neutral_tp']}/{val_msu['actual_flat']} when market flat, predicted neutral)")
+
+        # Testing period
+        test_msu = calculate_msu_market_accuracy(f"{OUTPUTS_BASE_PATH}/{exp_id}", 'test')
+        if test_msu and test_msu.get('total_predictions', 0) > 0:
+            print(f"  Testing Period:")
+            print(f"    Overall Accuracy: {test_msu['overall_accuracy']:.1%} ({test_msu['correct_predictions']}/{test_msu['total_predictions']} correct)")
+            print("")
+
+            # Bullish metrics
+            if test_msu['predicted_bullish'] > 0:
+                print(f"    Bullish Precision: {test_msu['bullish_precision']:.1%} ({test_msu['bullish_tp']}/{test_msu['predicted_bullish']} when predicted bullish, market went up)")
+            if test_msu['actual_up'] > 0:
+                print(f"    Bullish Recall:    {test_msu['bullish_recall']:.1%} ({test_msu['bullish_tp']}/{test_msu['actual_up']} when market went up, predicted bullish)")
+
+            # Bearish metrics
+            if test_msu['predicted_bearish'] > 0:
+                print(f"    Bearish Precision: {test_msu['bearish_precision']:.1%} ({test_msu['bearish_tp']}/{test_msu['predicted_bearish']} when predicted bearish, market went down)")
+            if test_msu['actual_down'] > 0:
+                print(f"    Bearish Recall:    {test_msu['bearish_recall']:.1%} ({test_msu['bearish_tp']}/{test_msu['actual_down']} when market went down, predicted bearish)")
+
+            # Neutral metrics (if any)
+            if test_msu['predicted_neutral'] > 0:
+                print(f"    Neutral Precision: {test_msu['neutral_precision']:.1%} ({test_msu['neutral_tp']}/{test_msu['predicted_neutral']} when predicted neutral, market flat)")
+            if test_msu['actual_flat'] > 0:
+                print(f"    Neutral Recall:    {test_msu['neutral_recall']:.1%} ({test_msu['neutral_tp']}/{test_msu['actual_flat']} when market flat, predicted neutral)")
 
 if __name__ == "__main__":
     main()
