@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import json
 import os
-from scipy.stats import spearmanr
+# spearmanr is now imported and used in analysis.py
 from config import (
     config, START_DATE, END_DATE, TRADE_LEN,
     STOCK_DATA_PATH, CLOSE_PRICE_INDEX, MARKET_DATA_PATH, MARKET_CLOSE_INDEX
@@ -753,19 +753,15 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
         
         plt.legend(handles=legend_elements, loc='upper left')
         
-        # Calculate all correlation coefficients
-        if len(scores) > 1:
-            # Pearson correlation on raw values
-            pearson_corr = np.corrcoef(scores, returns)[0, 1]
-            
-            # Spearman correlation on raw values  
-            spearman_corr, _ = spearmanr(scores, returns)
-            
-            
+        # Calculate correlation using unified function from analysis module
+        from analysis import compute_single_step_correlation
+
+        corr_metrics = compute_single_step_correlation(scores, returns)
+
+        if not np.isnan(corr_metrics['pearson_corr']):
             # Statistics text with proper line breaks
-            stats_text = f'Pearson (values): {pearson_corr:.3f}\n'
-            stats_text += f'Spearman (values→ranks): {spearman_corr:.3f}'
-            
+            stats_text = f'Pearson (values): {corr_metrics["pearson_corr"]:.3f}\n'
+            stats_text += f'Spearman (values→ranks): {corr_metrics["spearman_corr"]:.3f}'
         else:
             stats_text = 'Insufficient data for correlation'
         
@@ -837,9 +833,7 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
     all_colors = []
     all_markers = []
     
-    # Store different types of correlations for each step
-    step_pearson_values = []
-    step_spearman_values = []
+    # Note: Step correlations are now calculated in compute_correlation_metrics_with_strategy
     
     # Process each trading step
     for step_idx in range(len(portfolio_records)):
@@ -896,18 +890,7 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
                 else:
                     all_colors.append('gray')
                     all_markers.append('o')
-        
-        # Calculate correlations for this step
-        if len(step_scores) > 1:
-            # Pearson on values
-            pearson_val = np.corrcoef(step_scores, step_returns)[0, 1]
-            if not np.isnan(pearson_val):
-                step_pearson_values.append(pearson_val)
-            
-            # Spearman on values (converts to ranks internally)
-            spearman_val, _ = spearmanr(step_scores, step_returns)
-            if not np.isnan(spearman_val):
-                step_spearman_values.append(spearman_val)
+        # Step correlations are now calculated in compute_correlation_metrics_with_strategy
     
     if not all_scores:
         print(f"No valid data found for {period}")
@@ -962,26 +945,23 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
     y_margin = (max(all_returns) - min(all_returns)) * 0.1
     plt.ylim(min(all_returns) - y_margin, max(all_returns) + y_margin)
     
-    # Calculate overall correlations
-    if len(all_scores) > 1:
-        # Overall Pearson on values
-        overall_pearson_val = np.corrcoef(all_scores, all_returns)[0, 1]
-        
-        # Overall Spearman on values (converts to ranks internally)
-        overall_spearman_val, _ = spearmanr(all_scores, all_returns)
-        
-        # Mean step correlations
-        mean_pearson_val = np.mean(step_pearson_values) if step_pearson_values else 0
-        mean_spearman_val = np.mean(step_spearman_values) if step_spearman_values else 0
-        
+    # Calculate overall correlations using unified function from analysis module
+    from analysis import compute_correlation_metrics_with_strategy
+
+    # Get correlation metrics for ALL strategy (all 30 stocks)
+    corr_metrics = compute_correlation_metrics_with_strategy(
+        experiment_id, outputs_base_path, period, strategy='ALL'
+    )
+
+    if corr_metrics and not np.isnan(corr_metrics['overall_pearson']):
         # Statistics text with proper line breaks
         stats_text = 'OVERALL CORRELATIONS:\n'
-        stats_text += f'Pearson (values): {overall_pearson_val:.3f}\n'
-        stats_text += f'Spearman (values→ranks): {overall_spearman_val:.3f}\n'
+        stats_text += f'Pearson (values): {corr_metrics["overall_pearson"]:.3f}\n'
+        stats_text += f'Spearman (values→ranks): {corr_metrics["overall_spearman"]:.3f}\n'
         stats_text += '\n'  # Empty line
         stats_text += 'MEAN STEP CORRELATIONS:\n'
-        stats_text += f'Pearson (values): {mean_pearson_val:.3f}\n'
-        stats_text += f'Spearman (values→ranks): {mean_spearman_val:.3f}'
+        stats_text += f'Pearson (values): {corr_metrics["mean_step_pearson"]:.3f}\n'
+        stats_text += f'Spearman (values→ranks): {corr_metrics["mean_step_spearman"]:.3f}'
     else:
         stats_text = 'Insufficient data for correlation analysis'
     

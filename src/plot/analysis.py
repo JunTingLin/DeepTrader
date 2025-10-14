@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import sys
 import os
+from scipy.stats import spearmanr
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.functions import calculate_metrics
 from config import config, TRADE_MODE
@@ -14,61 +15,61 @@ def calculate_periodic_returns_df(df, period):
     """
     Calculate periodic returns using non-overlapping fixed periods:
     - 'ME': 1 cycle (1 * 21 days, ~monthly)
-    - 'QE': 3 cycles (3 * 21 days, ~quarterly) 
+    - 'QE': 3 cycles (3 * 21 days, ~quarterly)
     - '6ME': 6 cycles (6 * 21 days, ~semi-annual)
     - 'YE': 12 cycles (12 * 21 days, ~annual)
-    
+
     Args:
         df: DataFrame with datetime index (sampled every ~21 business days)
-        period: 'ME', 'QE', '6ME', 'YE' 
+        period: 'ME', 'QE', '6ME', 'YE'
     """
     if len(df) == 0:
         return pd.DataFrame()
-    
+
     # Map period to number of 21-day cycles
     cycle_map = {
         'ME': 1,    # Monthly: 1 cycle (21 days)
-        'QE': 3,    # Quarterly: 3 cycles (63 days)  
+        'QE': 3,    # Quarterly: 3 cycles (63 days)
         '6ME': 6,   # Semi-annual: 6 cycles (126 days)
         'YE': 12    # Yearly: 12 cycles (252 days)
     }
-    
+
     if period not in cycle_map:
         print(f"Unsupported period: {period}. Use 'ME', 'QE', '6ME', or 'YE'")
         return pd.DataFrame()
-    
+
     cycles = cycle_map[period]
-    
+
     try:
         returns_data = {}
         return_dates = []
-        
+
         # Calculate returns for non-overlapping fixed periods
         start_idx = 0
         while start_idx + cycles < len(df):
             end_idx = start_idx + cycles
-            
+
             # Get start and end values
             start_values = df.iloc[start_idx]
-            end_values = df.iloc[end_idx] 
-            
+            end_values = df.iloc[end_idx]
+
             # Calculate returns: (end - start) / start
             period_returns = (end_values - start_values) / start_values
-            
+
             # Use end date as the period identifier
             end_date = df.index[end_idx]
-            
+
             # Store returns for this period
             for col in df.columns:
                 if col not in returns_data:
                     returns_data[col] = []
                 returns_data[col].append(period_returns[col])
-            
+
             return_dates.append(end_date)
-            
+
             # Move to next non-overlapping period
             start_idx = end_idx
-        
+
         # Create DataFrame with returns
         if returns_data and return_dates:
             returns_df = pd.DataFrame(returns_data, index=return_dates)
@@ -76,7 +77,7 @@ def calculate_periodic_returns_df(df, period):
         else:
             print(f"Not enough data for {period} calculation (need at least {cycles + 1} data points)")
             return pd.DataFrame()
-            
+
     except Exception as e:
         print(f"Error in period return calculation: {e}")
         return pd.DataFrame()
@@ -113,3 +114,464 @@ def compute_metrics_df(df, series_list):
             'DDR': m['DDR'][0, 0] if isinstance(m['DDR'], np.ndarray) else m['DDR']
         }
     return pd.DataFrame(metrics_dict)
+
+def compute_single_step_correlation(scores, returns):
+    """
+    Compute correlation metrics for a single trading step.
+    Used by plotting functions to get consistent correlation calculations.
+
+    Args:
+        scores: Array or list of scores for one step
+        returns: Array or list of returns for one step
+
+    Returns:
+        dict: Dictionary containing Pearson and Spearman correlations
+    """
+    if len(scores) <= 1 or len(returns) <= 1:
+        return {
+            'pearson_corr': np.nan,
+            'spearman_corr': np.nan,
+            'valid_data_points': 0
+        }
+
+    # Convert to numpy arrays and remove NaN values
+    scores = np.array(scores)
+    returns = np.array(returns)
+    valid_mask = ~(np.isnan(scores) | np.isnan(returns))
+
+    valid_scores = scores[valid_mask]
+    valid_returns = returns[valid_mask]
+
+    if len(valid_scores) <= 1:
+        return {
+            'pearson_corr': np.nan,
+            'spearman_corr': np.nan,
+            'valid_data_points': len(valid_scores)
+        }
+
+    try:
+        pearson_corr = np.corrcoef(valid_scores, valid_returns)[0, 1]
+        spearman_corr, _ = spearmanr(valid_scores, valid_returns)
+
+        return {
+            'pearson_corr': pearson_corr if not np.isnan(pearson_corr) else np.nan,
+            'spearman_corr': spearman_corr if not np.isnan(spearman_corr) else np.nan,
+            'valid_data_points': len(valid_scores)
+        }
+    except Exception as e:
+        print(f"Error computing correlations: {e}")
+        return {
+            'pearson_corr': np.nan,
+            'spearman_corr': np.nan,
+            'valid_data_points': 0
+        }
+
+def compute_correlation_metrics(experiment_id, outputs_base_path, period='test'):
+    """
+    Compute correlation metrics between scores and returns for all 30 stocks (standard Spearman).
+
+    Args:
+        experiment_id: The experiment ID
+        outputs_base_path: Base path to outputs directory
+        period: 'val' or 'test'
+
+    Returns:
+        dict: Correlation metrics for all stocks
+    """
+    import json
+    import os
+    from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, CLOSE_PRICE_INDEX
+
+    # Load JSON data
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
+
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return {}
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        return {}
+
+    # Load stock price data to calculate returns
+    if not os.path.exists(STOCK_DATA_PATH):
+        print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
+        return {}
+
+    stocks_data = np.load(STOCK_DATA_PATH)
+
+    # Get date range for the period
+    if period == 'val':
+        date_start_idx = config['train_end']
+    else:  # test
+        date_start_idx = config['val_end']
+
+    # Collect scores and returns for all stocks
+    all_scores = []
+    all_returns = []
+    step_correlations = []
+    n_stocks = stocks_data.shape[0]
+
+    for step_idx, record in enumerate(portfolio_records):
+        # Get scores from all_scores field
+        scores = np.array(record.get('all_scores', []))
+
+        # Calculate the decision date for this step
+        decision_date_idx = date_start_idx + step_idx * TRADE_LEN
+
+        # Calculate returns for each stock (21-day forward returns)
+        returns = []
+        for stock_idx in range(min(len(scores), n_stocks)):
+            if (decision_date_idx + 1 >= 0 and
+                decision_date_idx + 1 < stocks_data.shape[1] and
+                decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
+                current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
+                future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                if current_price > 0:
+                    return_rate = (future_price - current_price) / current_price
+                else:
+                    return_rate = 0.0
+            else:
+                return_rate = 0.0
+            returns.append(return_rate)
+
+        returns = np.array(returns)
+
+        # Use all stocks for correlation calculation
+        if len(scores) > 1 and len(returns) > 1:
+            # Compute correlation for this step
+            if not np.isnan(scores).any() and not np.isnan(returns).any():
+                step_pearson = np.corrcoef(scores, returns)[0, 1]
+                step_spearman, _ = spearmanr(scores, returns)
+            else:
+                step_pearson = np.nan
+                step_spearman = np.nan
+
+            step_correlations.append({
+                'step': step_idx + 1,
+                'pearson_corr': step_pearson,
+                'spearman_corr': step_spearman,
+                'n_stocks': len(scores)
+            })
+
+            # Collect all data points for overall correlation
+            all_scores.extend(scores)
+            all_returns.extend(returns)
+
+    # Compute overall correlations
+    overall_pearson = np.nan
+    overall_spearman = np.nan
+    if len(all_scores) > 1 and not np.isnan(all_scores).any() and not np.isnan(all_returns).any():
+        overall_pearson = np.corrcoef(all_scores, all_returns)[0, 1]
+        overall_spearman, _ = spearmanr(all_scores, all_returns)
+
+    # Compute mean step correlations
+    valid_step_correlations = [sc for sc in step_correlations if not np.isnan(sc['pearson_corr'])]
+    if valid_step_correlations:
+        mean_pearson = np.mean([sc['pearson_corr'] for sc in valid_step_correlations])
+        mean_spearman = np.mean([sc['spearman_corr'] for sc in valid_step_correlations])
+        avg_stocks_per_step = np.mean([sc['n_stocks'] for sc in valid_step_correlations])
+    else:
+        mean_pearson = np.nan
+        mean_spearman = np.nan
+        avg_stocks_per_step = 0
+
+    return {
+        'experiment_id': experiment_id,
+        'period': period,
+        'overall_pearson': overall_pearson,
+        'overall_spearman': overall_spearman,
+        'mean_step_pearson': mean_pearson,
+        'mean_step_spearman': mean_spearman,
+        'total_data_points': len(all_scores),
+        'avg_stocks_per_step': avg_stocks_per_step,
+        'valid_steps': len(valid_step_correlations),
+        'total_steps': len(step_correlations)
+    }
+
+
+def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test'):
+    """
+    Compute precision and recall for traded positions only (P@K, R@K).
+
+    Args:
+        experiment_id: The experiment ID
+        outputs_base_path: Base path to outputs directory
+        period: 'val' or 'test'
+
+    Returns:
+        dict: Prediction accuracy metrics for traded positions
+    """
+    import json
+    import os
+    from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, CLOSE_PRICE_INDEX
+
+    # Load JSON data
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
+
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return {}
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        return {}
+
+    # Load stock price data to calculate returns
+    if not os.path.exists(STOCK_DATA_PATH):
+        print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
+        return {}
+
+    stocks_data = np.load(STOCK_DATA_PATH)
+
+    # Get date range for the period
+    if period == 'val':
+        date_start_idx = config['train_end']
+    else:  # test
+        date_start_idx = config['val_end']
+
+    # Initialize counters for Overall precision calculation
+    long_correct = 0  # TP for long (predicted long and actually went up)
+    long_wrong = 0    # FP for long (predicted long but went down)
+    long_flat = 0     # return = 0
+    short_correct = 0 # TP for short (predicted short and actually went down)
+    short_wrong = 0   # FP for short (predicted short but went up)
+    short_flat = 0    # return = 0
+
+    # Initialize counters for recall calculation (keeping for compatibility, but will use Mean Step only)
+    total_actual_up = 0    # All stocks that actually went up (for compatibility)
+    total_actual_down = 0  # All stocks that actually went down (for compatibility)
+    total_actual_flat = 0  # All stocks that stayed flat (for compatibility)
+
+    # Initialize for Mean Step calculation
+    step_precisions = []  # Store each step's precision metrics
+
+    for step_idx, record in enumerate(portfolio_records):
+        # Calculate the decision date for this step
+        decision_date_idx = date_start_idx + step_idx * TRADE_LEN
+
+        if (decision_date_idx + 1 >= 0 and
+            decision_date_idx + 1 < stocks_data.shape[1] and
+            decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
+
+            # Initialize step-level counters first (before using them)
+            step_long_correct = 0
+            step_long_wrong = 0
+            step_long_flat = 0
+            step_short_correct = 0
+            step_short_wrong = 0
+            step_short_flat = 0
+            step_actual_up = 0
+            step_actual_down = 0
+            step_actual_flat = 0
+
+            # Calculate actual returns for all stocks (for recall denominator)
+            scores = np.array(record.get('all_scores', []))
+            n_stocks = min(len(scores), stocks_data.shape[0])
+            for stock_idx in range(n_stocks):
+                current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
+                future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                if current_price > 0:
+                    return_rate = (future_price - current_price) / current_price
+                    if return_rate > 0:
+                        total_actual_up += 1
+                        step_actual_up += 1
+                    elif return_rate < 0:
+                        total_actual_down += 1
+                        step_actual_down += 1
+                    else:
+                        total_actual_flat += 1
+                        step_actual_flat += 1
+
+            # Evaluate only traded positions for precision
+            for pos in record.get('long_positions', []):
+                stock_idx = pos.get('stock_index')
+                if stock_idx is not None and stock_idx < stocks_data.shape[0]:
+                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
+                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                    if current_price > 0:
+                        return_rate = (future_price - current_price) / current_price
+                        if return_rate > 0:
+                            long_correct += 1
+                            step_long_correct += 1
+                        elif return_rate < 0:
+                            long_wrong += 1
+                            step_long_wrong += 1
+                        else:
+                            long_flat += 1
+                            step_long_flat += 1
+
+            for pos in record.get('short_positions', []):
+                stock_idx = pos.get('stock_index')
+                if stock_idx is not None and stock_idx < stocks_data.shape[0]:
+                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
+                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                    if current_price > 0:
+                        return_rate = (future_price - current_price) / current_price
+                        if return_rate < 0:
+                            short_correct += 1
+                            step_short_correct += 1
+                        elif return_rate > 0:
+                            short_wrong += 1
+                            step_short_wrong += 1
+                        else:
+                            short_flat += 1
+                            step_short_flat += 1
+
+            # Calculate step-level precision metrics
+            step_long_total = step_long_correct + step_long_wrong + step_long_flat
+            step_short_total = step_short_correct + step_short_wrong + step_short_flat
+            step_total = step_long_total + step_short_total
+
+            if step_total > 0:  # Only include steps with actual positions
+                step_long_precision = step_long_correct / step_long_total if step_long_total > 0 else 0.0
+                step_short_precision = step_short_correct / step_short_total if step_short_total > 0 else 0.0
+                step_overall_precision = (step_long_correct + step_short_correct) / step_total
+
+                # Calculate step-level recall (standard IR definition)
+                # Find actual top K performers for this step
+                step_returns = []
+                for stock_idx in range(n_stocks):
+                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
+                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                    if current_price > 0:
+                        return_rate = (future_price - current_price) / current_price
+                        step_returns.append((stock_idx, return_rate))
+                    else:
+                        step_returns.append((stock_idx, 0.0))
+
+                # Sort by return rate (descending for top performers)
+                step_returns.sort(key=lambda x: x[1], reverse=True)
+
+                # Get predicted stock indices
+                predicted_long_indices = set([pos.get('stock_index') for pos in record.get('long_positions', [])])
+                predicted_short_indices = set([pos.get('stock_index') for pos in record.get('short_positions', [])])
+
+                # Find actual top/bottom performers among stocks that moved in the right direction
+                actual_up_stocks = [(x[0], x[1]) for x in step_returns if x[1] > 0]  # Only stocks that went up
+                actual_down_stocks = [(x[0], x[1]) for x in step_returns if x[1] < 0]  # Only stocks that went down
+
+                # Get top K from actual up stocks and bottom K from actual down stocks
+                actual_up_stocks.sort(key=lambda x: x[1], reverse=True)  # Sort by return (high to low)
+                actual_down_stocks.sort(key=lambda x: x[1])  # Sort by return (low to high, most negative first)
+
+                # Take top K that actually went up, and worst K that actually went down
+                actual_top_k_indices = set([x[0] for x in actual_up_stocks[:step_long_total]]) if len(actual_up_stocks) >= step_long_total else set([x[0] for x in actual_up_stocks])
+                actual_bottom_k_indices = set([x[0] for x in actual_down_stocks[:step_short_total]]) if len(actual_down_stocks) >= step_short_total else set([x[0] for x in actual_down_stocks])
+
+                # Calculate intersection (how many we got right in terms of selection)
+                long_intersection = len(predicted_long_indices & actual_top_k_indices)
+                short_intersection = len(predicted_short_indices & actual_bottom_k_indices)
+
+                # Recall@K: intersection / available targets
+                step_long_recall = long_intersection / len(actual_top_k_indices) if len(actual_top_k_indices) > 0 else 0.0
+                step_short_recall = short_intersection / len(actual_bottom_k_indices) if len(actual_bottom_k_indices) > 0 else 0.0
+
+                # Overall recall
+                total_available_targets = len(actual_top_k_indices) + len(actual_bottom_k_indices)
+                step_overall_recall = (long_intersection + short_intersection) / total_available_targets if total_available_targets > 0 else 0.0
+
+                step_precisions.append({
+                    'step': step_idx + 1,
+                    'long_precision': step_long_precision,
+                    'short_precision': step_short_precision,
+                    'overall_precision': step_overall_precision,
+                    'long_recall': step_long_recall,
+                    'short_recall': step_short_recall,
+                    'overall_recall': step_overall_recall,
+                    'long_positions': step_long_total,
+                    'short_positions': step_short_total,
+                    'total_positions': step_total,
+                    'actual_up': step_actual_up,
+                    'actual_down': step_actual_down,
+                    'actual_flat': step_actual_flat
+                })
+
+    # Calculate totals (for compatibility with existing code structure)
+    total_long_predicted = long_correct + long_wrong + long_flat
+    total_short_predicted = short_correct + short_wrong + short_flat
+    total_predicted = total_long_predicted + total_short_predicted
+
+    # We don't need overall precision/recall anymore, only Mean Step versions
+    long_precision = 0.0  # Not used
+    short_precision = 0.0  # Not used
+    overall_precision = 0.0  # Not used
+    long_recall = 0.0  # Not used
+    short_recall = 0.0  # Not used
+    overall_recall = 0.0  # Not used
+
+    # Calculate Mean Step metrics
+    if step_precisions:
+        mean_step_long_precision = np.mean([sp['long_precision'] for sp in step_precisions])
+        mean_step_short_precision = np.mean([sp['short_precision'] for sp in step_precisions])
+        mean_step_overall_precision = np.mean([sp['overall_precision'] for sp in step_precisions])
+        mean_step_long_recall = np.mean([sp['long_recall'] for sp in step_precisions])
+        mean_step_short_recall = np.mean([sp['short_recall'] for sp in step_precisions])
+        mean_step_overall_recall = np.mean([sp['overall_recall'] for sp in step_precisions])
+        avg_positions_per_step = np.mean([sp['total_positions'] for sp in step_precisions])
+        avg_long_positions_per_step = np.mean([sp['long_positions'] for sp in step_precisions])
+        avg_short_positions_per_step = np.mean([sp['short_positions'] for sp in step_precisions])
+        avg_actual_up_per_step = np.mean([sp['actual_up'] for sp in step_precisions])
+        avg_actual_down_per_step = np.mean([sp['actual_down'] for sp in step_precisions])
+        valid_steps = len(step_precisions)
+    else:
+        mean_step_long_precision = 0.0
+        mean_step_short_precision = 0.0
+        mean_step_overall_precision = 0.0
+        mean_step_long_recall = 0.0
+        mean_step_short_recall = 0.0
+        mean_step_overall_recall = 0.0
+        avg_positions_per_step = 0.0
+        avg_long_positions_per_step = 0.0
+        avg_short_positions_per_step = 0.0
+        avg_actual_up_per_step = 0.0
+        avg_actual_down_per_step = 0.0
+        valid_steps = 0
+
+    return {
+        'experiment_id': experiment_id,
+        'period': period,
+        # Precision
+        'long_precision': long_precision,
+        'short_precision': short_precision,
+        'overall_precision': overall_precision,
+        # Recall
+        'long_recall': long_recall,
+        'short_recall': short_recall,
+        'overall_recall': overall_recall,
+        # Detailed counts for precision
+        'long_correct': long_correct,
+        'long_wrong': long_wrong,
+        'long_flat': long_flat,
+        'short_correct': short_correct,
+        'short_wrong': short_wrong,
+        'short_flat': short_flat,
+        'total_long_predicted': total_long_predicted,
+        'total_short_predicted': total_short_predicted,
+        'total_predicted': total_predicted,
+        # Detailed counts for recall
+        'total_actual_up': total_actual_up,
+        'total_actual_down': total_actual_down,
+        'total_actual_flat': total_actual_flat,
+        # Mean Step metrics
+        'mean_step_long_precision': mean_step_long_precision,
+        'mean_step_short_precision': mean_step_short_precision,
+        'mean_step_overall_precision': mean_step_overall_precision,
+        'mean_step_long_recall': mean_step_long_recall,
+        'mean_step_short_recall': mean_step_short_recall,
+        'mean_step_overall_recall': mean_step_overall_recall,
+        'avg_long_positions_per_step': avg_long_positions_per_step,
+        'avg_short_positions_per_step': avg_short_positions_per_step,
+        'avg_positions_per_step': avg_positions_per_step,
+        'avg_actual_up_per_step': avg_actual_up_per_step,
+        'avg_actual_down_per_step': avg_actual_down_per_step,
+        'valid_steps': valid_steps
+    }

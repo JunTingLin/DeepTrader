@@ -99,6 +99,8 @@ START_DATE = config['start_date']
 END_DATE = config['end_date']
 WEALTH_MODE = 'inter'  # 'inter' or 'intra' for daily returns
 
+# Portfolio selection parameters (will be auto-detected from JSON files)
+
 # -------------------------------
 # Paths
 # -------------------------------

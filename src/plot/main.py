@@ -10,9 +10,9 @@ from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
 from heatmaps import plot_portfolio_heatmap, plot_profit_heatmap, plot_rho_heatmap
 from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis, print_step_score_ranking, plot_step_score_scatter, plot_all_steps_score_scatter
-from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df
+from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df, compute_correlation_metrics, compute_prediction_accuracy
 from config import (
-    config, get_stock_symbols, START_DATE, END_DATE, 
+    config, get_stock_symbols, START_DATE, END_DATE,
     EXPERIMENT_IDS, OUTPUTS_BASE_PATH
 )
 
@@ -127,6 +127,73 @@ def main():
     metrics_test = compute_metrics_df(df_test, df_test.columns)
     print("\nTesting Metrics:")
     print(metrics_test)
+
+    # Compute correlation metrics for different strategies
+    print("\n" + "="*60)
+    print("=== Correlation Metrics (Score vs Return) ===")
+    print("="*60)
+
+    for exp_id in EXPERIMENT_IDS:
+        print(f"\nExperiment: {exp_id}")
+        print("-"*50)
+
+        # Correlation analysis
+        print("\n[Correlation analysis - All 30 stocks]")
+
+        # Validation period
+        val_corr = compute_correlation_metrics(exp_id, OUTPUTS_BASE_PATH, 'val')
+        if val_corr:
+            print(f"  Validation Period:")
+            print(f"    Overall Pearson:  {val_corr['overall_pearson']:7.4f}")
+            print(f"    Overall Spearman: {val_corr['overall_spearman']:7.4f}")
+            print(f"    Mean Step Pearson:  {val_corr['mean_step_pearson']:7.4f}")
+            print(f"    Mean Step Spearman: {val_corr['mean_step_spearman']:7.4f}")
+            print(f"    Valid Steps: {val_corr['valid_steps']}/{val_corr['total_steps']}")
+
+        # Testing period
+        test_corr = compute_correlation_metrics(exp_id, OUTPUTS_BASE_PATH, 'test')
+        if test_corr:
+            print(f"  Testing Period:")
+            print(f"    Overall Pearson:  {test_corr['overall_pearson']:7.4f}")
+            print(f"    Overall Spearman: {test_corr['overall_spearman']:7.4f}")
+            print(f"    Mean Step Pearson:  {test_corr['mean_step_pearson']:7.4f}")
+            print(f"    Mean Step Spearman: {test_corr['mean_step_spearman']:7.4f}")
+            print(f"    Valid Steps: {test_corr['valid_steps']}/{test_corr['total_steps']}")
+
+    # Compute prediction precision and recall metrics
+    print("\n" + "="*60)
+    print("=== Precision and Recall (Long should rise, Short should fall) ===")
+    print("="*60)
+
+    for exp_id in EXPERIMENT_IDS:
+        print(f"\nExperiment: {exp_id}")
+        print("-"*50)
+
+        # Precision & Recall Analysis (Mean Step only)
+        val_acc = compute_prediction_accuracy(exp_id, OUTPUTS_BASE_PATH, 'val')
+        if val_acc and val_acc.get('total_predicted', 0) > 0:
+            val_step_k = int(val_acc.get('avg_long_positions_per_step', 4))  # K per step
+            print(f"\n[Precision & Recall Analysis - Mean Step]")
+
+            print(f"  Validation Period:")
+            print(f"    Long Precision@{val_step_k}:   {val_acc['mean_step_long_precision']:.1%}")
+            print(f"    Short Precision@{val_step_k}:  {val_acc['mean_step_short_precision']:.1%}")
+            print(f"    Overall Precision@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_precision']:.1%}")
+            print(f"    Long Recall@{val_step_k}:      {val_acc['mean_step_long_recall']:.1%}")
+            print(f"    Short Recall@{val_step_k}:     {val_acc['mean_step_short_recall']:.1%}")
+            print(f"    Overall Recall@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_recall']:.1%}")
+
+        # Testing period
+        test_acc = compute_prediction_accuracy(exp_id, OUTPUTS_BASE_PATH, 'test')
+        if test_acc and test_acc.get('total_predicted', 0) > 0:
+            test_step_k = int(test_acc.get('avg_long_positions_per_step', 4))  # K per step
+            print(f"  Testing Period:")
+            print(f"    Long Precision@{test_step_k}:   {test_acc['mean_step_long_precision']:.1%}")
+            print(f"    Short Precision@{test_step_k}:  {test_acc['mean_step_short_precision']:.1%}")
+            print(f"    Overall Precision@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_precision']:.1%}")
+            print(f"    Long Recall@{test_step_k}:      {test_acc['mean_step_long_recall']:.1%}")
+            print(f"    Short Recall@{test_step_k}:     {test_acc['mean_step_short_recall']:.1%}")
+            print(f"    Overall Recall@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_recall']:.1%}")
 
 if __name__ == "__main__":
     main()
