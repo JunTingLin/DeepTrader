@@ -167,6 +167,57 @@ def compute_single_step_correlation(scores, returns):
             'valid_data_points': 0
         }
 
+def calculate_single_step_msu_metrics(rho, market_return):
+    """
+    Calculate MSU metrics for a single step.
+
+    Args:
+        rho: MSU allocation value for this step
+        market_return: Market return for the next 21 days
+
+    Returns:
+        dict: Single step metrics
+    """
+    # Determine prediction
+    predicted_bullish = rho > 0.5
+    predicted_bearish = rho < 0.5
+    predicted_neutral = rho == 0.5
+
+    # Determine actual market movement
+    actual_up = market_return > 0
+    actual_down = market_return < 0
+    actual_flat = market_return == 0
+
+    # Calculate True Positives
+    bullish_tp = predicted_bullish and actual_up
+    bearish_tp = predicted_bearish and actual_down
+    neutral_tp = predicted_neutral and actual_flat
+
+    # Calculate precision (only if prediction was made)
+    bullish_precision = 1.0 if predicted_bullish and bullish_tp else (0.0 if predicted_bullish else None)
+    bearish_precision = 1.0 if predicted_bearish and bearish_tp else (0.0 if predicted_bearish else None)
+    neutral_precision = 1.0 if predicted_neutral and neutral_tp else (0.0 if predicted_neutral else None)
+
+    # Calculate recall (only if actual movement occurred)
+    bullish_recall = 1.0 if actual_up and bullish_tp else (0.0 if actual_up else None)
+    bearish_recall = 1.0 if actual_down and bearish_tp else (0.0 if actual_down else None)
+    neutral_recall = 1.0 if actual_flat and neutral_tp else (0.0 if actual_flat else None)
+
+    return {
+        'bullish_precision': bullish_precision,
+        'bearish_precision': bearish_precision,
+        'neutral_precision': neutral_precision,
+        'bullish_recall': bullish_recall,
+        'bearish_recall': bearish_recall,
+        'neutral_recall': neutral_recall,
+        'predicted_bullish': predicted_bullish,
+        'predicted_bearish': predicted_bearish,
+        'predicted_neutral': predicted_neutral,
+        'actual_up': actual_up,
+        'actual_down': actual_down,
+        'actual_flat': actual_flat
+    }
+
 def compute_correlation_metrics(experiment_id, outputs_base_path, period='test'):
     """
     Compute correlation metrics between scores and returns for all 30 stocks (standard Spearman).

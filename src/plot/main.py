@@ -86,11 +86,11 @@ def main():
         plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
         plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
         
-        # # Plot and save step analysis with all stocks per step
-        # print(f"Generating step analysis plots for {exp_id}...")
-        # print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
-        # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
-        # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
+        # Plot and save step analysis with all stocks per step
+        print(f"Generating step analysis plots for {exp_id}...")
+        print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
+        plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
+        plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
         
         # Plot and save MSU step analysis with DJIA trends and rho values
         print(f"Generating MSU step analysis plots for {exp_id}...")

@@ -14,6 +14,7 @@ from config import (
     STOCK_DATA_PATH, CLOSE_PRICE_INDEX, MARKET_DATA_PATH, MARKET_CLOSE_INDEX
 )
 
+
 def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, period='test', save_plots=True):
     """
     Plot stock price trends with long/short position markers for each stock.
@@ -274,7 +275,7 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
     """
     Plot analysis for all trading steps showing the 8 selected stocks (4 long + 4 short) for each step.
     Each subplot shows past 70 days + future 21 days of close prices with decision point marked.
-    
+
     Args:
         experiment_id: Experiment identifier
         outputs_base_path: Base path to outputs
@@ -290,28 +291,43 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
-    
+
     with open(json_path, 'r', encoding='utf-8') as f:
         results = json.load(f)
-    
+
     portfolio_records = results.get('portfolio_records', [])
+    rho_record = results.get('rho_record', [])
+
     if not portfolio_records:
         print(f"No portfolio records found for {experiment_id}")
         return
-    
+
+    if len(rho_record) != len(portfolio_records):
+        print(f"Warning: rho_record length ({len(rho_record)}) != portfolio_records length ({len(portfolio_records)})")
+        # Fill missing rho values with 0.5 (neutral)
+        while len(rho_record) < len(portfolio_records):
+            rho_record.append(0.5)
+
     # Load stock price data
     if not os.path.exists(STOCK_DATA_PATH):
         print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
         return
-    
+
     stocks_data = np.load(STOCK_DATA_PATH)
     print(f"Loaded stock data with shape: {stocks_data.shape}")
-    
+
+    # Load market data for MSU metrics calculation
+    if not os.path.exists(MARKET_DATA_PATH):
+        print(f"Warning: Market data not found at {MARKET_DATA_PATH}")
+        market_data = None
+    else:
+        market_data = np.load(MARKET_DATA_PATH)
+
     # Get date range for the period
     if period == 'val':
-        date_start_idx = config['train_end']
+        date_start_idx = config.get('train_idx_end', config.get('train_end', 0))
     else:  # test
-        date_start_idx = config['val_end']
+        date_start_idx = config.get('test_idx', config.get('val_end', 0))
     
     # Generate business day range for the entire dataset
     full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
@@ -360,7 +376,74 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
         if n_rows == 1:
             axes = [axes]
         
-        fig.suptitle(f'Step {step_idx+1} Analysis - ALL STOCKS - {period.upper()} - Decision Date: {decision_date.strftime("%Y-%m-%d")}',
+        # Calculate ASU metrics for this step
+        asu_metrics_text = ""
+        try:
+            # Get all scores for this step
+            all_scores = step_record.get('all_scores', [])
+
+            if all_scores and len(all_scores) >= len(stock_symbols):
+                # Calculate future returns for all stocks
+                returns = []
+                scores = []
+
+                for stock_idx in range(len(stock_symbols)):
+                    if stock_idx < len(all_scores):
+                        score = all_scores[stock_idx]
+
+                        # Calculate return for this stock
+                        current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
+                        future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+
+                        if current_price > 0:
+                            return_rate = ((future_price - current_price) / current_price) * 100
+                            scores.append(score)
+                            returns.append(return_rate)
+
+                if len(scores) > 0 and len(returns) > 0:
+                    # Convert to numpy arrays
+                    scores_array = np.array(scores)
+                    returns_array = np.array(returns)
+
+                    K = 4  # 4 long, 4 short
+
+                    # Sort by scores to get predicted positions
+                    sorted_indices = np.argsort(scores_array)
+                    predicted_long_indices = set(sorted_indices[-K:])
+                    predicted_short_indices = set(sorted_indices[:K])
+
+                    # Calculate precision
+                    long_correct = sum(1 for idx in predicted_long_indices if returns_array[idx] > 0)
+                    short_correct = sum(1 for idx in predicted_short_indices if returns_array[idx] < 0)
+
+                    p_l4 = long_correct / K if K > 0 else 0.0
+                    p_s4 = short_correct / K if K > 0 else 0.0
+
+                    # Calculate recall
+                    positive_returns = [idx for idx in range(len(returns_array)) if returns_array[idx] > 0]
+                    negative_returns = [idx for idx in range(len(returns_array)) if returns_array[idx] < 0]
+
+                    r_l4 = 0.0
+                    r_s4 = 0.0
+
+                    if len(positive_returns) > 0:
+                        positive_returns.sort(key=lambda x: returns_array[x], reverse=True)
+                        actual_top_k = set(positive_returns[:min(K, len(positive_returns))])
+                        long_intersection = len(predicted_long_indices & actual_top_k)
+                        r_l4 = long_intersection / len(actual_top_k) if len(actual_top_k) > 0 else 0.0
+
+                    if len(negative_returns) > 0:
+                        negative_returns.sort(key=lambda x: returns_array[x])
+                        actual_bottom_k = set(negative_returns[:min(K, len(negative_returns))])
+                        short_intersection = len(predicted_short_indices & actual_bottom_k)
+                        r_s4 = short_intersection / len(actual_bottom_k) if len(actual_bottom_k) > 0 else 0.0
+
+                    asu_metrics_text = f' | ASU: P_L@4={p_l4:.3f} P_S@4={p_s4:.3f} R_L@4={r_l4:.3f} R_S@4={r_s4:.3f}'
+        except Exception as e:
+            print(f"Warning: Could not calculate ASU metrics for step {step_idx+1}: {e}")
+            asu_metrics_text = " | ASU: Metrics N/A"
+
+        fig.suptitle(f'Step {step_idx+1} Analysis - ALL STOCKS - {period.upper()} - Decision Date: {decision_date.strftime("%Y-%m-%d")}{asu_metrics_text}',
                      fontsize=16, fontweight='bold')
         
         # Plot all stocks by stock index order
@@ -595,7 +678,7 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
     Plot scatter plots for each trading step showing Score vs Future 21-day Return Rate.
     Each point represents one stock. If prediction is accurate, points should align along
     a positive diagonal (high score = high return, low score = low return).
-    
+
     Args:
         experiment_id: Experiment identifier
         outputs_base_path: Base path to outputs
@@ -606,6 +689,24 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
     """
     # Load portfolio data
     from config import JSON_FILES
+    import json
+
+    # Load config for date indices
+    config_paths = [
+        f"{outputs_base_path}/{experiment_id}/config.json",
+        f"{outputs_base_path}/{experiment_id}/log_file/hyper.json"
+    ]
+
+    config = None
+    for config_path in config_paths:
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            break
+
+    if config is None:
+        print(f"Warning: No config file found for {experiment_id}")
+        return
     json_filename = JSON_FILES[f'{period}_results']
     json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
     if not os.path.exists(json_path):
@@ -619,24 +720,26 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
     if not portfolio_records:
         print(f"No portfolio records found for {experiment_id}")
         return
-    
+
+
     # Load stock price data
     if not os.path.exists(STOCK_DATA_PATH):
         print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
         return
-    
+
     stocks_data = np.load(STOCK_DATA_PATH)
     print(f"Loaded stock data with shape: {stocks_data.shape}")
-    
+
+
     # Get date range for the period
     if period == 'val':
-        date_start_idx = config['train_end']
+        date_start_idx = config['train_idx_end']
     else:  # test
-        date_start_idx = config['val_end']
-    
+        date_start_idx = config['test_idx']
+
     # Generate business day range for the entire dataset
     full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
-    
+
     # Create output directory
     output_dir = f'plot_outputs/{experiment_id}/score_scatter_plots'
     os.makedirs(output_dir, exist_ok=True)
@@ -722,10 +825,65 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
         plt.axhline(y=0, color='black', linestyle='-', alpha=0.3, linewidth=0.8)
         plt.axvline(x=0.5, color='black', linestyle='-', alpha=0.3, linewidth=0.8)
         
+        # Calculate ASU metrics for this step
+        asu_metrics_text = ""
+        if len(scores) == len(returns) and len(scores) > 0:
+            try:
+                # Convert to numpy arrays for calculation
+                scores_array = np.array(scores)
+                returns_array = np.array(returns)
+
+                # Calculate metrics for K=4 (long top 4, short bottom 4)
+                K = 4
+
+                # Sort by scores to get predicted long/short positions
+                sorted_indices = np.argsort(scores_array)
+                predicted_long_indices = set(sorted_indices[-K:])  # Top K scores (long)
+                predicted_short_indices = set(sorted_indices[:K])  # Bottom K scores (short)
+
+                # Calculate precision: How many predicted positions moved in expected direction
+                long_correct = sum(1 for idx in predicted_long_indices if returns_array[idx] > 0)
+                short_correct = sum(1 for idx in predicted_short_indices if returns_array[idx] < 0)
+
+                p_l4 = long_correct / K if K > 0 else 0.0  # Precision Long@4
+                p_s4 = short_correct / K if K > 0 else 0.0  # Precision Short@4
+
+                # Calculate recall: How many of actual top/bottom performers we caught
+                # Sort by actual returns to get actual top/bottom performers
+                sorted_by_returns = np.argsort(returns_array)
+
+                # Filter to only consider stocks that actually moved in the right direction
+                positive_returns = [idx for idx in range(len(returns_array)) if returns_array[idx] > 0]
+                negative_returns = [idx for idx in range(len(returns_array)) if returns_array[idx] < 0]
+
+                if len(positive_returns) > 0:
+                    # Get actual top performers among stocks that went up
+                    positive_returns.sort(key=lambda x: returns_array[x], reverse=True)
+                    actual_top_k = set(positive_returns[:min(K, len(positive_returns))])
+                    long_intersection = len(predicted_long_indices & actual_top_k)
+                    r_l4 = long_intersection / len(actual_top_k) if len(actual_top_k) > 0 else 0.0
+                else:
+                    r_l4 = 0.0
+
+                if len(negative_returns) > 0:
+                    # Get actual bottom performers among stocks that went down
+                    negative_returns.sort(key=lambda x: returns_array[x])
+                    actual_bottom_k = set(negative_returns[:min(K, len(negative_returns))])
+                    short_intersection = len(predicted_short_indices & actual_bottom_k)
+                    r_s4 = short_intersection / len(actual_bottom_k) if len(actual_bottom_k) > 0 else 0.0
+                else:
+                    r_s4 = 0.0
+
+                asu_metrics_text = (f' | ASU: P_L@4={p_l4:.3f} P_S@4={p_s4:.3f} '
+                                   f'R_L@4={r_l4:.3f} R_S@4={r_s4:.3f}')
+            except Exception as e:
+                print(f"Warning: Could not calculate ASU metrics for step {step_idx+1}: {e}")
+                asu_metrics_text = " | ASU: Metrics N/A"
+
         # Formatting
         plt.title(f'Step {step_idx+1} Score vs Future Return - {period.upper()}\n'
                   f'Decision Date: {decision_date.strftime("%Y-%m-%d")} '
-                  f'({len(stock_symbols)} stocks)', fontsize=14, fontweight='bold')
+                  f'({len(stock_symbols)} stocks){asu_metrics_text}', fontsize=14, fontweight='bold')
         plt.xlabel('ASU Score (0 = Worst, 1 = Best)', fontsize=12)
         plt.ylabel('Future 21-day Return Rate (%)', fontsize=12)
         plt.grid(True, alpha=0.3)
