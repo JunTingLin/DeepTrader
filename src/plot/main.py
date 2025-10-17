@@ -185,9 +185,6 @@ def main():
             print(f"    Long Precision@{val_step_k}:   {val_acc['mean_step_long_precision']:.1%} (of {val_step_k} stocks predicted long, % that went up)")
             print(f"    Short Precision@{val_step_k}:  {val_acc['mean_step_short_precision']:.1%} (of {val_step_k} stocks predicted short, % that went down)")
             print(f"    Overall Precision@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_precision']:.1%} (of all {int(val_acc.get('avg_positions_per_step', 8))} predictions, % correct direction)")
-            print(f"    Long Recall@{val_step_k}:      {val_acc['mean_step_long_recall']:.1%} (of top {val_step_k} actual gainers, % we caught by going long)")
-            print(f"    Short Recall@{val_step_k}:     {val_acc['mean_step_short_recall']:.1%} (of bottom {val_step_k} actual losers, % we caught by going short)")
-            print(f"    Overall Recall@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_recall']:.1%} (of top/bottom performers, % we caught)")
 
         # Testing period
         test_acc = compute_prediction_accuracy(exp_id, OUTPUTS_BASE_PATH, 'test')
@@ -197,9 +194,6 @@ def main():
             print(f"    Long Precision@{test_step_k}:   {test_acc['mean_step_long_precision']:.1%} (of {test_step_k} stocks predicted long, % that went up)")
             print(f"    Short Precision@{test_step_k}:  {test_acc['mean_step_short_precision']:.1%} (of {test_step_k} stocks predicted short, % that went down)")
             print(f"    Overall Precision@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_precision']:.1%} (of all {int(test_acc.get('avg_positions_per_step', 8))} predictions, % correct direction)")
-            print(f"    Long Recall@{test_step_k}:      {test_acc['mean_step_long_recall']:.1%} (of top {test_step_k} actual gainers, % we caught by going long)")
-            print(f"    Short Recall@{test_step_k}:     {test_acc['mean_step_short_recall']:.1%} (of bottom {test_step_k} actual losers, % we caught by going short)")
-            print(f"    Overall Recall@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_recall']:.1%} (of top/bottom performers, % we caught)")
 
         # MSU Market Direction Analysis
         print(f"\n[MSU Market Direction Analysis for {exp_id}]")

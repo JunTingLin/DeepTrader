@@ -488,57 +488,12 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
                 step_short_precision = step_short_correct / step_short_total if step_short_total > 0 else 0.0
                 step_overall_precision = (step_long_correct + step_short_correct) / step_total
 
-                # Calculate step-level recall (standard IR definition)
-                # Find actual top K performers for this step
-                step_returns = []
-                for stock_idx in range(n_stocks):
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
-                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
-                    if current_price > 0:
-                        return_rate = (future_price - current_price) / current_price
-                        step_returns.append((stock_idx, return_rate))
-                    else:
-                        step_returns.append((stock_idx, 0.0))
-
-                # Sort by return rate (descending for top performers)
-                step_returns.sort(key=lambda x: x[1], reverse=True)
-
-                # Get predicted stock indices
-                predicted_long_indices = set([pos.get('stock_index') for pos in record.get('long_positions', [])])
-                predicted_short_indices = set([pos.get('stock_index') for pos in record.get('short_positions', [])])
-
-                # Find actual top/bottom performers among stocks that moved in the right direction
-                actual_up_stocks = [(x[0], x[1]) for x in step_returns if x[1] > 0]  # Only stocks that went up
-                actual_down_stocks = [(x[0], x[1]) for x in step_returns if x[1] < 0]  # Only stocks that went down
-
-                # Get top K from actual up stocks and bottom K from actual down stocks
-                actual_up_stocks.sort(key=lambda x: x[1], reverse=True)  # Sort by return (high to low)
-                actual_down_stocks.sort(key=lambda x: x[1])  # Sort by return (low to high, most negative first)
-
-                # Take top K that actually went up, and worst K that actually went down
-                actual_top_k_indices = set([x[0] for x in actual_up_stocks[:step_long_total]]) if len(actual_up_stocks) >= step_long_total else set([x[0] for x in actual_up_stocks])
-                actual_bottom_k_indices = set([x[0] for x in actual_down_stocks[:step_short_total]]) if len(actual_down_stocks) >= step_short_total else set([x[0] for x in actual_down_stocks])
-
-                # Calculate intersection (how many we got right in terms of selection)
-                long_intersection = len(predicted_long_indices & actual_top_k_indices)
-                short_intersection = len(predicted_short_indices & actual_bottom_k_indices)
-
-                # Recall@K: intersection / available targets
-                step_long_recall = long_intersection / len(actual_top_k_indices) if len(actual_top_k_indices) > 0 else 0.0
-                step_short_recall = short_intersection / len(actual_bottom_k_indices) if len(actual_bottom_k_indices) > 0 else 0.0
-
-                # Overall recall
-                total_available_targets = len(actual_top_k_indices) + len(actual_bottom_k_indices)
-                step_overall_recall = (long_intersection + short_intersection) / total_available_targets if total_available_targets > 0 else 0.0
 
                 step_precisions.append({
                     'step': step_idx + 1,
                     'long_precision': step_long_precision,
                     'short_precision': step_short_precision,
                     'overall_precision': step_overall_precision,
-                    'long_recall': step_long_recall,
-                    'short_recall': step_short_recall,
-                    'overall_recall': step_overall_recall,
                     'long_positions': step_long_total,
                     'short_positions': step_short_total,
                     'total_positions': step_total,
@@ -556,18 +511,12 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
     long_precision = 0.0  # Not used
     short_precision = 0.0  # Not used
     overall_precision = 0.0  # Not used
-    long_recall = 0.0  # Not used
-    short_recall = 0.0  # Not used
-    overall_recall = 0.0  # Not used
 
     # Calculate Mean Step metrics
     if step_precisions:
         mean_step_long_precision = np.mean([sp['long_precision'] for sp in step_precisions])
         mean_step_short_precision = np.mean([sp['short_precision'] for sp in step_precisions])
         mean_step_overall_precision = np.mean([sp['overall_precision'] for sp in step_precisions])
-        mean_step_long_recall = np.mean([sp['long_recall'] for sp in step_precisions])
-        mean_step_short_recall = np.mean([sp['short_recall'] for sp in step_precisions])
-        mean_step_overall_recall = np.mean([sp['overall_recall'] for sp in step_precisions])
         avg_positions_per_step = np.mean([sp['total_positions'] for sp in step_precisions])
         avg_long_positions_per_step = np.mean([sp['long_positions'] for sp in step_precisions])
         avg_short_positions_per_step = np.mean([sp['short_positions'] for sp in step_precisions])
@@ -578,9 +527,6 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
         mean_step_long_precision = 0.0
         mean_step_short_precision = 0.0
         mean_step_overall_precision = 0.0
-        mean_step_long_recall = 0.0
-        mean_step_short_recall = 0.0
-        mean_step_overall_recall = 0.0
         avg_positions_per_step = 0.0
         avg_long_positions_per_step = 0.0
         avg_short_positions_per_step = 0.0
@@ -595,10 +541,6 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
         'long_precision': long_precision,
         'short_precision': short_precision,
         'overall_precision': overall_precision,
-        # Recall
-        'long_recall': long_recall,
-        'short_recall': short_recall,
-        'overall_recall': overall_recall,
         # Detailed counts for precision
         'long_correct': long_correct,
         'long_wrong': long_wrong,
@@ -617,9 +559,6 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
         'mean_step_long_precision': mean_step_long_precision,
         'mean_step_short_precision': mean_step_short_precision,
         'mean_step_overall_precision': mean_step_overall_precision,
-        'mean_step_long_recall': mean_step_long_recall,
-        'mean_step_short_recall': mean_step_short_recall,
-        'mean_step_overall_recall': mean_step_overall_recall,
         'avg_long_positions_per_step': avg_long_positions_per_step,
         'avg_short_positions_per_step': avg_short_positions_per_step,
         'avg_positions_per_step': avg_positions_per_step,
