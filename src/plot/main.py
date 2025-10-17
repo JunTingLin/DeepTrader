@@ -8,7 +8,7 @@ import gc  # For garbage collection
 
 from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
-from heatmaps import plot_portfolio_heatmap, plot_profit_heatmap, plot_rho_heatmap, plot_market_profit_heatmap
+from heatmaps import plot_portfolio_heatmap, plot_future_return_heatmap, plot_profit_heatmap, plot_rho_heatmap, plot_market_profit_heatmap
 from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis, print_step_score_ranking, plot_step_score_scatter, plot_all_steps_score_scatter
 from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df, compute_correlation_metrics, compute_prediction_accuracy, calculate_msu_market_accuracy
 from config import (
@@ -51,8 +51,12 @@ def main():
         print(f"\nVisualizing portfolio for {exp_id}...")
         
         # Plot and save portfolio heatmaps
-        plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True)
-        plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True)
+        plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True, show_ranks=True, show_scores=True)
+        plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True, show_ranks=True, show_scores=True)
+
+        # Plot and save future return heatmaps (for overlay comparison)
+        plot_future_return_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True)
+        plot_future_return_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True)
         
         # Plot and save profit heatmaps
         print(f"Plotting profit heatmaps for {exp_id}...")
