@@ -10,7 +10,7 @@ import json
 from scipy.stats import spearmanr
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.functions import calculate_metrics
-from config import config, TRADE_MODE, MARKET_DATA_PATH, MARKET_CLOSE_INDEX, TRADE_LEN
+from config import config, TRADE_MODE, MARKET_DATA_PATH, MARKET_PRICE_INDEX, TRADE_LEN
 
 def calculate_periodic_returns_df(df, period):
     """
@@ -232,7 +232,7 @@ def compute_correlation_metrics(experiment_id, outputs_base_path, period='test')
     """
     import json
     import os
-    from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, CLOSE_PRICE_INDEX
+    from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, STOCK_PRICE_INDEX
 
     # Load JSON data
     json_filename = JSON_FILES[f'{period}_results']
@@ -281,8 +281,8 @@ def compute_correlation_metrics(experiment_id, outputs_base_path, period='test')
             if (decision_date_idx + 1 >= 0 and
                 decision_date_idx + 1 < stocks_data.shape[1] and
                 decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
-                current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
-                future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                 if current_price > 0:
                     return_rate = (future_price - current_price) / current_price
                 else:
@@ -360,7 +360,7 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
     """
     import json
     import os
-    from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, CLOSE_PRICE_INDEX
+    from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, STOCK_PRICE_INDEX
 
     # Load JSON data
     json_filename = JSON_FILES[f'{period}_results']
@@ -429,8 +429,8 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
             scores = np.array(record.get('all_scores', []))
             n_stocks = min(len(scores), stocks_data.shape[0])
             for stock_idx in range(n_stocks):
-                current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
-                future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                 if current_price > 0:
                     return_rate = (future_price - current_price) / current_price
                     if return_rate > 0:
@@ -447,8 +447,8 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
             for pos in record.get('long_positions', []):
                 stock_idx = pos.get('stock_index')
                 if stock_idx is not None and stock_idx < stocks_data.shape[0]:
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
-                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                    current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                     if current_price > 0:
                         return_rate = (future_price - current_price) / current_price
                         if return_rate > 0:
@@ -464,8 +464,8 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
             for pos in record.get('short_positions', []):
                 stock_idx = pos.get('stock_index')
                 if stock_idx is not None and stock_idx < stocks_data.shape[0]:
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
-                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                    current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                     if current_price > 0:
                         return_rate = (future_price - current_price) / current_price
                         if return_rate < 0:
@@ -684,8 +684,8 @@ def calculate_msu_market_accuracy(experiment_path, period='val'):
             decision_date_idx + 1 < market_data.shape[0] and
             decision_date_idx + trade_len < market_data.shape[0]):
 
-            current_market = market_data[decision_date_idx + 1, MARKET_CLOSE_INDEX]
-            future_market = market_data[decision_date_idx + trade_len, MARKET_CLOSE_INDEX]
+            current_market = market_data[decision_date_idx + 1, MARKET_PRICE_INDEX]
+            future_market = market_data[decision_date_idx + trade_len, MARKET_PRICE_INDEX]
 
             if current_market > 0:
                 market_return = (future_market - current_market) / current_market

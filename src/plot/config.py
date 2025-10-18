@@ -108,8 +108,8 @@ OUTPUTS_BASE_PATH = '../outputs'
 EXPERIMENT_IDS = config['experiment_ids']
 STOCK_DATA_PATH = '../data/DJIA/feature34-Inter-P532/stocks_data.npy'
 MARKET_DATA_PATH = '../data/DJIA/feature34-Inter-P532/market_data.npy'
-CLOSE_PRICE_INDEX = 3     # Stock close price index in the 34 stock features
-MARKET_CLOSE_INDEX = 9    # Market close price index in the 27 market features
+STOCK_PRICE_INDEX = 0     # Stock open price index in the 34 stock features
+MARKET_PRICE_INDEX = 9    # Market close price index in the 27 market features
 
 # -------------------------------
 # Plotting Style Configuration

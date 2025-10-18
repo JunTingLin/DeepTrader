@@ -11,7 +11,7 @@ import os
 # spearmanr is now imported and used in analysis.py
 from config import (
     config, START_DATE, END_DATE, TRADE_LEN,
-    STOCK_DATA_PATH, CLOSE_PRICE_INDEX, MARKET_DATA_PATH, MARKET_CLOSE_INDEX
+    STOCK_DATA_PATH, STOCK_PRICE_INDEX, MARKET_DATA_PATH, MARKET_PRICE_INDEX
 )
 
 
@@ -68,7 +68,7 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
             continue
             
         # Extract price data for this stock and period
-        stock_prices = stocks_data[stock_idx, date_start_idx:date_end_idx, CLOSE_PRICE_INDEX]
+        stock_prices = stocks_data[stock_idx, date_start_idx:date_end_idx, STOCK_PRICE_INDEX]
         
         # Create position markers
         long_positions = []
@@ -94,7 +94,7 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
         plt.figure(figsize=(15, 8))
         
         # Plot price trend
-        plt.plot(period_dates, stock_prices, 'b-', linewidth=1, alpha=0.8, label='Close Price')
+        plt.plot(period_dates, stock_prices, 'b-', linewidth=1, alpha=0.8, label='Open Price')
         
         # Draw vertical lines for each trading step (like heatmap x-axis)
         n_steps = len(portfolio_records)
@@ -137,7 +137,7 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
         # Formatting
         plt.title(f'{stock_symbol} - Price Trend with Trading Steps ({period.upper()}, {n_steps} steps)', fontsize=14)
         plt.xlabel('Trading Steps (21 days per step)', fontsize=12)
-        plt.ylabel('Close Price ($)', fontsize=12)
+        plt.ylabel('Open Price ($)', fontsize=12)
         plt.grid(True, alpha=0.3)
         plt.legend()
         
@@ -230,8 +230,8 @@ def print_step_score_ranking(experiment_id, outputs_base_path, stock_symbols, sa
                     if (stock_idx < stocks_data.shape[0] and 
                         decision_date_idx + 1 >= 0 and 
                         decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
-                        current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]  # t+1 (execution day)
-                        future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]  # t+21
+                        current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]  # t+1 (execution day)
+                        future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]  # t+21
                         
                         if current_price > 0:
                             future_return_rate = ((future_price - current_price) / current_price) * 100
@@ -274,7 +274,7 @@ def print_step_score_ranking(experiment_id, outputs_base_path, stock_symbols, sa
 def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test', save_plots=True):
     """
     Plot analysis for all trading steps showing the 8 selected stocks (4 long + 4 short) for each step.
-    Each subplot shows past 70 days + future 21 days of close prices with decision point marked.
+    Each subplot shows past 70 days + future 21 days of open prices with decision point marked.
 
     Args:
         experiment_id: Experiment identifier
@@ -392,8 +392,8 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
                         score = all_scores[stock_idx]
 
                         # Calculate return for this stock
-                        current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
-                        future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                        current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                        future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
 
                         if current_price > 0:
                             return_rate = ((future_price - current_price) / current_price) * 100
@@ -439,8 +439,8 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
                 if (stock_idx < stocks_data.shape[0] and 
                     window_start_idx >= 0 and 
                     window_end_idx < stocks_data.shape[1] and
-                    CLOSE_PRICE_INDEX < stocks_data.shape[2]):
-                    stock_prices = stocks_data[stock_idx, window_start_idx:window_end_idx + 1, CLOSE_PRICE_INDEX]
+                    STOCK_PRICE_INDEX < stocks_data.shape[2]):
+                    stock_prices = stocks_data[stock_idx, window_start_idx:window_end_idx + 1, STOCK_PRICE_INDEX]
                 else:
                     print(f"Warning: Invalid indices for stock {stock_idx} at step {step_idx}")
                     continue
@@ -495,7 +495,7 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
                     
                     # Formatting with stock index in title
                     ax.set_title(title, fontsize=10, fontweight='bold', color=title_color)
-                    ax.set_ylabel('Price ($)', fontsize=8)
+                    ax.set_ylabel('Open Price ($)', fontsize=8)
                     ax.grid(True, alpha=0.3)
                     ax.tick_params(axis='x', rotation=45, labelsize=8)
                     ax.tick_params(axis='y', labelsize=8)
@@ -580,7 +580,7 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
     print(f"Loaded market data with shape: {market_data.shape}")
     
     # Use market close price index from config
-    market_close_index = MARKET_CLOSE_INDEX
+    market_close_index = MARKET_PRICE_INDEX
     
     # Get date range for the period
     if period == 'val':
@@ -760,8 +760,8 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
                 if (stock_idx < stocks_data.shape[0] and 
                     decision_date_idx + 1 >= 0 and 
                     decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
-                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                    current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                     
                     if current_price > 0:
                         return_rate = ((future_price - current_price) / current_price) * 100
@@ -977,8 +977,8 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
                 if (stock_idx < stocks_data.shape[0] and 
                     decision_date_idx + 1 >= 0 and 
                     decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]
-                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]
+                    current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                     
                     if current_price > 0:
                         return_rate = ((future_price - current_price) / current_price) * 100

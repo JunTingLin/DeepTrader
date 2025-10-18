@@ -188,7 +188,7 @@ def plot_future_return_heatmap(experiment_id, outputs_base_path, stock_symbols, 
         save_plot: Whether to save the plot
     """
     # Load JSON data
-    from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, CLOSE_PRICE_INDEX
+    from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, STOCK_PRICE_INDEX
     import pandas as pd
     from config import START_DATE, END_DATE
 
@@ -240,8 +240,8 @@ def plot_future_return_heatmap(experiment_id, outputs_base_path, stock_symbols, 
                 decision_date_idx + 1 >= 0 and
                 decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
 
-                current_price = stocks_data[stock_idx, decision_date_idx + 1, CLOSE_PRICE_INDEX]  # t+1
-                future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, CLOSE_PRICE_INDEX]  # t+21
+                current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]  # t+1
+                future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]  # t+21
 
                 if current_price > 0:
                     future_return_rate = ((future_price - current_price) / current_price) * 100
