@@ -419,7 +419,26 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
                     p_l4 = long_correct / K if K > 0 else 0.0
                     p_s4 = short_correct / K if K > 0 else 0.0
 
-                    asu_metrics_text = f' | ASU: P_L@4={p_l4:.3f} P_S@4={p_s4:.3f}'
+                    # Calculate recall
+                    positive_returns = [idx for idx in range(len(returns_array)) if returns_array[idx] > 0]
+                    negative_returns = [idx for idx in range(len(returns_array)) if returns_array[idx] < 0]
+
+                    r_l4 = 0.0
+                    r_s4 = 0.0
+
+                    if len(positive_returns) > 0:
+                        positive_returns.sort(key=lambda x: returns_array[x], reverse=True)
+                        actual_top_k = set(positive_returns[:min(K, len(positive_returns))])
+                        long_intersection = len(predicted_long_indices & actual_top_k)
+                        r_l4 = long_intersection / len(actual_top_k) if len(actual_top_k) > 0 else 0.0
+
+                    if len(negative_returns) > 0:
+                        negative_returns.sort(key=lambda x: returns_array[x])
+                        actual_bottom_k = set(negative_returns[:min(K, len(negative_returns))])
+                        short_intersection = len(predicted_short_indices & actual_bottom_k)
+                        r_s4 = short_intersection / len(actual_bottom_k) if len(actual_bottom_k) > 0 else 0.0
+
+                    asu_metrics_text = f' | ASU: P_L@4={p_l4:.3f} P_S@4={p_s4:.3f} R_L@4={r_l4:.3f} R_S@4={r_s4:.3f}'
         except Exception as e:
             print(f"Warning: Could not calculate ASU metrics for step {step_idx+1}: {e}")
             asu_metrics_text = " | ASU: Metrics N/A"
@@ -829,7 +848,34 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
                 p_l4 = long_correct / K if K > 0 else 0.0  # Precision Long@4
                 p_s4 = short_correct / K if K > 0 else 0.0  # Precision Short@4
 
-                asu_metrics_text = f' | ASU: P_L@4={p_l4:.3f} P_S@4={p_s4:.3f}'
+                # Calculate recall: How many of actual top/bottom performers we caught
+                # Sort by actual returns to get actual top/bottom performers
+                sorted_by_returns = np.argsort(returns_array)
+
+                # Filter to only consider stocks that actually moved in the right direction
+                positive_returns = [idx for idx in range(len(returns_array)) if returns_array[idx] > 0]
+                negative_returns = [idx for idx in range(len(returns_array)) if returns_array[idx] < 0]
+
+                if len(positive_returns) > 0:
+                    # Get actual top performers among stocks that went up
+                    positive_returns.sort(key=lambda x: returns_array[x], reverse=True)
+                    actual_top_k = set(positive_returns[:min(K, len(positive_returns))])
+                    long_intersection = len(predicted_long_indices & actual_top_k)
+                    r_l4 = long_intersection / len(actual_top_k) if len(actual_top_k) > 0 else 0.0
+                else:
+                    r_l4 = 0.0
+
+                if len(negative_returns) > 0:
+                    # Get actual bottom performers among stocks that went down
+                    negative_returns.sort(key=lambda x: returns_array[x])
+                    actual_bottom_k = set(negative_returns[:min(K, len(negative_returns))])
+                    short_intersection = len(predicted_short_indices & actual_bottom_k)
+                    r_s4 = short_intersection / len(actual_bottom_k) if len(actual_bottom_k) > 0 else 0.0
+                else:
+                    r_s4 = 0.0
+
+                asu_metrics_text = (f' | ASU: P_L@4={p_l4:.3f} P_S@4={p_s4:.3f} '
+                                   f'R_L@4={r_l4:.3f} R_S@4={r_s4:.3f}')
             except Exception as e:
                 print(f"Warning: Could not calculate ASU metrics for step {step_idx+1}: {e}")
                 asu_metrics_text = " | ASU: Metrics N/A"
