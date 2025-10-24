@@ -721,16 +721,6 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
         print(f"No portfolio records found for {experiment_id}")
         return
 
-
-    # Load stock price data
-    if not os.path.exists(STOCK_DATA_PATH):
-        print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
-        return
-
-    stocks_data = np.load(STOCK_DATA_PATH)
-    print(f"Loaded stock data with shape: {stocks_data.shape}")
-
-
     # Get date range for the period
     if period == 'val':
         date_start_idx = config['train_idx_end']
@@ -743,7 +733,7 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
     # Create output directory
     output_dir = f'plot_outputs/{experiment_id}/score_scatter_plots'
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Iterate through all trading steps
     for step_idx in range(len(portfolio_records)):
         # Calculate the decision date for this step
@@ -755,44 +745,52 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
         all_scores = step_record.get('all_scores', [])
         long_positions = step_record['long_positions']
         short_positions = step_record['short_positions']
-        
+
         if not all_scores or len(all_scores) < len(stock_symbols):
             print(f"Warning: Step {step_idx} missing score data, skipping...")
             continue
-        
+
+        # Get ror from sim_info
+        sim_info = step_record.get('sim_info', {})
+        ror_array = sim_info.get('ror', None)
+
+        if ror_array is None:
+            print(f"Warning: Step {step_idx} missing ror data, skipping...")
+            continue
+
+        # Handle nested list structure (flatten if needed)
+        if isinstance(ror_array, list) and len(ror_array) > 0:
+            if isinstance(ror_array[0], list):
+                # Flatten nested list: [[1.08, 0.97, ...]] -> [1.08, 0.97, ...]
+                flat_ror = [item for sublist in ror_array for item in sublist]
+            else:
+                flat_ror = ror_array
+        else:
+            flat_ror = ror_array
+
         # Create sets for quick lookup of selected positions
         long_stocks = set([pos['stock_index'] for pos in long_positions])
         short_stocks = set([pos['stock_index'] for pos in short_positions])
-        
+
         # Prepare data for scatter plot
         scores = []
         returns = []
         colors = []
         markers = []
         labels = []
-        
+
         for stock_idx in range(len(stock_symbols)):
-            if stock_idx < len(all_scores):
+            if stock_idx < len(all_scores) and stock_idx < len(flat_ror):
                 score = all_scores[stock_idx]
-                
-                # Calculate future 21-day return rate
-                if (stock_idx < stocks_data.shape[0] and 
-                    decision_date_idx + 1 >= 0 and 
-                    decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
-                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
-                    
-                    if current_price > 0:
-                        return_rate = ((future_price - current_price) / current_price) * 100
-                    else:
-                        return_rate = 0.0
-                else:
-                    return_rate = 0.0
-                
+
+                # Get return rate from ror (convert to percentage)
+                # ror = 1.08 means +8%, ror = 0.98 means -2%
+                return_rate = (flat_ror[stock_idx] - 1.0) * 100
+
                 scores.append(score)
                 returns.append(return_rate)
                 labels.append(stock_symbols[stock_idx])
-                
+
                 # Color and marker based on position type
                 if stock_idx in long_stocks:
                     colors.append('green')

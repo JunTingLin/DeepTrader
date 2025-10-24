@@ -188,9 +188,7 @@ def plot_future_return_heatmap(experiment_id, outputs_base_path, stock_symbols, 
         save_plot: Whether to save the plot
     """
     # Load JSON data
-    from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, STOCK_PRICE_INDEX
-    import pandas as pd
-    from config import START_DATE, END_DATE
+    from config import JSON_FILES
 
     json_filename = JSON_FILES[f'{period}_results']
     json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
@@ -206,23 +204,6 @@ def plot_future_return_heatmap(experiment_id, outputs_base_path, stock_symbols, 
         print(f"No portfolio records found for {experiment_id}")
         return
 
-    # Load stock price data
-    if not os.path.exists(STOCK_DATA_PATH):
-        print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
-        return
-
-    stocks_data = np.load(STOCK_DATA_PATH)
-    print(f"Loaded stock data with shape: {stocks_data.shape}")
-
-    # Get date range for the period
-    if period == 'val':
-        date_start_idx = config['train_end']
-    else:  # test
-        date_start_idx = config['val_end']
-
-    # Generate business day range for the entire dataset
-    full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
-
     # Prepare data matrix
     n_stocks = len(stock_symbols)
     n_steps = len(portfolio_records)
@@ -230,26 +211,32 @@ def plot_future_return_heatmap(experiment_id, outputs_base_path, stock_symbols, 
     # Matrix for future return rates
     return_matrix = np.zeros((n_stocks, n_steps))
 
-    for i, record in enumerate(portfolio_records):
-        # Calculate the decision date for this step
-        decision_date_idx = date_start_idx + i * TRADE_LEN
+    # Fill matrix from JSON ror data
+    for step_idx, record in enumerate(portfolio_records):
+        if 'sim_info' not in record or not record['sim_info']:
+            continue
 
-        # Calculate 21-day future return for each stock
-        for stock_idx in range(n_stocks):
-            if (stock_idx < stocks_data.shape[0] and
-                decision_date_idx + 1 >= 0 and
-                decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
+        sim_info = record['sim_info']
+        ror_array = sim_info.get('ror', None)
 
-                current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]  # t+1
-                future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]  # t+21
+        if ror_array is None:
+            continue
 
-                if current_price > 0:
-                    future_return_rate = ((future_price - current_price) / current_price) * 100
-                    return_matrix[stock_idx, i] = future_return_rate
-                else:
-                    return_matrix[stock_idx, i] = 0.0
+        # Handle nested list structure (flatten if needed)
+        if isinstance(ror_array, list) and len(ror_array) > 0:
+            if isinstance(ror_array[0], list):
+                # Flatten nested list: [[1.08, 0.97, ...]] -> [1.08, 0.97, ...]
+                flat_ror = [item for sublist in ror_array for item in sublist]
             else:
-                return_matrix[stock_idx, i] = 0.0
+                flat_ror = ror_array
+        else:
+            flat_ror = ror_array
+
+        # Convert ror to return rate percentage
+        # ror = 1.08 means +8%, ror = 0.98 means -2%
+        for stock_idx in range(min(n_stocks, len(flat_ror))):
+            return_rate = (flat_ror[stock_idx] - 1.0) * 100  # Convert to percentage
+            return_matrix[stock_idx, step_idx] = return_rate
 
     # Create figure - use same dimensions as portfolio_heatmap
     cell_width = 1.2  # Same as portfolio_heatmap with text
