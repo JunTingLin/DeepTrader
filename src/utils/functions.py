@@ -86,7 +86,24 @@ def convert_portfolio_records_to_json(portfolio_records, start_idx=None, window_
                 'score': score
             })
         step_data['short_positions'] = short_positions
-        
+
+        # Add simulation info if available (simplified version)
+        if 'sim_info' in portfolio_info:
+            sim_info = portfolio_info['sim_info']
+            step_data['sim_info'] = {
+                'LongPosition_return': convert_to_native_type(sim_info.get('LongPosition_return')),
+                'rate_of_return': convert_to_native_type(sim_info.get('rate_of_return')),
+                'ror': convert_to_native_type(sim_info.get('market_fluctuation')),
+                'long_returns': convert_to_native_type(sim_info.get('long_returns')),
+            }
+
+            # Add short position variables only if they exist
+            if 'ShortPosition_return' in sim_info:
+                step_data['sim_info'].update({
+                    'ShortPosition_return': convert_to_native_type(sim_info.get('ShortPosition_return')),
+                    'short_returns': convert_to_native_type(sim_info.get('short_returns')),
+                })
+
         json_portfolio_records.append(step_data)
     
     return json_portfolio_records

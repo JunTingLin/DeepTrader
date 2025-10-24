@@ -323,8 +323,10 @@ def plot_future_return_heatmap(experiment_id, outputs_base_path, stock_symbols, 
 
 def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
     """
-    Plot step-wise profit heatmap (single row showing profit for each trading step).
-    Each step shows the return from previous step: (wealth[i] - wealth[i-1]) / wealth[i-1]
+    Plot step-wise profit heatmap with 3 rows:
+    Row 1: Overall returns (%)
+    Row 2: Long position returns (%)
+    Row 3: Short position returns (%)
     """
     # Load JSON data
     from config import JSON_FILES
@@ -333,90 +335,316 @@ def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='
     if not os.path.exists(json_path):
         print(f"Warning: {json_path} not found")
         return
-    
+
     with open(json_path, 'r', encoding='utf-8') as f:
         results = json.load(f)
-    
-    agent_wealth = results.get('agent_wealth', [])
-    if not agent_wealth:
-        print(f"No agent wealth found for {experiment_id}")
-        return
-    
-    # Convert to numpy array and flatten if nested
-    wealth_array = np.array(agent_wealth).flatten()
-    n_steps = len(wealth_array)
-    
-    # Calculate step-wise returns (skip first step as it's always 1.0)
-    returns = []
-    for i in range(1, n_steps):
-        step_return = ((wealth_array[i] - wealth_array[i-1]) / wealth_array[i-1]) * 100  # Convert to percentage
-        returns.append(step_return)
-    
-    # Convert to matrix for heatmap (1 row, n_steps-1 columns)
-    profit_matrix = np.array(returns).reshape(1, -1)
 
-    # Create figure - use same width as other heatmaps
-    cell_width = 1.2  # Same as portfolio_heatmap
-    fig, ax = plt.subplots(figsize=(min(30, (n_steps-1) * cell_width), 4))
-    
+    # Get both portfolio records and agent wealth
+    portfolio_records = results.get('portfolio_records', [])
+    agent_wealth = results.get('agent_wealth', [])
+
+    if not portfolio_records or not agent_wealth:
+        print(f"No portfolio records or agent wealth found for {experiment_id}")
+        return
+
+    # Convert wealth to numpy array and flatten if nested
+    wealth_array = np.array(agent_wealth).flatten()
+    n_steps = len(portfolio_records)
+
+    # Initialize return arrays
+    long_returns = []
+    short_returns = []
+    overall_returns = []
+
+    # Calculate step-wise returns from sim_info if available
+    for i, record in enumerate(portfolio_records):
+        if 'sim_info' in record and record['sim_info']:
+            sim_info = record['sim_info']
+
+            # Long position return (convert to percentage)
+            long_return = sim_info.get('LongPosition_return', 0) * 100
+            long_returns.append(long_return)
+
+            # Short position return (convert to percentage, if available)
+            short_return = sim_info.get('ShortPosition_return', 0) * 100
+            short_returns.append(short_return)
+
+            # Overall return (use JSON rate_of_return for accuracy)
+            overall_return = sim_info.get('rate_of_return', 0) * 100
+            overall_returns.append(overall_return)
+        else:
+            # Fallback: calculate from wealth only
+            long_returns.append(0)
+            short_returns.append(0)
+            if i + 1 < len(wealth_array):
+                overall_return = ((wealth_array[i + 1] - wealth_array[i]) / wealth_array[i]) * 100
+            else:
+                overall_return = 0
+            overall_returns.append(overall_return)
+
+    # Convert to matrix for heatmap (3 rows, n_steps columns)
+    # Order with origin='lower': index 0 is bottom, index 2 is top
+    # So: Short (bottom/index 0) -> Long (middle/index 1) -> Overall (top/index 2)
+    profit_matrix = np.array([
+        short_returns,
+        long_returns,
+        overall_returns
+    ])
+
+    # Create figure - adjust height for 3 rows
+    cell_width = 1.2
+    fig, ax = plt.subplots(figsize=(min(30, n_steps * cell_width), 6))
+
     # Plot heatmap with diverging colormap (red=loss, green=profit)
     vmax = max(abs(profit_matrix.min()), abs(profit_matrix.max()))
     if vmax == 0:
         vmax = 0.01  # Set minimum range to avoid division by zero
-    
+
     im = ax.imshow(profit_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest',
                    vmin=-vmax, vmax=vmax, origin='lower')
 
-    # Add text annotations showing profit values
-    for j in range(profit_matrix.shape[1]):
-        profit_val = profit_matrix[0, j]
-        # Choose text color based on background
-        text_color = 'white' if abs(profit_val) > vmax * 0.5 else 'black'
-        ax.text(j, 0, f'{profit_val:.1f}%', ha='center', va='center',
-               color=text_color, fontsize=9, fontweight='bold')
+    # Add text annotations showing profit values for all rows
+    for i in range(profit_matrix.shape[0]):  # 3 rows
+        for j in range(profit_matrix.shape[1]):  # n_steps columns
+            profit_val = profit_matrix[i, j]
+            # Choose text color based on background
+            text_color = 'white' if abs(profit_val) > vmax * 0.5 else 'black'
+            ax.text(j, i, f'{profit_val:.1f}%', ha='center', va='center',
+                   color=text_color, fontsize=8, fontweight='bold')
 
     # Formatting
     ax.set_xlabel('Trading Steps', fontsize=12)
-    ax.set_ylabel('Step Returns', fontsize=12)
-    ax.set_title(f'Step-wise Profit/Loss - {period}', fontsize=14)
-    
-    # Remove y-axis ticks (only one row)
-    ax.set_yticks([])
+    ax.set_ylabel('Position Type', fontsize=12)
+    ax.set_title(f'Long/Short/Overall Position Returns - {period.upper()}', fontsize=14)
+
+    # Set y-axis labels for the 3 rows (bottom to top with origin='lower')
+    ax.set_yticks([0, 1, 2])
+    ax.set_yticklabels(['Short Return', 'Long Return', 'Overall Return'])
     
     # Set x-axis labels - show more dates with wider cells
     if sample_dates is not None and len(sample_dates) >= n_steps:
         # Show more dates since we have wider cells now
-        step_interval = max(1, (n_steps-1) // 20)  # Show more labels
-        xticks = range(0, n_steps-1, step_interval)
+        step_interval = max(1, n_steps // 20)
+        xticks = list(range(0, n_steps, step_interval))
+        # Always include the last step
+        if xticks[-1] != n_steps - 1:
+            xticks.append(n_steps - 1)
         ax.set_xticks(xticks)
         xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks if i < len(sample_dates)]
         ax.set_xticklabels(xlabels, rotation=45, ha='right')
     else:
         # Fallback to step numbers
-        step_interval = max(1, (n_steps-1) // 20)
-        xticks = range(0, n_steps-1, step_interval)
+        step_interval = max(1, n_steps // 20)
+        xticks = list(range(0, n_steps, step_interval))
+        # Always include the last step
+        if xticks[-1] != n_steps - 1:
+            xticks.append(n_steps - 1)
         ax.set_xticks(xticks)
         ax.set_xticklabels([f'Step {i+1}' for i in xticks])
-    
-    # Add horizontal colorbar
-    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.50, shrink=0.8)
+
+    # Add horizontal colorbar - adjust pad based on number of rows (3 rows)
+    # More rows = smaller pad needed (colorbar closer to plot)
+    colorbar_pad = 0.20  # For 3 rows
+    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=colorbar_pad, shrink=0.8)
     cbar.set_label('Return (Green=Profit, Red=Loss)', fontsize=10)
-    
+
     # Add grid
     ax.set_xticks(np.arange(n_steps-1) - 0.5, minor=True)
     ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5, alpha=0.3)
-    
+
     plt.tight_layout()
-    
+
     if save_plot:
         # Create output directory for this experiment
         output_dir = f'plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
-        
+
         filename = f'{output_dir}/profit_heatmap_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+
+def plot_precision_analysis_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
+    """
+    Plot precision analysis heatmap showing:
+    - Long Precision: Row 1 = Correct predictions (long+up), Row 2 = Wrong predictions (long+down/flat)
+    - Short Precision: Row 1 = Correct predictions (short+down), Row 2 = Wrong predictions (short+up/flat)
+    Each cell shows the sum of actual returns for that category.
+    """
+    # Load JSON data
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        print(f"No portfolio records found for {experiment_id}")
+        return
+
+    n_steps = len(portfolio_records)
+
+    # Initialize analysis arrays
+    long_correct_returns = []  # Long positions that went up
+    long_wrong_returns = []    # Long positions that went down/flat
+    short_correct_returns = [] # Short positions that went down
+    short_wrong_returns = []   # Short positions that went up/flat
+
+    # Analyze each trading step
+    for i, record in enumerate(portfolio_records):
+        if 'sim_info' not in record or not record['sim_info']:
+            # Fallback to zeros if no sim_info
+            long_correct_returns.append(0)
+            long_wrong_returns.append(0)
+            short_correct_returns.append(0)
+            short_wrong_returns.append(0)
+            continue
+
+        sim_info = record['sim_info']
+        ror_array = sim_info.get('ror', [])  # Individual stock returns
+
+        if not ror_array:
+            long_correct_returns.append(0)
+            long_wrong_returns.append(0)
+            short_correct_returns.append(0)
+            short_wrong_returns.append(0)
+            continue
+
+        # Convert ror to return rates (ror format: 1.02 = +2%, 0.98 = -2%)
+        # Flatten nested list structure
+        flat_ror = [item for sublist in ror_array for item in sublist]
+        returns = [(r - 1) for r in flat_ror]
+
+        # Analyze long positions
+        long_positions = record.get('long_positions', [])
+        long_correct_sum = 0
+        long_wrong_sum = 0
+
+        for pos in long_positions:
+            stock_idx = pos.get('stock_index')
+            if stock_idx is not None and stock_idx < len(returns):
+                stock_return = returns[stock_idx]
+                if stock_return > 0:  # Prediction correct: long position went up
+                    long_correct_sum += stock_return
+                else:  # Prediction wrong: long position went down/flat
+                    long_wrong_sum += stock_return
+
+        # Analyze short positions
+        short_positions = record.get('short_positions', [])
+        short_correct_sum = 0
+        short_wrong_sum = 0
+
+        for pos in short_positions:
+            stock_idx = pos.get('stock_index')
+            if stock_idx is not None and stock_idx < len(returns):
+                stock_return = returns[stock_idx]
+                if stock_return < 0:  # Prediction correct: short position went down
+                    short_correct_sum += abs(stock_return)  # Use absolute value for short gains
+                else:  # Prediction wrong: short position went up/flat
+                    short_wrong_sum += stock_return  # This will be positive (loss for short)
+
+        # Convert to percentages
+        long_correct_returns.append(long_correct_sum * 100)
+        long_wrong_returns.append(long_wrong_sum * 100)
+        short_correct_returns.append(short_correct_sum * 100)
+        short_wrong_returns.append(short_wrong_sum * 100)
+
+    # Create Long Precision heatmap
+    long_matrix = np.array([
+        long_correct_returns,
+        long_wrong_returns
+    ])
+
+    plot_precision_heatmap_single(long_matrix, 'Long', experiment_id, outputs_base_path,
+                                sample_dates, period, n_steps, save_plot)
+
+    # Create Short Precision heatmap
+    short_matrix = np.array([
+        short_correct_returns,
+        short_wrong_returns
+    ])
+
+    plot_precision_heatmap_single(short_matrix, 'Short', experiment_id, outputs_base_path,
+                                sample_dates, period, n_steps, save_plot)
+
+
+def plot_precision_heatmap_single(matrix, position_type, experiment_id, outputs_base_path,
+                                sample_dates, period, n_steps, save_plot):
+    """Helper function to plot a single precision heatmap"""
+    import matplotlib.pyplot as plt
+    import os
+
+    # Create figure
+    cell_width = 1.2
+    fig, ax = plt.subplots(figsize=(min(30, n_steps * cell_width), 4))
+
+    # Plot heatmap with diverging colormap
+    vmax = max(abs(matrix.min()), abs(matrix.max()))
+    if vmax == 0:
+        vmax = 0.01
+
+    im = ax.imshow(matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest',
+                   vmin=-vmax, vmax=vmax, origin='lower')
+
+    # Add text annotations
+    for i in range(matrix.shape[0]):  # 2 rows
+        for j in range(matrix.shape[1]):  # n_steps columns
+            value = matrix[i, j]
+            text_color = 'white' if abs(value) > vmax * 0.5 else 'black'
+            ax.text(j, i, f'{value:.1f}%', ha='center', va='center',
+                   color=text_color, fontsize=8, fontweight='bold')
+
+    # Formatting
+    ax.set_xlabel('Trading Steps', fontsize=12)
+    ax.set_ylabel(f'{position_type} Prediction Results', fontsize=12)
+    ax.set_title(f'{position_type} Precision Analysis - {period.upper()}\n'
+                f'Sum of Returns by Prediction Accuracy', fontsize=14)
+
+    # Set y-axis labels
+    if position_type == 'Long':
+        ax.set_yticks([0, 1])
+        ax.set_yticklabels(['Correct (Long→Up)', 'Wrong (Long→Down)'])
+    else:  # Short
+        ax.set_yticks([0, 1])
+        ax.set_yticklabels(['Correct (Short→Down)', 'Wrong (Short→Up)'])
+
+    # Set x-axis labels
+    if sample_dates is not None and len(sample_dates) >= n_steps:
+        step_interval = max(1, n_steps // 20)
+        xticks = list(range(0, n_steps, step_interval))
+        if xticks[-1] != n_steps - 1:
+            xticks.append(n_steps - 1)
+        ax.set_xticks(xticks)
+        xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks if i < len(sample_dates)]
+        ax.set_xticklabels(xlabels, rotation=45, ha='right')
+    else:
+        step_interval = max(1, n_steps // 20)
+        xticks = list(range(0, n_steps, step_interval))
+        if xticks[-1] != n_steps - 1:
+            xticks.append(n_steps - 1)
+        ax.set_xticks(xticks)
+        ax.set_xticklabels([f'Step {i+1}' for i in xticks])
+
+    # Add colorbar - adjust pad based on number of rows (2 rows)
+    colorbar_pad = 0.25  # For 2 rows
+    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=colorbar_pad, shrink=0.8)
+    cbar.set_label('Sum of Returns (Green=Gain, Red=Loss)', fontsize=10)
+
+    # Save plot
+    if save_plot:
+        output_dir = f'plot_outputs/{experiment_id}'
+        os.makedirs(output_dir, exist_ok=True)
+        filename = f'{output_dir}/precision_{position_type.lower()}_analysis_{period}.png'
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        print(f"Saved: {filename}")
+        plt.close()
+
 
 def plot_rho_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
     """
@@ -483,10 +711,11 @@ def plot_rho_heatmap(experiment_id, outputs_base_path, sample_dates, period='tes
         xticks = range(0, n_steps, step_interval)
         ax.set_xticks(xticks)
         ax.set_xticklabels([f'Step {i+1}' for i in xticks])
-    
-    
-    # Add horizontal colorbar
-    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.50, shrink=0.8)
+
+
+    # Add horizontal colorbar - adjust pad based on number of rows (1 row)
+    colorbar_pad = 0.35  # For 1 row
+    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=colorbar_pad, shrink=0.8)
     cbar.set_label('Rho Value (0.0=100% Short/Red, 0.5=Balanced/Yellow, 1.0=100% Long/Green)', fontsize=10)
     
     # Add grid for better readability
@@ -501,6 +730,173 @@ def plot_rho_heatmap(experiment_id, outputs_base_path, sample_dates, period='tes
         os.makedirs(output_dir, exist_ok=True)
         
         filename = f'{output_dir}/rho_heatmap_{period}.png'
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        print(f"Saved: {filename}")
+        plt.close()
+
+
+def plot_individual_stock_returns_heatmap(experiment_id, outputs_base_path, stock_symbols, sample_dates,
+                                          period='test', save_plot=True):
+    """
+    Plot individual stock returns heatmap showing return rate for each stock at each step.
+    - Color represents return rate (green=positive, red=negative)
+    - Green border for long positions, red border for short positions
+
+    Args:
+        experiment_id: Experiment ID
+        outputs_base_path: Base path to outputs
+        stock_symbols: List of stock symbols
+        sample_dates: List of sample dates
+        period: 'test' or 'val'
+        save_plot: Whether to save the plot
+    """
+    import matplotlib.patches as patches
+
+    # Load JSON data
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        print(f"No portfolio records found for {experiment_id}")
+        return
+
+    # Prepare data matrix
+    n_stocks = len(stock_symbols)
+    n_steps = len(portfolio_records)
+
+    # Matrix for return rates (percentage)
+    returns_matrix = np.zeros((n_stocks, n_steps))
+    # Track position type: 1=long, -1=short, 0=no position
+    position_type_matrix = np.zeros((n_stocks, n_steps))
+
+    # Fill the matrix with individual stock returns
+    for step_idx, record in enumerate(portfolio_records):
+        if 'sim_info' not in record or not record['sim_info']:
+            continue
+
+        sim_info = record['sim_info']
+
+        # Process long returns
+        long_returns = sim_info.get('long_returns', None)
+        if long_returns is not None:
+            # Handle nested list structure (flatten if needed)
+            if isinstance(long_returns, list) and len(long_returns) > 0:
+                if isinstance(long_returns[0], list):
+                    flat_long_returns = [item for sublist in long_returns for item in sublist]
+                else:
+                    flat_long_returns = long_returns
+            else:
+                flat_long_returns = long_returns
+
+            # Fill long positions
+            for stock_idx in range(min(n_stocks, len(flat_long_returns))):
+                if abs(flat_long_returns[stock_idx]) > 0.0001:  # Has long position
+                    returns_matrix[stock_idx, step_idx] = flat_long_returns[stock_idx] * 100
+                    position_type_matrix[stock_idx, step_idx] = 1  # Mark as long
+
+        # Process short returns
+        short_returns = sim_info.get('short_returns', None)
+        if short_returns is not None:
+            # Handle nested list structure (flatten if needed)
+            if isinstance(short_returns, list) and len(short_returns) > 0:
+                if isinstance(short_returns[0], list):
+                    flat_short_returns = [item for sublist in short_returns for item in sublist]
+                else:
+                    flat_short_returns = short_returns
+            else:
+                flat_short_returns = short_returns
+
+            # Fill short positions
+            for stock_idx in range(min(n_stocks, len(flat_short_returns))):
+                if abs(flat_short_returns[stock_idx]) > 0.0001:  # Has short position
+                    returns_matrix[stock_idx, step_idx] = flat_short_returns[stock_idx] * 100
+                    position_type_matrix[stock_idx, step_idx] = -1  # Mark as short
+
+    # Create figure - same dimensions as portfolio_heatmap
+    cell_width = 1.2
+    height = max(10, min(16, n_stocks * 0.5))
+    fig, ax = plt.subplots(figsize=(min(30, n_steps * cell_width), height))
+
+    # Plot heatmap with diverging colormap (red=negative, green=positive)
+    vmax = max(abs(returns_matrix.min()), abs(returns_matrix.max()))
+    if vmax == 0:
+        vmax = 0.01
+
+    im = ax.imshow(returns_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest',
+                   vmin=-vmax, vmax=vmax, origin='lower')
+
+    # Add borders and text annotations
+    for i in range(n_stocks):
+        for j in range(n_steps):
+            position_type = position_type_matrix[i, j]
+
+            # Add border for positions
+            if position_type == 1:  # Long position - green border
+                rect = patches.Rectangle((j-0.5, i-0.5), 1, 1, linewidth=2.5,
+                                        edgecolor='darkgreen', facecolor='none')
+                ax.add_patch(rect)
+            elif position_type == -1:  # Short position - red border
+                rect = patches.Rectangle((j-0.5, i-0.5), 1, 1, linewidth=2.5,
+                                        edgecolor='darkred', facecolor='none')
+                ax.add_patch(rect)
+
+            # Add text for return values
+            return_val = returns_matrix[i, j]
+            if abs(return_val) > 0.01:  # Only show non-zero values
+                # Choose text color based on background
+                text_color = 'white' if abs(return_val) > vmax * 0.5 else 'black'
+                ax.text(j, i, f'{return_val:.1f}%', ha='center', va='center',
+                       color=text_color, fontsize=9, fontweight='bold')
+
+    # Formatting - same style as portfolio_heatmap
+    ax.set_xlabel('Trading Steps', fontsize=12)
+    ax.set_ylabel('Stocks', fontsize=12)
+    ax.set_title(f'Individual Stock Returns (Green Border=Long, Red Border=Short) - {period.upper()}', fontsize=14)
+
+    # Set y-axis labels with both index and symbol (same as portfolio_heatmap)
+    ax.set_yticks(range(n_stocks))
+    y_labels = [f"{i}: {stock_symbols[i]}" for i in range(n_stocks)]
+    ax.set_yticklabels(y_labels, fontsize=8)
+
+    # Set x-axis labels - show dates with same style as portfolio_heatmap
+    if sample_dates is not None and len(sample_dates) >= n_steps:
+        step_interval = max(1, n_steps // 20)
+        xticks = range(0, n_steps, step_interval)
+        ax.set_xticks(xticks)
+        xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks]
+        ax.set_xticklabels(xlabels, rotation=45, ha='right')
+    else:
+        # Fallback to step numbers
+        step_interval = max(1, n_steps // 20)
+        xticks = range(0, n_steps, step_interval)
+        ax.set_xticks(xticks)
+        ax.set_xticklabels([f'Step {i+1}' for i in xticks])
+
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax, pad=0.01)
+    cbar.set_label('Return Rate (%) (Green=Positive, Red=Negative)', fontsize=10)
+
+    # Add grid (same as portfolio_heatmap)
+    ax.set_xticks(np.arange(n_steps) - 0.5, minor=True)
+    ax.set_yticks(np.arange(n_stocks) - 0.5, minor=True)
+    ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5, alpha=0.3)
+
+    plt.tight_layout()
+
+    if save_plot:
+        # Create output directory for this experiment
+        output_dir = f'plot_outputs/{experiment_id}'
+        os.makedirs(output_dir, exist_ok=True)
+
+        filename = f'{output_dir}/individual_returns_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
@@ -581,8 +977,9 @@ def plot_market_profit_heatmap(df_market, period='val', save_plot=True):
         ax.set_xticks(xticks)
         ax.set_xticklabels([f'Step {i+1}' for i in xticks])
 
-    # Add horizontal colorbar
-    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.50, shrink=0.8)
+    # Add horizontal colorbar - adjust pad based on number of rows (1 row)
+    colorbar_pad = 0.35  # For 1 row
+    cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=colorbar_pad, shrink=0.8)
     cbar.set_label('Return (Green=Profit, Red=Loss)', fontsize=10)
 
     # Add grid

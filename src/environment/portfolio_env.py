@@ -429,6 +429,19 @@ class PortfolioSim(object):
         print(f"===================")
 
         done = (dv1 == 0).any()
+
+        # === 計算每支股票的個別報酬率 ===
+        if self.allow_short:
+            # 做多部位：每支股票的市場報酬率
+            long_returns = (ror - 1) * (w0[:, :self.num_assets] > 0)  # (batch, num_assets)
+
+            # 做空部位：每支股票的報酬率（做空是反向的）
+            short_returns = (1 - ror) * (w0[:, self.num_assets:] > 0)  # (batch, num_assets)
+        else:
+            # 只做多模式
+            long_returns = (ror - 1) * (w0[:, :self.num_assets] > 0)  # (batch, num_assets)
+            short_returns = None
+
         info = {
             'rate_of_return': rate_of_return,
             'reward': reward,
@@ -437,8 +450,23 @@ class PortfolioSim(object):
             'weights': w0,
             'p': p,
             'market_fluctuation': ror,
-
+            # Additional sim variables for analysis
+            'LongPosition_value': LongPosition_value,
+            'LongPosition_gain': LongPosition_gain,
+            'LongPosition_return': LongPosition_return,
+            'r_total': r_total,
+            # Individual stock returns (market return rates)
+            'long_returns': long_returns,              # 每支做多股票的市場報酬率
         }
+
+        # Add short position variables only if short selling is allowed
+        if self.allow_short:
+            info.update({
+                'ShortPosition_value': ShortPosition_value,
+                'ShortPosition_gain': ShortPosition_gain,
+                'ShortPosition_return': ShortPosition_return,
+                'short_returns': short_returns,            # 每支做空股票的報酬率
+            })
         self.inofs.append(info)
         return reward, info, done
 

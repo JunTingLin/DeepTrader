@@ -11,7 +11,7 @@ from datetime import datetime
 
 from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
-from heatmaps import plot_portfolio_heatmap, plot_future_return_heatmap, plot_profit_heatmap, plot_rho_heatmap, plot_market_profit_heatmap
+from heatmaps import plot_portfolio_heatmap, plot_future_return_heatmap, plot_profit_heatmap, plot_rho_heatmap, plot_market_profit_heatmap, plot_precision_analysis_heatmap, plot_individual_stock_returns_heatmap
 from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis, print_step_score_ranking, plot_step_score_scatter, plot_all_steps_score_scatter
 from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df, compute_correlation_metrics, compute_prediction_accuracy, calculate_msu_market_accuracy
 from config import (
@@ -65,12 +65,22 @@ def main():
         print(f"Plotting profit heatmaps for {exp_id}...")
         plot_profit_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
         plot_profit_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
-        
+
+        # Plot and save precision analysis heatmaps
+        print(f"Plotting precision analysis heatmaps for {exp_id}...")
+        plot_precision_analysis_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
+        plot_precision_analysis_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
+
         # Plot and save rho (MSU allocation) heatmaps
         print(f"Plotting rho (MSU allocation) heatmaps for {exp_id}...")
         plot_rho_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
         plot_rho_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
-        
+
+        # Plot and save individual stock returns heatmaps
+        print(f"Plotting individual stock returns heatmaps for {exp_id}...")
+        plot_individual_stock_returns_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True)
+        plot_individual_stock_returns_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True)
+
         # Plot and save stock price trends with trading positions
         print(f"Generating stock price trend plots for {exp_id}...")
         print(f"This will create {len(symbols) * 2} PNG files (val + test for each stock)")

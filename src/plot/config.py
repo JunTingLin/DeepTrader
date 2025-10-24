@@ -46,8 +46,8 @@ MARKET_CONFIGS = {
         ],
         'plot_ylim': None,
         'json_files': {
-            'test_results': 'test_results_msu_original.json',
-            'val_results': 'val_results_msu_original.json'
+            'test_results': 'test_results.json',
+            'val_results': 'val_results.json'
         }
     },
     'TW': {

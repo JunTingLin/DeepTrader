@@ -227,9 +227,13 @@ class RLAgent():
                 mu_record.append(None)
                 sigma_record.append(None)
                 
+            # Store portfolio info first (before step)
             portfolio_records.append(portfolio_info)
-            
+
             next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
+
+            # Add simulation info to the current portfolio record
+            portfolio_records[-1]['sim_info'] = info
 
             agent_wealth = np.concatenate((agent_wealth, info['total_value'][..., None]), axis=-1)
             states = next_states
@@ -274,9 +278,13 @@ class RLAgent():
                 mu_record.append(None)
                 sigma_record.append(None)
                 
+            # Store portfolio info first (before step)
             portfolio_records.append(portfolio_info)
-            
+
             next_states, rewards, _, masks, done, info = self.env.step(weights, rho.detach().cpu().numpy())
+
+            # Add simulation info to the current portfolio record
+            portfolio_records[-1]['sim_info'] = info
 
             agent_wealth = np.concatenate((agent_wealth, info['total_value'][..., None]), axis=-1)
             states = next_states
