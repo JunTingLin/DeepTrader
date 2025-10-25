@@ -12,7 +12,7 @@ from datetime import datetime
 from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
 from heatmaps import plot_portfolio_heatmap, plot_future_return_heatmap, plot_profit_heatmap, plot_rho_heatmap, plot_market_profit_heatmap, plot_precision_analysis_heatmap, plot_individual_stock_returns_heatmap
-from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis, print_step_score_ranking, plot_step_score_scatter, plot_all_steps_score_scatter
+from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis, plot_step_score_scatter, plot_all_steps_score_scatter
 from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df, compute_correlation_metrics, compute_prediction_accuracy, calculate_msu_market_accuracy
 from config import (
     config, get_stock_symbols, START_DATE, END_DATE,
@@ -86,12 +86,7 @@ def main():
         print(f"This will create {len(symbols) * 2} PNG files (val + test for each stock)")
         plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'val', save_plots=True)
         plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'test', save_plots=True)
-        
-        # Print step score ranking (only prints, no plotting)
-        # print(f"Printing step score rankings for {exp_id}...")
-        # print_step_score_ranking(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
-        # print_step_score_ranking(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
-        
+
         # Plot score vs return scatter plots for all trading steps
         print(f"Generating score vs return scatter plots for {exp_id}...")
         print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test scatter plots")

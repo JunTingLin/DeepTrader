@@ -454,10 +454,9 @@ def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='
 
 def plot_precision_analysis_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
     """
-    Plot precision analysis heatmap showing:
-    - Long Precision: Row 1 = Correct predictions (long+up), Row 2 = Wrong predictions (long+down/flat)
-    - Short Precision: Row 1 = Correct predictions (short+down), Row 2 = Wrong predictions (short+up/flat)
-    Each cell shows the sum of actual returns for that category.
+    Plot precision analysis heatmap showing monthly precision for long and short positions:
+    - Row 1 (P_L@4): Long Precision - shows "correct/G" (e.g., 3/4) for each month
+    - Row 2 (P_S@4): Short Precision - shows "correct/G" (e.g., 2/4) for each month
     """
     # Load JSON data
     from config import JSON_FILES
@@ -477,30 +476,30 @@ def plot_precision_analysis_heatmap(experiment_id, outputs_base_path, sample_dat
 
     n_steps = len(portfolio_records)
 
-    # Initialize analysis arrays
-    long_correct_returns = []  # Long positions that went up
-    long_wrong_returns = []    # Long positions that went down/flat
-    short_correct_returns = [] # Short positions that went down
-    short_wrong_returns = []   # Short positions that went up/flat
+    # Initialize count arrays for precision calculation
+    long_correct_counts = []  # Count of long positions that went up
+    long_total_counts = []    # Total count of long positions
+    short_correct_counts = [] # Count of short positions that went down
+    short_total_counts = []   # Total count of short positions
 
     # Analyze each trading step
     for i, record in enumerate(portfolio_records):
         if 'sim_info' not in record or not record['sim_info']:
             # Fallback to zeros if no sim_info
-            long_correct_returns.append(0)
-            long_wrong_returns.append(0)
-            short_correct_returns.append(0)
-            short_wrong_returns.append(0)
+            long_correct_counts.append(0)
+            long_total_counts.append(0)
+            short_correct_counts.append(0)
+            short_total_counts.append(0)
             continue
 
         sim_info = record['sim_info']
         ror_array = sim_info.get('ror', [])  # Individual stock returns
 
         if not ror_array:
-            long_correct_returns.append(0)
-            long_wrong_returns.append(0)
-            short_correct_returns.append(0)
-            short_wrong_returns.append(0)
+            long_correct_counts.append(0)
+            long_total_counts.append(0)
+            short_correct_counts.append(0)
+            short_total_counts.append(0)
             continue
 
         # Convert ror to return rates (ror format: 1.02 = +2%, 0.98 = -2%)
@@ -510,96 +509,93 @@ def plot_precision_analysis_heatmap(experiment_id, outputs_base_path, sample_dat
 
         # Analyze long positions
         long_positions = record.get('long_positions', [])
-        long_correct_sum = 0
-        long_wrong_sum = 0
+        long_correct = 0
+        long_total = len(long_positions)
 
         for pos in long_positions:
             stock_idx = pos.get('stock_index')
             if stock_idx is not None and stock_idx < len(returns):
                 stock_return = returns[stock_idx]
                 if stock_return > 0:  # Prediction correct: long position went up
-                    long_correct_sum += stock_return
-                else:  # Prediction wrong: long position went down/flat
-                    long_wrong_sum += stock_return
+                    long_correct += 1
+
+        long_correct_counts.append(long_correct)
+        long_total_counts.append(long_total)
 
         # Analyze short positions
         short_positions = record.get('short_positions', [])
-        short_correct_sum = 0
-        short_wrong_sum = 0
+        short_correct = 0
+        short_total = len(short_positions)
 
         for pos in short_positions:
             stock_idx = pos.get('stock_index')
             if stock_idx is not None and stock_idx < len(returns):
                 stock_return = returns[stock_idx]
                 if stock_return < 0:  # Prediction correct: short position went down
-                    short_correct_sum += abs(stock_return)  # Use absolute value for short gains
-                else:  # Prediction wrong: short position went up/flat
-                    short_wrong_sum += stock_return  # This will be positive (loss for short)
+                    short_correct += 1
 
-        # Convert to percentages
-        long_correct_returns.append(long_correct_sum * 100)
-        long_wrong_returns.append(long_wrong_sum * 100)
-        short_correct_returns.append(short_correct_sum * 100)
-        short_wrong_returns.append(short_wrong_sum * 100)
+        short_correct_counts.append(short_correct)
+        short_total_counts.append(short_total)
 
-    # Create Long Precision heatmap
-    long_matrix = np.array([
-        long_correct_returns,
-        long_wrong_returns
+    # Create precision matrix (2 rows: long precision, short precision)
+    # We'll use precision rate (0.0 to 1.0) for coloring
+    long_precision_values = []
+    short_precision_values = []
+
+    for i in range(n_steps):
+        # Long precision
+        if long_total_counts[i] > 0:
+            long_precision_values.append(long_correct_counts[i] / long_total_counts[i])
+        else:
+            long_precision_values.append(0)
+
+        # Short precision
+        if short_total_counts[i] > 0:
+            short_precision_values.append(short_correct_counts[i] / short_total_counts[i])
+        else:
+            short_precision_values.append(0)
+
+    precision_matrix = np.array([
+        long_precision_values,
+        short_precision_values
     ])
-
-    plot_precision_heatmap_single(long_matrix, 'Long', experiment_id, outputs_base_path,
-                                sample_dates, period, n_steps, save_plot)
-
-    # Create Short Precision heatmap
-    short_matrix = np.array([
-        short_correct_returns,
-        short_wrong_returns
-    ])
-
-    plot_precision_heatmap_single(short_matrix, 'Short', experiment_id, outputs_base_path,
-                                sample_dates, period, n_steps, save_plot)
-
-
-def plot_precision_heatmap_single(matrix, position_type, experiment_id, outputs_base_path,
-                                sample_dates, period, n_steps, save_plot):
-    """Helper function to plot a single precision heatmap"""
-    import matplotlib.pyplot as plt
-    import os
 
     # Create figure
     cell_width = 1.2
-    fig, ax = plt.subplots(figsize=(min(30, n_steps * cell_width), 4))
+    fig, ax = plt.subplots(figsize=(min(30, n_steps * cell_width), 5))
 
-    # Plot heatmap with diverging colormap
-    vmax = max(abs(matrix.min()), abs(matrix.max()))
-    if vmax == 0:
-        vmax = 0.01
+    # Plot heatmap with green colormap (0.0 to 1.0 range)
+    im = ax.imshow(precision_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest',
+                   vmin=0.0, vmax=1.0, origin='lower')
 
-    im = ax.imshow(matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest',
-                   vmin=-vmax, vmax=vmax, origin='lower')
+    # Add text annotations showing "correct/total" format
+    for i in range(2):  # 2 rows
+        for j in range(n_steps):  # n_steps columns
+            if i == 0:  # Long precision row
+                correct = long_correct_counts[j]
+                total = long_total_counts[j]
+            else:  # Short precision row
+                correct = short_correct_counts[j]
+                total = short_total_counts[j]
 
-    # Add text annotations
-    for i in range(matrix.shape[0]):  # 2 rows
-        for j in range(matrix.shape[1]):  # n_steps columns
-            value = matrix[i, j]
-            text_color = 'white' if abs(value) > vmax * 0.5 else 'black'
-            ax.text(j, i, f'{value:.1f}%', ha='center', va='center',
-                   color=text_color, fontsize=8, fontweight='bold')
+            # Display as "correct/total" format (e.g., "3/4")
+            text = f'{correct}/{total}' if total > 0 else '0/0'
+
+            # Choose text color based on precision value
+            precision_val = precision_matrix[i, j]
+            text_color = 'white' if precision_val < 0.5 or precision_val > 0.8 else 'black'
+
+            ax.text(j, i, text, ha='center', va='center',
+                   color=text_color, fontsize=9, fontweight='bold')
 
     # Formatting
-    ax.set_xlabel('Trading Steps', fontsize=12)
-    ax.set_ylabel(f'{position_type} Prediction Results', fontsize=12)
-    ax.set_title(f'{position_type} Precision Analysis - {period.upper()}\n'
-                f'Sum of Returns by Prediction Accuracy', fontsize=14)
+    ax.set_xlabel('Trading Steps (Monthly)', fontsize=12)
+    ax.set_ylabel('Position Type', fontsize=12)
+    ax.set_title(f'Monthly Precision Analysis (P@4) - {period.upper()}', fontsize=14)
 
-    # Set y-axis labels
-    if position_type == 'Long':
-        ax.set_yticks([0, 1])
-        ax.set_yticklabels(['Correct (Long→Up)', 'Wrong (Long→Down)'])
-    else:  # Short
-        ax.set_yticks([0, 1])
-        ax.set_yticklabels(['Correct (Short→Down)', 'Wrong (Short→Up)'])
+    # Set y-axis labels for the 2 rows
+    ax.set_yticks([0, 1])
+    ax.set_yticklabels(['P_L@4 (Long Precision)', 'P_S@4 (Short Precision)'])
 
     # Set x-axis labels
     if sample_dates is not None and len(sample_dates) >= n_steps:
@@ -618,16 +614,22 @@ def plot_precision_heatmap_single(matrix, position_type, experiment_id, outputs_
         ax.set_xticks(xticks)
         ax.set_xticklabels([f'Step {i+1}' for i in xticks])
 
-    # Add colorbar - adjust pad based on number of rows (2 rows)
-    colorbar_pad = 0.25  # For 2 rows
+    # Add colorbar
+    colorbar_pad = 0.25
     cbar = fig.colorbar(im, ax=ax, orientation='horizontal', pad=colorbar_pad, shrink=0.8)
-    cbar.set_label('Sum of Returns (Green=Gain, Red=Loss)', fontsize=10)
+    cbar.set_label('Precision (0.0=0%, 0.5=50%, 1.0=100%)', fontsize=10)
+
+    # Add grid
+    ax.set_xticks(np.arange(n_steps) - 0.5, minor=True)
+    ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5, alpha=0.3)
+
+    plt.tight_layout()
 
     # Save plot
     if save_plot:
         output_dir = f'plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
-        filename = f'{output_dir}/precision_{position_type.lower()}_analysis_{period}.png'
+        filename = f'{output_dir}/precision_analysis_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
