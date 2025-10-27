@@ -75,8 +75,6 @@ class DataGenerator():
 
     def _step(self):
 
-        print(f"\n=== DataSrc _step DEBUG - cursor: {self.cursor} ===")
-
         if self.test_mode:
             # if self.cursor + self.trade_len >= self.__assets_data.shape[1] - 1:
             # 修改此處：使用 test_idx_end 作為測試區間的結束判斷
@@ -314,16 +312,6 @@ class PortfolioSim(object):
         assert (p >= 0.0).all() and (p <= 1.0).all()
         dw0 = self.w # (batch, num_assets)
         dv0 = self.v # (batch, )
-        dcash0 = self.cash
-        dstock0 = self.stock
-
-        # DEBUG: Print input parameters
-        print(f"\n=== _step DEBUG ===")
-        print(f"w0 shape: {w0.shape}, w0 long: {w0[:, :self.num_assets]}, w0 short: {w0[:, self.num_assets:]}")
-        print(f"ror shape: {ror.shape}, ror: {ror}")
-        print(f"p: {p}")
-        print(f"Current state - dw0: {dw0}, dv0: {dv0}, cash: {dcash0}, stock: {dstock0}")
-        print(f"allow_short: {self.allow_short}, fee: {self.fee}")
 
         if self.allow_short:
             # === short ===
@@ -335,11 +323,6 @@ class PortfolioSim(object):
 
             dw0_long_sale = np.clip((dw0_long - w0[:, :self.num_assets]), 0., 1.) # keep the sold part
             mu0_long = dw0_long_sale.sum(axis=-1) * self.fee # long position transaction fee # (batch, )
-
-            print(f"SHORT MODE:")
-            print(f"  dv0_short: {dv0_short}, dv0_short_after_sale: {dv0_short_after_sale}")
-            print(f"  dv0_long: {dv0_long}, dw0_long: {dw0_long}")
-            print(f"  dw0_long_sale: {dw0_long_sale}, mu0_long: {mu0_long}")
 
             dw1 = (ror * w0[:, :self.num_assets]) / np.sum(ror * w0[:, :self.num_assets], axis=-1, keepdims=True) # new long position weights # (batch, num_assets)
 
@@ -359,14 +342,6 @@ class PortfolioSim(object):
             rate_of_return = dv1 / dv0 - 1
             cash_value = 0.
             stocks_value = dv1
-
-            print(f"  ror * w0_long: {ror * w0[:, :self.num_assets]}, sum: {np.sum(ror * w0[:, :self.num_assets], axis=-1)}")
-            print(f"  ror * w0_short: {ror * w0[:, self.num_assets:]}, sum: {np.sum(ror * w0[:, self.num_assets:], axis=-1)}")
-            print(f"  dw1 (new weights): {dw1}")
-            print(f"  LongPosition_value: {LongPosition_value}, ShortPosition_value: {ShortPosition_value}")
-            print(f"  LongPosition_gain: {LongPosition_gain}, ShortPosition_gain: {ShortPosition_gain}")
-            print(f"  LongPosition_return: {LongPosition_return}, ShortPosition_return: {ShortPosition_return}")
-            print(f"  dv1: {dv1}, rate_of_return: {rate_of_return}")
 
         # === only long ===
         else:
@@ -390,14 +365,6 @@ class PortfolioSim(object):
             cash_value = 0.
             stocks_value = LongPosition_value
 
-            print(f"LONG ONLY MODE:")
-            print(f"  Weight difference: {dw0 - w0[:, :self.num_assets]}, abs sum: {np.sum(np.abs(dw0 - w0[:, :self.num_assets]), axis=-1)}")
-            print(f"  mu0_long (transaction fee): {mu0_long}")
-            print(f"  ror * w0: {ror * w0[:, :self.num_assets]}, sum: {np.sum(ror * w0[:, :self.num_assets], axis=-1)}")
-            print(f"  dw1 (new weights): {dw1}")
-            print(f"  LongPosition_value: {LongPosition_value}")
-            print(f"  LongPosition_gain: {LongPosition_gain}, LongPosition_return: {LongPosition_return}")
-            print(f"  dv1: {dv1}, rate_of_return: {rate_of_return}")
         # === reward ===
         # r_total = np.log((dv1) / (dv0 + EPS)).astype(np.float32)
         # r_long = np.log(LongPosition_return + 1).astype(np.float32)
@@ -421,12 +388,6 @@ class PortfolioSim(object):
                             (np.sum(ror > 0, axis=-1) + EPS)
 
         market_avg_return = (market_avg_return - 1).astype(np.float32)
-
-        print(f"FINAL RESULTS:")
-        print(f"  New state - v: {self.v}, w: {self.w}, cash: {self.cash}, stock: {self.stock}")
-        print(f"  market_avg_return: {market_avg_return}")
-        print(f"  r_total: {r_total}, r_long: {r_long}")
-        print(f"===================")
 
         done = (dv1 == 0).any()
 

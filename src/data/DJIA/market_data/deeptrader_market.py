@@ -5,8 +5,8 @@ import numpy as np
 START_DATE = '2015-01-01'
 END_DATE = '2025-08-31'
 
-# Feature mode: 'basic' for 4 DJIA features only, 'full' for all market features
-FEATURE_MODE = 'full'  # Change to 'basic' to use only DJI OHLC
+# Feature mode: 'close_only' for DJI Close only, 'basic' for 4 DJIA features, 'full' for all market features
+FEATURE_MODE = 'close_only'  # Options: 'close_only', 'basic', 'full'
 
 # Create business day date range
 unique_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
@@ -62,7 +62,11 @@ assert not merged_df_filled.isnull().any().any(), "There are still NaN in merged
 num_days = len(merged_df_filled['Date'].unique())
 
 # Determine which features to use based on mode
-if FEATURE_MODE == 'basic':
+if FEATURE_MODE == 'close_only':
+    # Close only mode: only DJI Close price
+    feature_columns = ['DJI_Close']
+    selected_data = merged_df_filled[feature_columns]
+elif FEATURE_MODE == 'basic':
     # Basic mode: only DJI OHLC
     feature_columns = ['DJI_Open', 'DJI_High', 'DJI_Low', 'DJI_Close']
     selected_data = merged_df_filled[feature_columns]
