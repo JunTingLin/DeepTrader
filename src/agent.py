@@ -3,7 +3,9 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.distributions.normal import Normal
+from torch.distributions.beta import Beta
 
 from model.ASU import ASU
 from model.MSU import MSU
@@ -66,23 +68,48 @@ class RLActor(nn.Module):
             weights[i, indice.detach().cpu().numpy() + scores.shape[1]] = short_ratio[i].cpu().numpy()
 
         if self.args.msu_bool:
-            mu = res[..., 0]
-            sigma = torch.log(1 + torch.exp(res[..., 1]))
-            if deterministic:
-                rho = torch.clamp(mu, 0.0, 1.0)
-                rho_log_p = None
+            # Get distribution type (default to 'normal' if not specified)
+            distribution_type = getattr(self.args, 'msu_distribution_type', 'normal').lower()
+
+            if distribution_type == 'beta':
+                # Beta distribution: param1=alpha, param2=beta
+                # Add small epsilon for numerical stability (avoid exactly 1.0)
+                param1 = F.softplus(res[..., 0]) + 1.0 + 1e-6  # alpha > 1
+                param2 = F.softplus(res[..., 1]) + 1.0 + 1e-6  # beta > 1
+
+                if deterministic:
+                    # Use mean of Beta distribution: E[Beta(alpha, beta)] = alpha / (alpha + beta)
+                    rho = param1 / (param1 + param2)
+                    rho_log_p = None
+                else:
+                    # Sample from Beta distribution (naturally in (0,1), no clamp needed)
+                    m = Beta(param1, param2)
+                    rho = m.rsample()  # reparameterized sample for gradients
+                    rho_log_p = m.log_prob(rho)
+
+            elif distribution_type == 'normal':
+                # Normal distribution: param1=mu, param2=sigma
+                param1 = res[..., 0]  # mu
+                param2 = torch.log(1 + torch.exp(res[..., 1]))  # sigma (positive)
+
+                if deterministic:
+                    rho = torch.clamp(param1, 0.0, 1.0)
+                    rho_log_p = None
+                else:
+                    m = Normal(param1, param2)
+                    sample_rho = m.sample()
+                    rho = torch.clamp(sample_rho, 0.0, 1.0)
+                    rho_log_p = m.log_prob(sample_rho)
             else:
-                m = Normal(mu, sigma)
-                sample_rho = m.sample()
-                rho = torch.clamp(sample_rho, 0.0, 1.0)
-                rho_log_p = m.log_prob(sample_rho)
+                raise ValueError(f"Unknown distribution type: {distribution_type}. Must be 'normal' or 'beta'.")
         else:
-            mu = None
-            sigma = None
+            distribution_type = None
+            param1 = None
+            param2 = None
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
 
-        # Override rho if manual_rho is set (same as your previous method)
+        # Override rho if manual_rho is set
         if hasattr(self.args, 'manual_rho') and self.args.manual_rho is not None:
             rho = torch.ones((weights.shape[0])).to(self.args.device) * self.args.manual_rho
 
@@ -93,8 +120,8 @@ class RLActor(nn.Module):
             'short_weights': short_ratio.detach().cpu().numpy(),
             'all_scores': scores.detach().cpu().numpy()
         }
-        
-        return weights, rho, scores_p, rho_log_p, portfolio_info, mu, sigma
+
+        return weights, rho, scores_p, rho_log_p, portfolio_info, param1, param2
 
 
 class RLAgent():
@@ -133,7 +160,7 @@ class RLAgent():
                 x_m = torch.from_numpy(states[1]).to(self.args.device)
             else:
                 x_m = None
-            weights, rho, scores_p, log_p_rho, portfolio_info, mu, sigma \
+            weights, rho, scores_p, log_p_rho, portfolio_info, param1, param2 \
                 = self.actor(x_a, x_m, masks, deterministic=False)
 
             ror = torch.from_numpy(self.env.ror).to(self.args.device)
@@ -202,8 +229,8 @@ class RLAgent():
 
         agent_wealth = np.ones((batch_size, 1), dtype=np.float32)
         rho_record = []
-        mu_record = []
-        sigma_record = []
+        param1_record = []
+        param2_record = []
         portfolio_records = []
         
         while True:
@@ -215,17 +242,17 @@ class RLAgent():
             else:
                 x_m = None
 
-            weights, rho, _, _, portfolio_info, mu, sigma \
+            weights, rho, _, _, portfolio_info, param1, param2 \
                 = self.actor(x_a, x_m, masks, deterministic=True)
 
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
             
-            if self.args.msu_bool and mu is not None and sigma is not None:
-                mu_record.append(np.mean(mu.detach().cpu().numpy()))
-                sigma_record.append(np.mean(sigma.detach().cpu().numpy()))
+            if self.args.msu_bool and param1 is not None and param2 is not None:
+                param1_record.append(np.mean(param1.detach().cpu().numpy()))
+                param2_record.append(np.mean(param2.detach().cpu().numpy()))
             else:
-                mu_record.append(None)
-                sigma_record.append(None)
+                param1_record.append(None)
+                param2_record.append(None)
                 
             # Store portfolio info first (before step)
             portfolio_records.append(portfolio_info)
@@ -241,7 +268,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth, rho_record, mu_record, sigma_record, portfolio_records
+        return agent_wealth, rho_record, param1_record, param2_record, portfolio_records
     
 
     def test(self, logger=None):
@@ -253,8 +280,8 @@ class RLAgent():
 
         agent_wealth = np.ones((batch_size, 1), dtype=np.float32)
         rho_record = []
-        mu_record = []
-        sigma_record = []
+        param1_record = []
+        param2_record = []
         portfolio_records = []
         
         while True:
@@ -266,17 +293,17 @@ class RLAgent():
             else:
                 x_m = None
 
-            weights, rho, _, _, portfolio_info, mu, sigma \
+            weights, rho, _, _, portfolio_info, param1, param2 \
                 = self.actor(x_a, x_m, masks, deterministic=True)
 
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
             
-            if self.args.msu_bool and mu is not None and sigma is not None:
-                mu_record.append(np.mean(mu.detach().cpu().numpy()))
-                sigma_record.append(np.mean(sigma.detach().cpu().numpy()))
+            if self.args.msu_bool and param1 is not None and param2 is not None:
+                param1_record.append(np.mean(param1.detach().cpu().numpy()))
+                param2_record.append(np.mean(param2.detach().cpu().numpy()))
             else:
-                mu_record.append(None)
-                sigma_record.append(None)
+                param1_record.append(None)
+                param2_record.append(None)
                 
             # Store portfolio info first (before step)
             portfolio_records.append(portfolio_info)
@@ -292,7 +319,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth, rho_record, mu_record, sigma_record, portfolio_records
+        return agent_wealth, rho_record, param1_record, param2_record, portfolio_records
 
     def clip_grad_norms(self, param_groups, max_norm=math.inf):
         """

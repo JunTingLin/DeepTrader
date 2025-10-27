@@ -103,17 +103,25 @@ def validate(func_args):
     agent = RLAgent(env, actor, func_args)
 
     try:
-        agent_wealth, rho_record, mu_record, sigma_record, portfolio_records = agent.evaluation()
+        agent_wealth, rho_record, param1_record, param2_record, portfolio_records = agent.evaluation()
         npy_save_dir = os.path.join(PREFIX, 'npy_file')
         np.save(os.path.join(npy_save_dir, 'agent_wealth_val.npy'), agent_wealth)
-        
+
         metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
-        
+
+        # Determine parameter names based on distribution type
+        distribution_type = getattr(func_args, 'msu_distribution_type', 'normal').lower()
+        if distribution_type == 'beta':
+            param1_name, param2_name = 'alpha_record', 'beta_record'
+        else:  # normal
+            param1_name, param2_name = 'mu_record', 'sigma_record'
+
         val_results = {
             'agent_wealth': agent_wealth.tolist(),
             'rho_record': [convert_to_native_type(r) for r in rho_record],
-            'mu_record': [convert_to_native_type(r) if r is not None else None for r in mu_record],
-            'sigma_record': [convert_to_native_type(r) if r is not None else None for r in sigma_record],
+            param1_name: [convert_to_native_type(r) if r is not None else None for r in param1_record],
+            param2_name: [convert_to_native_type(r) if r is not None else None for r in param2_record],
+            'distribution_type': distribution_type,
             'portfolio_records': convert_portfolio_records_to_json(
                 portfolio_records,
                 start_idx=val_idx,

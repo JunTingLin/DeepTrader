@@ -47,5 +47,6 @@
     "outputs_base_path": "./outputs",
     "manual_rho": null,
     "allow_short": true,
-    "msu_bool": true
+    "msu_bool": true,
+    "msu_distribution_type": "beta"
 }
