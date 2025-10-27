@@ -43,6 +43,8 @@ MARKET_CONFIGS = {
         'test_end': 2673,
         'experiment_ids': [
             '0718/181011',
+            '1026/030156',
+            '1026/135333'
         ],
         'plot_ylim': None,
         'json_files': {

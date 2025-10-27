@@ -1025,3 +1025,148 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
         plt.savefig(filename, dpi=200, bbox_inches='tight')
         print(f"Saved combined scatter plot: {filename}")
         plt.close()
+
+
+def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
+    """
+    Plot DJIA market trend with rho allocation bars.
+
+    Top panel: DJIA closing price trend line
+    Bottom panel: Rho values as bar chart (skyblue)
+
+    Args:
+        experiment_id: Experiment identifier
+        outputs_base_path: Base path to outputs
+        sample_dates: List of sample dates
+        period: 'val' or 'test'
+        save_plot: Whether to save the plot
+    """
+    # Load rho records from JSON
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+
+    rho_record = results.get('rho_record', [])
+    if not rho_record:
+        print(f"No rho records found for {experiment_id}")
+        return
+
+    rho_array = np.array(rho_record)
+    n_steps = len(rho_array)
+
+    # Load market data (DJIA closing prices)
+    if not os.path.exists(MARKET_DATA_PATH):
+        print(f"Warning: Market data not found at {MARKET_DATA_PATH}")
+        return
+
+    market_data = np.load(MARKET_DATA_PATH)
+
+    # Get the date range for this period
+    if period == 'val':
+        date_start_idx = config['train_end']
+    else:  # test
+        date_start_idx = config['val_end']
+
+    # Extract DJIA closing prices: initial + after each step (n_steps + 1 points total)
+    # This matches plot_market_profit_heatmap logic: wealth has n_steps values
+    djia_close_prices = []
+
+    # Point 0: Initial state (before first action)
+    cursor_initial = date_start_idx
+    if cursor_initial < market_data.shape[0]:
+        djia_close_prices.append(market_data[cursor_initial, MARKET_PRICE_INDEX])
+    else:
+        djia_close_prices.append(np.nan)
+
+    # Points 1 to n_steps: After each action period
+    for step in range(n_steps):
+        cursor = date_start_idx + (step + 1) * TRADE_LEN
+        if cursor < market_data.shape[0]:
+            djia_close = market_data[cursor, MARKET_PRICE_INDEX]
+            djia_close_prices.append(djia_close)
+        else:
+            djia_close_prices.append(np.nan)
+
+    djia_close_prices = np.array(djia_close_prices)
+    n_djia_points = len(djia_close_prices)  # Should be n_steps + 1
+
+    # Verify data alignment
+    print(f"DEBUG: n_steps (rho)={n_steps}, djia_points={n_djia_points}, sample_dates={len(sample_dates) if sample_dates is not None else None}")
+
+    # Create figure with two subplots (top: DJIA trend, bottom: rho bars)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 8),
+                                     gridspec_kw={'height_ratios': [2, 1]})
+
+    # === Top panel: DJIA closing price trend (n_steps + 1 points) ===
+    djia_x_positions = np.arange(n_djia_points)  # 0, 1, 2, ..., n_steps
+    ax1.plot(djia_x_positions, djia_close_prices,
+             color='darkblue', linewidth=2, marker='o', markersize=3, label='DJIA Close')
+    ax1.set_ylabel('DJIA Closing Price', fontsize=12, fontweight='bold')
+    ax1.set_title(f'Market Trend and MSU Rho Allocation - {period.upper()}',
+                  fontsize=14, fontweight='bold')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend(loc='upper left')
+
+    # Format y-axis for prices
+    ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:,.0f}'))
+
+    # === Bottom panel: Rho bar chart (n_steps bars) ===
+    # Rho bars at x = 0, 1, 2, ..., n_steps-1 (aligned with decision points)
+    rho_x_positions = np.arange(n_steps)
+    ax2.bar(rho_x_positions, rho_array, color='skyblue', edgecolor='steelblue',
+            linewidth=0.5, alpha=0.8, width=0.8)
+    ax2.set_ylabel('Rho (ρ)', fontsize=12, fontweight='bold')
+    ax2.set_xlabel('Decision Date (Action Day)', fontsize=12, fontweight='bold')
+    ax2.set_ylim(0, 1.0)
+    ax2.grid(True, alpha=0.3, axis='y')
+
+    # Add horizontal reference lines
+    ax2.axhline(y=0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5, label='ρ=0.5 (Balanced)')
+    ax2.legend(loc='upper right', fontsize=9)
+
+    # Set x-axis labels (actual decision dates from sample_dates)
+    if sample_dates is not None and len(sample_dates) >= n_steps:
+        # Use same x-axis label format as other heatmaps
+        step_interval = max(1, n_steps // 20)
+        xticks = list(range(0, n_steps, step_interval))
+        if xticks[-1] != n_steps - 1:
+            xticks.append(n_steps - 1)
+
+        ax2.set_xticks(xticks)
+        xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks if i < len(sample_dates)]
+        ax2.set_xticklabels(xlabels, rotation=45, ha='right')
+
+        # Also set ticks for ax1 to match
+        ax1.set_xticks(xticks)
+        ax1.set_xticklabels([])  # Hide labels on top panel
+    else:
+        # Fallback: use step numbers
+        step_interval = max(1, n_steps // 20)
+        xticks = list(range(0, n_steps, step_interval))
+        if xticks[-1] != n_steps - 1:
+            xticks.append(n_steps - 1)
+
+        ax2.set_xticks(xticks)
+        ax2.set_xticklabels([f'Step {i+1}' for i in xticks])
+        ax1.set_xticks(xticks)
+        ax1.set_xticklabels([])
+
+    # Set x-axis limits: -0.5 to n_steps+0.5 to show all DJIA points (including the extra one)
+    ax1.set_xlim(-0.5, n_steps + 0.5)
+    ax2.set_xlim(-0.5, n_steps + 0.5)
+
+    plt.tight_layout()
+
+    if save_plot:
+        output_dir = f'plot_outputs/{experiment_id}'
+        os.makedirs(output_dir, exist_ok=True)
+        filename = f'{output_dir}/rho_market_trend_{period}.png'
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        print(f"Saved: {filename}")
+        plt.close()

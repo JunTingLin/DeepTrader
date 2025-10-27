@@ -11,8 +11,8 @@ from datetime import datetime
 
 from data_processor import process_data
 from base_plots import plot_results, plot_yearly_results
-from heatmaps import plot_portfolio_heatmap, plot_future_return_heatmap, plot_profit_heatmap, plot_rho_heatmap, plot_market_profit_heatmap, plot_precision_analysis_heatmap, plot_individual_stock_returns_heatmap
-from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis, plot_step_score_scatter, plot_all_steps_score_scatter
+from heatmaps import plot_portfolio_heatmap, plot_future_return_heatmap, plot_profit_heatmap, plot_market_profit_heatmap, plot_precision_analysis_heatmap, plot_individual_stock_returns_heatmap
+from stock_trends import plot_stock_price_trends, plot_step_analysis, plot_msu_step_analysis, plot_step_score_scatter, plot_all_steps_score_scatter, plot_rho_with_market_trend
 from analysis import calculate_periodic_returns_df, calculate_win_rate_df, compute_metrics_df, compute_correlation_metrics, compute_prediction_accuracy, calculate_msu_market_accuracy
 from config import (
     config, get_stock_symbols, START_DATE, END_DATE,
@@ -71,10 +71,10 @@ def main():
         plot_precision_analysis_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
         plot_precision_analysis_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
 
-        # Plot and save rho (MSU allocation) heatmaps
-        print(f"Plotting rho (MSU allocation) heatmaps for {exp_id}...")
-        plot_rho_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
-        plot_rho_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
+        # Plot and save rho with market trend
+        print(f"Plotting rho with market trend for {exp_id}...")
+        plot_rho_with_market_trend(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
+        plot_rho_with_market_trend(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
 
         # Plot and save individual stock returns heatmaps
         print(f"Plotting individual stock returns heatmaps for {exp_id}...")
