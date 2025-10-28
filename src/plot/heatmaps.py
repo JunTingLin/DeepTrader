@@ -897,3 +897,153 @@ def plot_market_profit_heatmap(df_market, period='val', save_plot=True):
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+
+def plot_selection_quality_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
+    """
+    Plot selection quality heatmap comparing agent's stock selection with ideal selection.
+
+    Shows 4 rows for each trading step:
+    - Row 1: Sum of ROR for top 4 best performing stocks (ideal long)
+    - Row 2: Sum of ROR for agent's actual long positions (4 stocks)
+    - Row 3: Sum of ROR for bottom 4 worst performing stocks (ideal short, absolute value)
+    - Row 4: Sum of ROR for agent's actual short positions (4 stocks, absolute value)
+
+    Args:
+        experiment_id: Experiment ID
+        outputs_base_path: Base path to outputs
+        sample_dates: List of sample dates
+        period: 'test' or 'val'
+        save_plot: Whether to save the plot
+    """
+    # Load JSON data
+    from config import JSON_FILES
+    json_filename = JSON_FILES[f'{period}_results']
+    json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
+    if not os.path.exists(json_path):
+        print(f"Warning: {json_path} not found")
+        return
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+
+    portfolio_records = results.get('portfolio_records', [])
+    if not portfolio_records:
+        print(f"No portfolio records found for {experiment_id}")
+        return
+
+    n_steps = len(portfolio_records)
+
+    # Initialize 4-row matrix
+    selection_matrix = np.zeros((4, n_steps))
+
+    # Process each step
+    for i, record in enumerate(portfolio_records):
+        sim_info = record.get('sim_info', {})
+
+        # Get ROR from sim_info (flatten in case it's 2D)
+        # ROR is a ratio (e.g., 1.05 = +5% return), convert to return rate
+        ror_ratio = np.array(sim_info['ror']).flatten()  # 30 stocks' future returns as ratios
+        ror_percent = (ror_ratio - 1) * 100  # Convert to percentage returns
+
+        # Get long_returns and short_returns (already in correct format)
+        long_returns = np.array(sim_info.get('long_returns', [])).flatten()
+        short_returns = np.array(sim_info.get('short_returns', [])).flatten()
+
+        # Extract stock indices from long/short positions
+        long_positions = record.get('long_positions', [])
+        short_positions = record.get('short_positions', [])
+        long_stocks = [pos['stock_index'] for pos in long_positions]
+        short_stocks = [pos['stock_index'] for pos in short_positions]
+
+        # Row 1: Top 4 best performing stocks (ideal long)
+        top4_indices = np.argsort(ror_percent)[-4:]  # Highest 4 returns
+        top4_sum = np.sum(ror_percent[top4_indices])
+        selection_matrix[0, i] = top4_sum
+
+        # Row 2: Agent's actual long positions (use long_returns)
+        if long_stocks and len(long_returns) > 0:
+            long_return_sum = np.sum([long_returns[idx] * 100 for idx in long_stocks if idx < len(long_returns)])
+            selection_matrix[1, i] = long_return_sum
+
+        # Row 3: Bottom 4 worst performing stocks (ideal short)
+        # For short: profit = -(ror - 1) = (1 - ror), so if stock drops 10%, short gains 10%
+        bottom4_indices = np.argsort(ror_percent)[:4]  # Lowest 4 returns (most negative)
+        bottom4_short_profit = -np.sum(ror_percent[bottom4_indices])  # Negate to get short profit
+        selection_matrix[2, i] = bottom4_short_profit
+
+        # Row 4: Agent's actual short positions (use short_returns)
+        if short_stocks and len(short_returns) > 0:
+            short_return_sum = np.sum([short_returns[idx] * 100 for idx in short_stocks if idx < len(short_returns)])
+            selection_matrix[3, i] = short_return_sum
+
+    # Create figure
+    cell_width = 1.2
+    fig, ax = plt.subplots(figsize=(min(30, n_steps * cell_width), 6))
+
+    # Plot heatmap with diverging colormap
+    vmax = max(abs(selection_matrix.min()), abs(selection_matrix.max()))
+    if vmax == 0:
+        vmax = 0.01
+
+    im = ax.imshow(selection_matrix, aspect='auto', cmap='RdYlGn', interpolation='nearest',
+                   vmin=-vmax, vmax=vmax, origin='lower')
+
+    # Add text annotations
+    for i in range(4):
+        for j in range(n_steps):
+            value = selection_matrix[i, j]
+            # Choose text color based on background
+            text_color = 'white' if abs(value) > vmax * 0.5 else 'black'
+            ax.text(j, i, f'{value:.1f}%', ha='center', va='center',
+                   color=text_color, fontsize=9, fontweight='bold')
+
+    # Formatting
+    ax.set_xlabel('Trading Steps', fontsize=12)
+    ax.set_ylabel('Selection Quality', fontsize=12)
+    ax.set_title(f'Stock Selection Quality (Long/Short vs Ideal) - {period.upper()}', fontsize=14)
+
+    # Set y-axis labels
+    ax.set_yticks(range(4))
+    y_labels = [
+        'Ideal Long (Top 4)',
+        'Agent Long (4 stocks)',
+        'Ideal Short (Bottom 4)',
+        'Agent Short (4 stocks)'
+    ]
+    ax.set_yticklabels(y_labels, fontsize=10)
+
+    # Set x-axis labels - show dates
+    if sample_dates is not None and len(sample_dates) >= n_steps:
+        step_interval = max(1, n_steps // 20)
+        xticks = range(0, n_steps, step_interval)
+        ax.set_xticks(xticks)
+        xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks]
+        ax.set_xticklabels(xlabels, rotation=45, ha='right')
+    else:
+        # Fallback to step numbers
+        step_interval = max(1, n_steps // 20)
+        xticks = range(0, n_steps, step_interval)
+        ax.set_xticks(xticks)
+        ax.set_xticklabels([f'Step {i+1}' for i in xticks])
+
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax, pad=0.01)
+    cbar.set_label('Return Rate (%) (Green=Positive, Red=Negative)', fontsize=10)
+
+    # Add grid
+    ax.set_xticks(np.arange(n_steps) - 0.5, minor=True)
+    ax.set_yticks(np.arange(4) - 0.5, minor=True)
+    ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5, alpha=0.3)
+
+    plt.tight_layout()
+
+    if save_plot:
+        # Create output directory for this experiment
+        output_dir = f'plot_outputs/{experiment_id}'
+        os.makedirs(output_dir, exist_ok=True)
+
+        filename = f'{output_dir}/selection_quality_{period}.png'
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        print(f"Saved: {filename}")
+        plt.close()
