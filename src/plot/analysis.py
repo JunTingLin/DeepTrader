@@ -220,7 +220,7 @@ def calculate_single_step_msu_metrics(rho, market_return):
 
 def compute_correlation_metrics(experiment_id, outputs_base_path, period='test'):
     """
-    Compute correlation metrics between scores and returns for all 30 stocks (standard Spearman).
+    Compute correlation metrics between scores and returns for all 30 stocks with statistical testing.
 
     Args:
         experiment_id: The experiment ID
@@ -228,10 +228,15 @@ def compute_correlation_metrics(experiment_id, outputs_base_path, period='test')
         period: 'val' or 'test'
 
     Returns:
-        dict: Correlation metrics for all stocks
+        dict: Correlation metrics for all stocks including:
+            - Mean Pearson/Spearman correlations
+            - t-statistics and p-values (two-tailed and one-tailed)
+            - 95% confidence intervals
+            - Significance indicators
     """
     import json
     import os
+    from scipy.stats import ttest_1samp, t as t_dist, wilcoxon
     from config import JSON_FILES, config, TRADE_LEN, STOCK_DATA_PATH, STOCK_PRICE_INDEX
 
     # Load JSON data
@@ -321,29 +326,272 @@ def compute_correlation_metrics(experiment_id, outputs_base_path, period='test')
         overall_pearson = np.corrcoef(all_scores, all_returns)[0, 1]
         overall_spearman, _ = spearmanr(all_scores, all_returns)
 
-    # Compute mean step correlations
+    # Compute mean step correlations with statistical testing
     valid_step_correlations = [sc for sc in step_correlations if not np.isnan(sc['pearson_corr'])]
+
     if valid_step_correlations:
-        mean_pearson = np.mean([sc['pearson_corr'] for sc in valid_step_correlations])
-        mean_spearman = np.mean([sc['spearman_corr'] for sc in valid_step_correlations])
+        # Extract correlation arrays
+        step_pearsons = np.array([sc['pearson_corr'] for sc in valid_step_correlations])
+        step_spearmans = np.array([sc['spearman_corr'] for sc in valid_step_correlations])
         avg_stocks_per_step = np.mean([sc['n_stocks'] for sc in valid_step_correlations])
+        n_steps = len(valid_step_correlations)
+
+        # Mean correlations
+        mean_pearson = np.mean(step_pearsons)
+        mean_spearman = np.mean(step_spearmans)
+
+        # Standard deviations
+        std_pearson = np.std(step_pearsons, ddof=1)
+        std_spearman = np.std(step_spearmans, ddof=1)
+
+        # Standard errors
+        se_pearson = std_pearson / np.sqrt(n_steps)
+        se_spearman = std_spearman / np.sqrt(n_steps)
+
+        # Statistical testing for Pearson
+        # Parametric test (t-test): H0: ρ ≤ 0 vs H1: ρ > 0
+        t_stat_pearson, p_value_pearson_t = ttest_1samp(step_pearsons, 0, alternative='greater')
+        # Non-parametric test (Wilcoxon): H0: median ≤ 0 vs H1: median > 0
+        try:
+            w_stat_pearson, p_value_pearson_w = wilcoxon(step_pearsons, alternative='greater')
+        except ValueError:
+            # Wilcoxon fails if all values are the same
+            w_stat_pearson, p_value_pearson_w = np.nan, np.nan
+        # 95% Confidence Interval
+        ci_95_pearson = t_dist.interval(0.95, df=n_steps-1, loc=mean_pearson, scale=se_pearson)
+
+        # Statistical testing for Spearman
+        # Parametric test (t-test): H0: ρ ≤ 0 vs H1: ρ > 0
+        t_stat_spearman, p_value_spearman_t = ttest_1samp(step_spearmans, 0, alternative='greater')
+        # Non-parametric test (Wilcoxon): H0: median ≤ 0 vs H1: median > 0
+        try:
+            w_stat_spearman, p_value_spearman_w = wilcoxon(step_spearmans, alternative='greater')
+        except ValueError:
+            # Wilcoxon fails if all values are the same
+            w_stat_spearman, p_value_spearman_w = np.nan, np.nan
+        # 95% Confidence Interval
+        ci_95_spearman = t_dist.interval(0.95, df=n_steps-1, loc=mean_spearman, scale=se_spearman)
+
+        # Compute comparison between Pearson and Spearman
+        correlation_diff = np.abs(step_pearsons - step_spearmans)
+        mean_correlation_diff = np.mean(correlation_diff)
+
     else:
         mean_pearson = np.nan
         mean_spearman = np.nan
+        std_pearson = np.nan
+        std_spearman = np.nan
+        se_pearson = np.nan
+        se_spearman = np.nan
+        t_stat_pearson = np.nan
+        p_value_pearson_t = np.nan
+        w_stat_pearson = np.nan
+        p_value_pearson_w = np.nan
+        ci_95_pearson = (np.nan, np.nan)
+        t_stat_spearman = np.nan
+        p_value_spearman_t = np.nan
+        w_stat_spearman = np.nan
+        p_value_spearman_w = np.nan
+        ci_95_spearman = (np.nan, np.nan)
+        mean_correlation_diff = np.nan
         avg_stocks_per_step = 0
+        n_steps = 0
 
     return {
         'experiment_id': experiment_id,
         'period': period,
+
+        # Overall correlations (pooled data - for reference but less interpretable)
         'overall_pearson': overall_pearson,
         'overall_spearman': overall_spearman,
+
+        # Mean step correlations (recommended metric)
         'mean_step_pearson': mean_pearson,
         'mean_step_spearman': mean_spearman,
+
+        # Standard deviations
+        'std_step_pearson': std_pearson,
+        'std_step_spearman': std_spearman,
+
+        # Standard errors
+        'se_step_pearson': se_pearson,
+        'se_step_spearman': se_spearman,
+
+        # Pearson statistical testing (H0: ρ ≤ 0 vs H1: ρ > 0)
+        'pearson_t_stat': t_stat_pearson,
+        'pearson_p_value_t_test': p_value_pearson_t,
+        'pearson_w_stat': w_stat_pearson,
+        'pearson_p_value_wilcoxon': p_value_pearson_w,
+        'pearson_ci_95_lower': ci_95_pearson[0],
+        'pearson_ci_95_upper': ci_95_pearson[1],
+        'pearson_significant_t_test': p_value_pearson_t < 0.05 if not np.isnan(p_value_pearson_t) else False,
+        'pearson_significant_wilcoxon': p_value_pearson_w < 0.05 if not np.isnan(p_value_pearson_w) else False,
+
+        # Spearman statistical testing (H0: ρ ≤ 0 vs H1: ρ > 0)
+        'spearman_t_stat': t_stat_spearman,
+        'spearman_p_value_t_test': p_value_spearman_t,
+        'spearman_w_stat': w_stat_spearman,
+        'spearman_p_value_wilcoxon': p_value_spearman_w,
+        'spearman_ci_95_lower': ci_95_spearman[0],
+        'spearman_ci_95_upper': ci_95_spearman[1],
+        'spearman_significant_t_test': p_value_spearman_t < 0.05 if not np.isnan(p_value_spearman_t) else False,
+        'spearman_significant_wilcoxon': p_value_spearman_w < 0.05 if not np.isnan(p_value_spearman_w) else False,
+
+        # Comparison between Pearson and Spearman
+        'mean_pearson_spearman_diff': mean_correlation_diff,
+
+        # Sample information
         'total_data_points': len(all_scores),
         'avg_stocks_per_step': avg_stocks_per_step,
-        'valid_steps': len(valid_step_correlations),
+        'valid_steps': n_steps,
         'total_steps': len(step_correlations)
     }
+
+
+def print_correlation_test_results(results):
+    """
+    Pretty print the correlation test results from compute_correlation_metrics.
+
+    Args:
+        results: dict returned from compute_correlation_metrics
+    """
+    exp_id = results.get('experiment_id', 'N/A')
+    period = results.get('period', 'N/A')
+    n_steps = results.get('valid_steps', 0)
+
+    print("\n" + "="*80)
+    print(f"Correlation Analysis Results: {exp_id} ({period.upper()} period)")
+    print("="*80)
+
+    print(f"\nSample Information:")
+    print(f"  Valid Steps: {n_steps}")
+    print(f"  Avg Stocks per Step: {results.get('avg_stocks_per_step', 0):.1f}")
+    print(f"  Total Data Points (pooled): {results.get('total_data_points', 0)}")
+
+    print("\n" + "-"*80)
+    print("PEARSON CORRELATION (Linear Relationship)")
+    print("-"*80)
+
+    mean_p = results.get('mean_step_pearson', np.nan)
+    std_p = results.get('std_step_pearson', np.nan)
+    ci_low_p = results.get('pearson_ci_95_lower', np.nan)
+    ci_high_p = results.get('pearson_ci_95_upper', np.nan)
+
+    print(f"\nMean Step Pearson: {mean_p:.4f} ± {std_p:.4f}")
+    print(f"95% CI: [{ci_low_p:.4f}, {ci_high_p:.4f}]")
+
+    # Parametric test (t-test)
+    t_stat_p = results.get('pearson_t_stat', np.nan)
+    p_t_p = results.get('pearson_p_value_t_test', np.nan)
+    sig_t_p = results.get('pearson_significant_t_test', False)
+
+    print(f"\nParametric Test - t-test (H₀: ρ ≤ 0 vs H₁: ρ > 0):")
+    print(f"  t-statistic: {t_stat_p:.4f}")
+    print(f"  p-value: {p_t_p:.6f}")
+    if sig_t_p:
+        print(f"  Result: ✅ SIGNIFICANT (p < 0.05) - Positive correlation detected")
+    else:
+        print(f"  Result: ❌ NOT SIGNIFICANT (p ≥ 0.05) - No evidence of positive correlation")
+
+    # Non-parametric test (Wilcoxon)
+    w_stat_p = results.get('pearson_w_stat', np.nan)
+    p_w_p = results.get('pearson_p_value_wilcoxon', np.nan)
+    sig_w_p = results.get('pearson_significant_wilcoxon', False)
+
+    print(f"\nNon-Parametric Test - Wilcoxon (H₀: median ≤ 0 vs H₁: median > 0):")
+    print(f"  W-statistic: {w_stat_p:.4f}")
+    print(f"  p-value: {p_w_p:.6f}")
+    if sig_w_p:
+        print(f"  Result: ✅ SIGNIFICANT (p < 0.05) - Positive correlation detected")
+    else:
+        print(f"  Result: ❌ NOT SIGNIFICANT (p ≥ 0.05) - No evidence of positive correlation")
+
+    print("\n" + "-"*80)
+    print("SPEARMAN CORRELATION (Monotonic Relationship)")
+    print("-"*80)
+
+    mean_s = results.get('mean_step_spearman', np.nan)
+    std_s = results.get('std_step_spearman', np.nan)
+    ci_low_s = results.get('spearman_ci_95_lower', np.nan)
+    ci_high_s = results.get('spearman_ci_95_upper', np.nan)
+
+    print(f"\nMean Step Spearman: {mean_s:.4f} ± {std_s:.4f}")
+    print(f"95% CI: [{ci_low_s:.4f}, {ci_high_s:.4f}]")
+
+    # Parametric test (t-test)
+    t_stat_s = results.get('spearman_t_stat', np.nan)
+    p_t_s = results.get('spearman_p_value_t_test', np.nan)
+    sig_t_s = results.get('spearman_significant_t_test', False)
+
+    print(f"\nParametric Test - t-test (H₀: ρ ≤ 0 vs H₁: ρ > 0):")
+    print(f"  t-statistic: {t_stat_s:.4f}")
+    print(f"  p-value: {p_t_s:.6f}")
+    if sig_t_s:
+        print(f"  Result: ✅ SIGNIFICANT (p < 0.05) - Positive correlation detected")
+    else:
+        print(f"  Result: ❌ NOT SIGNIFICANT (p ≥ 0.05) - No evidence of positive correlation")
+
+    # Non-parametric test (Wilcoxon)
+    w_stat_s = results.get('spearman_w_stat', np.nan)
+    p_w_s = results.get('spearman_p_value_wilcoxon', np.nan)
+    sig_w_s = results.get('spearman_significant_wilcoxon', False)
+
+    print(f"\nNon-Parametric Test - Wilcoxon (H₀: median ≤ 0 vs H₁: median > 0):")
+    print(f"  W-statistic: {w_stat_s:.4f}")
+    print(f"  p-value: {p_w_s:.6f}")
+    if sig_w_s:
+        print(f"  Result: ✅ SIGNIFICANT (p < 0.05) - Positive correlation detected")
+    else:
+        print(f"  Result: ❌ NOT SIGNIFICANT (p ≥ 0.05) - No evidence of positive correlation")
+
+    print("\n" + "-"*80)
+    print("COMPARISON")
+    print("-"*80)
+
+    diff = results.get('mean_pearson_spearman_diff', np.nan)
+    print(f"\nAverage |Pearson - Spearman| difference: {diff:.4f}")
+
+    if diff < 0.05:
+        print("✅ Pearson and Spearman are very similar")
+        print("   → Linear relationship, minimal outliers")
+        print("   → Either metric is appropriate")
+    elif diff < 0.10:
+        print("⚠️  Pearson and Spearman show moderate differences")
+        print("   → Some non-linearity or outliers present")
+        print("   → Spearman is more robust (recommended)")
+    else:
+        print("❌ Pearson and Spearman differ substantially")
+        print("   → Strong non-linearity or significant outliers")
+        print("   → Use Spearman (rank-based correlation)")
+
+    print("\n" + "-"*80)
+    print("INTERPRETATION GUIDE")
+    print("-"*80)
+    print("""
+    Correlation Strength:
+      |ρ| < 0.1  : Negligible
+      0.1 ≤ |ρ| < 0.3 : Weak
+      0.3 ≤ |ρ| < 0.5 : Moderate
+      0.5 ≤ |ρ| < 0.7 : Strong
+      |ρ| ≥ 0.7  : Very Strong
+
+    Test Selection:
+      - t-test: Parametric test, assumes normal distribution
+      - Wilcoxon: Non-parametric test, no distribution assumption (more robust)
+      - Recommendation: If both tests agree, result is robust
+
+    Metric Selection:
+      - Pearson: Measures linear relationship, sensitive to outliers
+      - Spearman: Measures monotonic relationship, robust to outliers
+      - Recommended: Use Spearman for financial data (often has outliers)
+
+    Hypothesis:
+      - H₀: ρ ≤ 0 (no positive correlation)
+      - H₁: ρ > 0 (positive correlation exists)
+      - We test if higher scores predict higher returns
+    """)
+
+    print("="*80 + "\n")
 
 
 def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test'):
