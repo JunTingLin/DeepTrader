@@ -22,7 +22,7 @@
     "sigma": 0.5,
     "in_features": [
         34,
-        1
+        27
     ],
     "num_assets": 30,
     "G": 4,
@@ -34,7 +34,7 @@
     "epochs": 1500,
     "start_checkpoint_epoch": 1200,
     "market": "DJIA",
-    "data_prefix": "./data/DJIA/feature34-Inter-P532-MSU-close/",
+    "data_prefix": "./data/DJIA/feature34-Inter-P532/",
     "device": "cuda",
     "relation_file": "industry_classification.npy",
     "trade_len": 21,
@@ -48,5 +48,5 @@
     "manual_rho": null,
     "allow_short": true,
     "msu_bool": true,
-    "msu_distribution_type": "beta"
+    "msu_distribution_type": "normal"
 }
