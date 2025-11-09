@@ -447,7 +447,7 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
 
 def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, period='test', save_plots=True):
     """
-    Plot MSU step analysis showing past 65 days + future 21 days of market close prices
+    Plot MSU step analysis showing past 65 days + future 21 days of market open prices
     with the AI's rho decision for each trading step.
     
     Args:
@@ -487,8 +487,8 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
     market_data = np.load(MARKET_DATA_PATH)
     print(f"Loaded market data with shape: {market_data.shape}")
     
-    # Use market close price index from config
-    market_close_index = MARKET_PRICE_INDEX
+    # Use market open price index from config
+    market_open_index = MARKET_PRICE_INDEX
     
     # Get date range for the period
     if period == 'val':
@@ -522,8 +522,8 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
         analysis_dates = full_dates[window_start_idx:window_end_idx + 1]
         decision_date = full_dates[decision_date_idx]
         
-        # Extract market close prices for the analysis window
-        market_prices = market_data[window_start_idx:window_end_idx + 1, market_close_index]
+        # Extract market open prices for the analysis window
+        market_prices = market_data[window_start_idx:window_end_idx + 1, market_open_index]
         
         # Get the rho value for this step
         rho_value = rho_record[step_idx]
@@ -532,7 +532,7 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
         plt.figure(figsize=(15, 8))
         
         # Plot market price trend
-        plt.plot(analysis_dates, market_prices, 'b-', linewidth=1.5, alpha=0.8, label='Market Close')
+        plt.plot(analysis_dates, market_prices, 'b-', linewidth=1.5, alpha=0.8, label='Market Open')
         
         # Mark the decision point with vertical line
         plt.axvline(x=decision_date, color='red', linestyle='--', linewidth=2, alpha=0.8, label='Decision Point')
@@ -546,7 +546,7 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
                   f'Decision Date: {decision_date.strftime("%Y-%m-%d")}',
                   fontsize=14, fontweight='bold')
         plt.xlabel('Date', fontsize=12)
-        plt.ylabel('Market Close Price', fontsize=12)
+        plt.ylabel('Market Open Price', fontsize=12)
         plt.grid(True, alpha=0.3)
         plt.legend()
         
@@ -1073,28 +1073,28 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
     else:  # test
         date_start_idx = config['val_end']
 
-    # Extract DJIA closing prices: initial + after each step (n_steps + 1 points total)
+    # Extract DJIA opening prices: initial + after each step (n_steps + 1 points total)
     # This matches plot_market_profit_heatmap logic: wealth has n_steps values
-    djia_close_prices = []
+    djia_open_prices = []
 
     # Point 0: Initial state (before first action)
     cursor_initial = date_start_idx
     if cursor_initial < market_data.shape[0]:
-        djia_close_prices.append(market_data[cursor_initial, MARKET_PRICE_INDEX])
+        djia_open_prices.append(market_data[cursor_initial, MARKET_PRICE_INDEX])
     else:
-        djia_close_prices.append(np.nan)
+        djia_open_prices.append(np.nan)
 
     # Points 1 to n_steps: After each action period
     for step in range(n_steps):
         cursor = date_start_idx + (step + 1) * TRADE_LEN
         if cursor < market_data.shape[0]:
-            djia_close = market_data[cursor, MARKET_PRICE_INDEX]
-            djia_close_prices.append(djia_close)
+            djia_open = market_data[cursor, MARKET_PRICE_INDEX]
+            djia_open_prices.append(djia_open)
         else:
-            djia_close_prices.append(np.nan)
+            djia_open_prices.append(np.nan)
 
-    djia_close_prices = np.array(djia_close_prices)
-    n_djia_points = len(djia_close_prices)  # Should be n_steps + 1
+    djia_open_prices = np.array(djia_open_prices)
+    n_djia_points = len(djia_open_prices)  # Should be n_steps + 1
 
     # Verify data alignment
     print(f"DEBUG: n_steps (rho)={n_steps}, djia_points={n_djia_points}, sample_dates={len(sample_dates) if sample_dates is not None else None}")
@@ -1103,11 +1103,11 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 8),
                                      gridspec_kw={'height_ratios': [2, 1]})
 
-    # === Top panel: DJIA closing price trend (n_steps + 1 points) ===
+    # === Top panel: DJIA opening price trend (n_steps + 1 points) ===
     djia_x_positions = np.arange(n_djia_points)  # 0, 1, 2, ..., n_steps
-    ax1.plot(djia_x_positions, djia_close_prices,
-             color='darkblue', linewidth=2, marker='o', markersize=3, label='DJIA Close')
-    ax1.set_ylabel('DJIA Closing Price', fontsize=12, fontweight='bold')
+    ax1.plot(djia_x_positions, djia_open_prices,
+             color='darkblue', linewidth=2, marker='o', markersize=3, label='DJIA Open')
+    ax1.set_ylabel('DJIA Opening Price', fontsize=12, fontweight='bold')
     ax1.set_title(f'Market Trend and MSU Rho Allocation - {period.upper()}',
                   fontsize=14, fontweight='bold')
     ax1.grid(True, alpha=0.3)

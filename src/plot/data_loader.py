@@ -87,7 +87,7 @@ def get_market_data(full_days, file_path=None):
 
 def compute_cumulative_wealth(df_market, wealth_mode=WEALTH_MODE):
     """
-    Compute daily cumulative wealth using a Buy & Hold strategy from market Close prices.
+    Compute daily cumulative wealth using a Buy & Hold strategy from market Open prices (inter mode) or intraday returns (intra mode).
     Rebase the series so that it starts at 1.
     """
     if wealth_mode == 'inter':

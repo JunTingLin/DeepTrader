@@ -43,8 +43,6 @@ MARKET_CONFIGS = {
         'test_end': 2673,
         'experiment_ids': [
             '0718/181011',
-            '1026/030156',
-            '1026/135333'
         ],
         'plot_ylim': None,
         'json_files': {
@@ -111,7 +109,7 @@ EXPERIMENT_IDS = config['experiment_ids']
 STOCK_DATA_PATH = '../data/DJIA/feature34-Inter-P532/stocks_data.npy'
 MARKET_DATA_PATH = '../data/DJIA/feature34-Inter-P532/market_data.npy'
 STOCK_PRICE_INDEX = 0     # Stock open price index in the 34 stock features
-MARKET_PRICE_INDEX = 9    # Market close price index in the 27 market features
+MARKET_PRICE_INDEX = 6    # Market open price index in the 27 market features (changed from 9 to match strategy's Open-to-Open returns)
 
 # -------------------------------
 # Plotting Style Configuration
