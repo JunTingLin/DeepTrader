@@ -141,9 +141,31 @@ def calculate_metrics(agent_wealth, trade_mode, MAR=0.):
     ARR = AT * Ny
     AVOL = VT * math.sqrt(Ny)
     ASR = ARR / AVOL
-    drawdown = (np.maximum.accumulate(agent_wealth, axis=-1) - agent_wealth) /\
-                     np.maximum.accumulate(agent_wealth, axis=-1)
+
+    # Calculate drawdown and track MDD period
+    running_max = np.maximum.accumulate(agent_wealth, axis=-1)
+    drawdown = (running_max - agent_wealth) / running_max
     MDD = np.max(drawdown, axis=-1)
+
+    # Find MDD peak and trough indices for each agent
+    if len(agent_wealth.shape) == 1:
+        # Single agent case
+        mdd_end_idx = np.argmax(drawdown)
+        mdd_peak_idx = np.argmax(agent_wealth[:mdd_end_idx + 1]) if mdd_end_idx > 0 else 0
+        MDD_peak_idx = mdd_peak_idx
+        MDD_trough_idx = mdd_end_idx
+    else:
+        # Multiple agents case
+        MDD_peak_idx = []
+        MDD_trough_idx = []
+        for i in range(agent_wealth.shape[0]):
+            mdd_end_idx = np.argmax(drawdown[i])
+            mdd_peak_idx = np.argmax(agent_wealth[i, :mdd_end_idx + 1]) if mdd_end_idx > 0 else 0
+            MDD_peak_idx.append(mdd_peak_idx)
+            MDD_trough_idx.append(mdd_end_idx)
+        MDD_peak_idx = np.array(MDD_peak_idx)
+        MDD_trough_idx = np.array(MDD_trough_idx)
+
     CR = ARR / MDD
 
     tmp1 = np.sum(((np.clip(MAR-trade_ror, 0., math.inf))**2), axis=-1) / \
@@ -156,6 +178,8 @@ def calculate_metrics(agent_wealth, trade_mode, MAR=0.):
         'AVOL': AVOL,
         'ASR': ASR,
         'MDD': MDD,
+        'MDD_peak_idx': MDD_peak_idx,
+        'MDD_trough_idx': MDD_trough_idx,
         'CR': CR,
         'DDR': DDR
     }

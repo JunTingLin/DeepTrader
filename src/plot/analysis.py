@@ -101,11 +101,19 @@ def compute_metrics_df(df, series_list):
     """
     For each specified series in the DataFrame, compute performance metrics (ARR, AVOL, ASR, MDD, CR, DDR)
     using calculate_metrics, and return a DataFrame where rows are metrics and columns are strategies.
+    Also prints detailed MDD period information (peak to trough) for each strategy.
     """
     metrics_dict = {}
+    mdd_details = {}
+
     for col in series_list:
         wealth = df[col].values
         m = calculate_metrics(wealth.reshape(1, -1), TRADE_MODE)
+
+        # Extract scalar values
+        peak_idx = m['MDD_peak_idx'] if isinstance(m['MDD_peak_idx'], (int, np.integer)) else m['MDD_peak_idx'][0]
+        trough_idx = m['MDD_trough_idx'] if isinstance(m['MDD_trough_idx'], (int, np.integer)) else m['MDD_trough_idx'][0]
+
         metrics_dict[col] = {
             'ARR': m['ARR'][0, 0] if isinstance(m['ARR'], np.ndarray) else m['ARR'],
             'AVOL': m['AVOL'][0, 0] if isinstance(m['AVOL'], np.ndarray) else m['AVOL'],
@@ -114,6 +122,34 @@ def compute_metrics_df(df, series_list):
             'CR': m['CR'][0, 0] if isinstance(m['CR'], np.ndarray) else m['CR'],
             'DDR': m['DDR'][0, 0] if isinstance(m['DDR'], np.ndarray) else m['DDR']
         }
+
+        # Store MDD period details
+        peak_date = df.index[peak_idx]
+        trough_date = df.index[trough_idx]
+        peak_wealth = wealth[peak_idx]
+        trough_wealth = wealth[trough_idx]
+
+        mdd_details[col] = {
+            'peak_step': peak_idx + 1,  # Convert to 1-indexed for display
+            'trough_step': trough_idx + 1,  # Convert to 1-indexed for display
+            'peak_date': peak_date,
+            'trough_date': trough_date,
+            'peak_wealth': peak_wealth,
+            'trough_wealth': trough_wealth,
+            'drawdown': (peak_wealth - trough_wealth) / peak_wealth
+        }
+
+    # Print MDD details
+    print("\n" + "="*80)
+    print("Maximum Drawdown (MDD) Period Details")
+    print("="*80)
+    for col, details in mdd_details.items():
+        print(f"\n{col}:")
+        print(f"  Peak:    Step {details['peak_step']:3d} | {details['peak_date']} | Wealth: {details['peak_wealth']:.4f}")
+        print(f"  Trough:  Step {details['trough_step']:3d} | {details['trough_date']} | Wealth: {details['trough_wealth']:.4f}")
+        print(f"  Drawdown: {details['drawdown']:.2%} over {details['trough_step'] - details['peak_step']} steps")
+    print("="*80 + "\n")
+
     return pd.DataFrame(metrics_dict)
 
 def compute_single_step_correlation(scores, returns):
