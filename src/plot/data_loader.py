@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import json
 import os
-from config import OUTPUTS_BASE_PATH, START_DATE, END_DATE, WEALTH_MODE, config
+from config import OUTPUTS_BASE_PATH, START_DATE, END_DATE, WEALTH_MODE, config, CURRENT_MARKET, MARKET_DATA_PATH, MARKET_PRICE_INDEX
 
 def load_agent_wealth():
     """
@@ -66,18 +66,40 @@ def get_business_day_segments():
 
 def get_market_data(full_days, file_path=None):
     """
-    Load market data from a local CSV file, filter for full_days, 
-    reindex to the full business day range, and fill missing values.
+    Load market data from a local CSV file or NPY file (for fake data),
+    filter for full_days, reindex to the full business day range, and fill missing values.
     """
     if file_path is None:
         file_path = config['market_file']
-    
+
+    # Handle fake data (NPY format)
+    if CURRENT_MARKET == 'FAKE':
+        # Load market data from npy file
+        market_data = np.load(MARKET_DATA_PATH, allow_pickle=True)
+        # market_data shape: (time_points, num_features)
+        # Extract the price feature
+        market_prices = market_data[:, MARKET_PRICE_INDEX]
+
+        # Create DataFrame with Open column (for compatibility)
+        full_days = pd.DatetimeIndex(full_days).tz_localize(None)
+        df = pd.DataFrame({
+            'Open': market_prices
+        }, index=full_days[:len(market_prices)])
+
+        # Ensure we have the full range
+        df = df.reindex(full_days)
+        df.replace(0, np.nan, inplace=True)
+        df.ffill(inplace=True)
+        df.bfill(inplace=True)
+        return df
+
+    # Handle real data (CSV format)
     df = pd.read_csv(file_path)
     df['Date'] = df['Date'].str.split(' ').str[0]
     df['Date'] = pd.to_datetime(df['Date'])
     df.set_index('Date', inplace=True)
     full_days = pd.DatetimeIndex(full_days).tz_localize(None)
-    
+
     df = df.loc[full_days[0]:full_days[-1]]
     df = df.reindex(full_days)
     df.replace(0, np.nan, inplace=True)

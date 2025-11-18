@@ -28,6 +28,10 @@ TWII_STOCKS = [
     "3661.TW", "3711.TW", "4904.TW", "4938.TW", "5871.TW", "5876.TW", "5880.TW", "6446.TW", "6505.TW"
 ]
 
+FAKE_STOCKS = [
+    "Stock A", "Stock B"
+]
+
 MARKET_CONFIGS = {
     'US': {
         'name': 'US',
@@ -79,14 +83,35 @@ MARKET_CONFIGS = {
             'test_results': 'test_results.json',
             'val_results': 'val_results.json'
         }
+    },
+    'FAKE': {
+        'name': 'Fake',
+        'start_date': "2015-01-01",
+        'end_date': "2025-03-31",
+        'market_file': "market_data.npy",
+        'stock_symbols': FAKE_STOCKS,
+        'benchmark_column': 'Market',
+        'benchmark_label': 'Market',
+        'title': 'DeepTrader vs. Market (Fake Data)',
+        'train_end': 1304,
+        'val_end': 2087,
+        'test_end': 2673,
+        'experiment_ids': [
+            '1114/035244',
+        ],
+        'plot_ylim': None,
+        'json_files': {
+            'test_results': 'test_results.json',
+            'val_results': 'val_results.json'
+        }
     }
 }
 
 # -------------------------------
 # Global Configuration
 # -------------------------------
-# Change this to 'TW' or 'US' to switch markets
-CURRENT_MARKET = 'US'
+# Change this to 'TW', 'US', or 'FAKE' to switch markets
+CURRENT_MARKET = 'FAKE'
 config = MARKET_CONFIGS[CURRENT_MARKET]
 JSON_FILES = config['json_files'].copy()
 
@@ -106,10 +131,18 @@ WEALTH_MODE = 'inter'  # 'inter' or 'intra' for daily returns
 # -------------------------------
 OUTPUTS_BASE_PATH = '../outputs'
 EXPERIMENT_IDS = config['experiment_ids']
-STOCK_DATA_PATH = '../data/DJIA/feature34-Inter-P532/stocks_data.npy'
-MARKET_DATA_PATH = '../data/DJIA/feature34-Inter-P532/market_data.npy'
-STOCK_PRICE_INDEX = 0     # Stock open price index in the 34 stock features
-MARKET_PRICE_INDEX = 6    # Market open price index in the 27 market features (changed from 9 to match strategy's Open-to-Open returns)
+
+# Set data paths based on current market
+if CURRENT_MARKET == 'FAKE':
+    STOCK_DATA_PATH = '../data/fake/stocks_data.npy'
+    MARKET_DATA_PATH = '../data/fake/market_data.npy'
+    STOCK_PRICE_INDEX = 0     # Stock price index in fake data (only 1 feature)
+    MARKET_PRICE_INDEX = 0    # Market price index in fake data (only 1 feature)
+else:
+    STOCK_DATA_PATH = '../data/DJIA/feature34-Inter-P532/stocks_data.npy'
+    MARKET_DATA_PATH = '../data/DJIA/feature34-Inter-P532/market_data.npy'
+    STOCK_PRICE_INDEX = 0     # Stock open price index in the 34 stock features
+    MARKET_PRICE_INDEX = 6    # Market open price index in the 27 market features (changed from 9 to match strategy's Open-to-Open returns)
 
 # -------------------------------
 # Plotting Style Configuration
