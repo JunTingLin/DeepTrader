@@ -4,6 +4,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import json
 import os
 
@@ -168,11 +169,30 @@ def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, samp
         # Create output directory for this experiment
         output_dir = f'plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
-        
+
+        # Save PNG
         filename = f'{output_dir}/portfolio_positions_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+        # Save CSV
+        csv_filename = f'{output_dir}/portfolio_positions_{period}.csv'
+        # Create DataFrame with proper labels
+        if sample_dates is not None and len(sample_dates) >= n_steps:
+            columns = [sample_dates[i].strftime('%Y-%m-%d') for i in range(n_steps)]
+        else:
+            columns = [f'Step {i+1}' for i in range(n_steps)]
+
+        row_labels = [f"{i}: {stock_symbols[i]}" for i in range(n_stocks)]
+
+        df_positions = pd.DataFrame(
+            position_matrix,
+            index=row_labels,
+            columns=columns
+        )
+        df_positions.to_csv(csv_filename)
+        print(f"Saved: {csv_filename}")
 
 def plot_future_return_heatmap(experiment_id, outputs_base_path, stock_symbols, sample_dates, period='test', save_plot=True):
     """
@@ -303,10 +323,29 @@ def plot_future_return_heatmap(experiment_id, outputs_base_path, stock_symbols, 
         output_dir = f'plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
+        # Save PNG
         filename = f'{output_dir}/future_return_heatmap_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+        # Save CSV
+        csv_filename = f'{output_dir}/future_return_heatmap_{period}.csv'
+        # Create DataFrame with proper labels
+        if sample_dates is not None and len(sample_dates) >= n_steps:
+            columns = [sample_dates[i].strftime('%Y-%m-%d') for i in range(n_steps)]
+        else:
+            columns = [f'Step {i+1}' for i in range(n_steps)]
+
+        row_labels = [f"{i}: {stock_symbols[i]}" for i in range(n_stocks)]
+
+        df_future_return = pd.DataFrame(
+            return_matrix,
+            index=row_labels,
+            columns=columns
+        )
+        df_future_return.to_csv(csv_filename)
+        print(f"Saved: {csv_filename}")
 
 def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
     """
@@ -446,10 +485,27 @@ def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='
         output_dir = f'plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
+        # Save PNG
         filename = f'{output_dir}/profit_heatmap_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+        # Save CSV
+        csv_filename = f'{output_dir}/profit_heatmap_{period}.csv'
+        # Create DataFrame with proper labels
+        if sample_dates is not None and len(sample_dates) >= n_steps:
+            columns = [sample_dates[i].strftime('%Y-%m-%d') for i in range(n_steps)]
+        else:
+            columns = [f'Step {i+1}' for i in range(n_steps)]
+
+        df_profit = pd.DataFrame(
+            profit_matrix,
+            index=['Short Return (%)', 'Long Return (%)', 'Overall Return (%)'],
+            columns=columns
+        )
+        df_profit.to_csv(csv_filename)
+        print(f"Saved: {csv_filename}")
 
 
 def plot_precision_analysis_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
@@ -629,10 +685,43 @@ def plot_precision_analysis_heatmap(experiment_id, outputs_base_path, sample_dat
     if save_plot:
         output_dir = f'plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
+
+        # Save PNG
         filename = f'{output_dir}/precision_analysis_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+        # Save CSV
+        csv_filename = f'{output_dir}/precision_analysis_{period}.csv'
+        # Create DataFrame with proper labels
+        if sample_dates is not None and len(sample_dates) >= n_steps:
+            columns = [sample_dates[i].strftime('%Y-%m-%d') for i in range(n_steps)]
+        else:
+            columns = [f'Step {i+1}' for i in range(n_steps)]
+
+        # Create CSV with both precision rates and counts
+        df_precision = pd.DataFrame(
+            precision_matrix,
+            index=['P_L@4 (Long Precision)', 'P_S@4 (Short Precision)'],
+            columns=columns
+        )
+
+        # Add count rows
+        df_long_counts = pd.DataFrame(
+            [[f"{long_correct_counts[i]}/{long_total_counts[i]}" for i in range(n_steps)]],
+            index=['Long Correct/Total'],
+            columns=columns
+        )
+        df_short_counts = pd.DataFrame(
+            [[f"{short_correct_counts[i]}/{short_total_counts[i]}" for i in range(n_steps)]],
+            index=['Short Correct/Total'],
+            columns=columns
+        )
+
+        df_combined = pd.concat([df_precision, df_long_counts, df_short_counts])
+        df_combined.to_csv(csv_filename)
+        print(f"Saved: {csv_filename}")
 
 
 def plot_individual_stock_returns_heatmap(experiment_id, outputs_base_path, stock_symbols, sample_dates,
@@ -796,10 +885,30 @@ def plot_individual_stock_returns_heatmap(experiment_id, outputs_base_path, stoc
         output_dir = f'plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
+        # Save PNG
         filename = f'{output_dir}/individual_returns_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+        # Save CSV
+        csv_filename = f'{output_dir}/individual_returns_{period}.csv'
+        # Create DataFrame with proper labels
+        if sample_dates is not None and len(sample_dates) >= n_steps:
+            columns = [sample_dates[i].strftime('%Y-%m-%d') for i in range(n_steps)]
+        else:
+            columns = [f'Step {i+1}' for i in range(n_steps)]
+
+        # Row labels: stock index and symbol
+        row_labels = [f"{i}: {stock_symbols[i]}" for i in range(n_stocks)]
+
+        df_returns = pd.DataFrame(
+            returns_matrix,
+            index=row_labels,
+            columns=columns
+        )
+        df_returns.to_csv(csv_filename)
+        print(f"Saved: {csv_filename}")
 
 
 def plot_market_profit_heatmap(df_market, period='val', save_plot=True):
@@ -893,10 +1002,30 @@ def plot_market_profit_heatmap(df_market, period='val', save_plot=True):
         output_dir = f'plot_outputs'
         os.makedirs(output_dir, exist_ok=True)
 
+        # Save PNG
         filename = f'{output_dir}/market_profit_heatmap_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+        # Save CSV
+        csv_filename = f'{output_dir}/market_profit_heatmap_{period}.csv'
+        # Create DataFrame with proper labels
+        if hasattr(df_market, 'index') and len(df_market.index) >= n_steps:
+            columns = [df_market.index[i].strftime('%Y-%m-%d') for i in range(n_steps-1)]
+        else:
+            columns = [f'Step {i+1}' for i in range(n_steps-1)]
+
+        from config import config
+        market_col = config['benchmark_column']
+
+        df_market_profit = pd.DataFrame(
+            profit_matrix,
+            index=[f'{market_col} Return (%)'],
+            columns=columns
+        )
+        df_market_profit.to_csv(csv_filename)
+        print(f"Saved: {csv_filename}")
 
 
 def plot_selection_quality_heatmap(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
@@ -1043,7 +1172,29 @@ def plot_selection_quality_heatmap(experiment_id, outputs_base_path, sample_date
         output_dir = f'plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
+        # Save PNG
         filename = f'{output_dir}/selection_quality_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved: {filename}")
         plt.close()
+
+        # Save CSV
+        csv_filename = f'{output_dir}/selection_quality_{period}.csv'
+        # Create DataFrame with proper labels
+        if sample_dates is not None and len(sample_dates) >= n_steps:
+            columns = [sample_dates[i].strftime('%Y-%m-%d') for i in range(n_steps)]
+        else:
+            columns = [f'Step {i+1}' for i in range(n_steps)]
+
+        df_selection = pd.DataFrame(
+            selection_matrix,
+            index=[
+                'Ideal Long (Top 4) %',
+                'Agent Long (4 stocks) %',
+                'Ideal Short (Bottom 4) %',
+                'Agent Short (4 stocks) %'
+            ],
+            columns=columns
+        )
+        df_selection.to_csv(csv_filename)
+        print(f"Saved: {csv_filename}")
