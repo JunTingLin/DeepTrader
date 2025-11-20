@@ -33,7 +33,8 @@ class RLActor(nn.Module):
             self.msu = MSU(in_features=args.in_features[1],
                            window_len=args.window_len,
                            hidden_dim=args.hidden_dim,
-                           transformer_msu_bool=args.transformer_msu_bool)
+                           transformer_msu_bool=args.transformer_msu_bool,
+                           temporal_attention_bool=args.temporal_attention_bool)
         self.args = args
 
     def forward(self, x_a, x_m, masks=None, deterministic=False, logger=None, y=None):
