@@ -75,7 +75,7 @@ def compute_ground_truth_for_step(prices, idx, window_len_weeks, trade_len_days)
         trade_len_days: Prediction horizon in days (21)
 
     Returns:
-        dict with mu, sigma, rho
+        dict with raw_mu (rho will be computed later using min-max normalization)
     """
     # Step 1: Extract input window (what MSU sees)
     # MSU sees window_len * 5 = 65 days of market data (13 weeks)
@@ -86,12 +86,11 @@ def compute_ground_truth_for_step(prices, idx, window_len_weeks, trade_len_days)
     if input_weekly is None:
         return None
 
-    # Step 2: Normalize input window
+    # Step 2: Normalize input window (for reference, not used for ground truth)
     input_normed, input_mean, input_std = normalize_weekly_data(input_weekly)
 
     # Step 3: Get prediction window (future 21 days)
     # IMPORTANT: Agent sees data up to idx (cursor), then holds positions from idx+1 to idx+21
-    # But the FIRST daily return is from idx to idx+1, so we need prices from idx onwards
     # future_return = [r_{idx+1}, r_{idx+2}, ..., r_{idx+21}]
     # where r_{idx+1} = (P_{idx+1} - P_{idx}) / P_{idx}
     # So the total return is from P_{idx} to P_{idx+21}
@@ -103,44 +102,22 @@ def compute_ground_truth_for_step(prices, idx, window_len_weeks, trade_len_days)
 
     pred_prices = prices[pred_start:pred_end].flatten()
 
-    # Step 4: Normalize prediction using INPUT window statistics (KEY!)
-    # This is what MSU would need to predict
-    pred_normed = (pred_prices - input_mean[0][0]) / input_std[0][0]
-
-    # Step 5: Compute returns from normalized prices
-    pred_returns = np.diff(pred_normed) / (pred_normed[:-1] + 1e-10)
-
-    # Ground truth mu and sigma
-    gt_mu = np.mean(pred_returns)
-    gt_sigma = np.std(pred_returns)
-
-    # Rho = clamp(mu, 0, 1) as per original DeepTrader paper
-    # In test/val mode, rho is simply mu clamped to [0, 1]
-    rho = np.clip(gt_mu, 0.0, 1.0)
-
-    # Also compute raw (non-normalized) statistics for reference
+    # Step 4: Compute raw returns (NOT normalized)
+    # This is the CORRECT way to calculate returns
     raw_returns = np.diff(pred_prices) / pred_prices[:-1]
-    raw_mu = np.mean(raw_returns)
+    raw_mu = np.mean(raw_returns)  # Average daily return over next 21 days
     raw_sigma = np.std(raw_returns)
     raw_total_return = (pred_prices[-1] - pred_prices[0]) / pred_prices[0]
 
     return {
-        # Ground truth (what MSU should predict)
-        'mu': float(gt_mu),
-        'sigma': float(gt_sigma),
-        'rho': float(rho),
-
-        # Normalization statistics (for debugging/verification)
-        'input_mean': float(input_mean[0][0]),
-        'input_std': float(input_std[0][0]),
-
-        # Raw data statistics (for reference)
+        # Ground truth: raw_mu (average daily return)
+        # rho will be computed later using min-max normalization per dataset
         'raw_mu': float(raw_mu),
         'raw_sigma': float(raw_sigma),
         'raw_total_return': float(raw_total_return),
 
         # Index information (for debugging)
-        'input_start': int(input_start),  # 65 days (what MSU actually sees)
+        'input_start': int(input_start),
         'input_end': int(input_end),
         'predict_start': int(pred_start),
         'predict_end': int(pred_end),
@@ -171,8 +148,7 @@ def compute_all_ground_truth(data_file, window_len_weeks, trade_len_days,
         ground_truths.append(gt)
 
         print(f"Step {step_num:2d}: idx={current_idx:4d}, "
-              f"mu={gt['mu']:7.4f}, sigma={gt['sigma']:7.4f}, rho={gt['rho']:7.4f} | "
-              f"input: mean={gt['input_mean']:5.2f}, std={gt['input_std']:5.2f}")
+              f"raw_mu={gt['raw_mu']:9.6f}, raw_total_return={gt['raw_total_return']:9.6f}")
 
         # Move to next period
         current_idx += step
@@ -226,6 +202,48 @@ def main():
         data_file, window_len, trade_len, val_idx, test_idx
     )
 
+    # Compute rho using min-max normalization SEPARATELY for VAL and TEST
+    print()
+    print("="*80)
+    print("Computing rho using min-max normalization (separate for VAL and TEST)")
+    print("="*80)
+
+    # VAL: compute min/max and normalize
+    val_raw_mu = np.array([gt['raw_mu'] for gt in val_ground_truth])
+    val_min_raw_mu = val_raw_mu.min()
+    val_max_raw_mu = val_raw_mu.max()
+
+    print(f"VAL raw_mu range:")
+    print(f"  Min: {val_min_raw_mu:.10f}")
+    print(f"  Max: {val_max_raw_mu:.10f}")
+    print(f"  Range: {val_max_raw_mu - val_min_raw_mu:.10f}")
+
+    for gt in val_ground_truth:
+        rho = (gt['raw_mu'] - val_min_raw_mu) / (val_max_raw_mu - val_min_raw_mu)
+        gt['rho'] = float(rho)
+
+    print(f"VAL rho range: [{min([gt['rho'] for gt in val_ground_truth]):.6f}, "
+          f"{max([gt['rho'] for gt in val_ground_truth]):.6f}]")
+    print()
+
+    # TEST: compute min/max and normalize
+    test_raw_mu = np.array([gt['raw_mu'] for gt in test_ground_truth])
+    test_min_raw_mu = test_raw_mu.min()
+    test_max_raw_mu = test_raw_mu.max()
+
+    print(f"TEST raw_mu range:")
+    print(f"  Min: {test_min_raw_mu:.10f}")
+    print(f"  Max: {test_max_raw_mu:.10f}")
+    print(f"  Range: {test_max_raw_mu - test_min_raw_mu:.10f}")
+
+    for gt in test_ground_truth:
+        rho = (gt['raw_mu'] - test_min_raw_mu) / (test_max_raw_mu - test_min_raw_mu)
+        gt['rho'] = float(rho)
+
+    print(f"TEST rho range: [{min([gt['rho'] for gt in test_ground_truth]):.6f}, "
+          f"{max([gt['rho'] for gt in test_ground_truth]):.6f}]")
+    print()
+
     # Save results in the same directory as this script
     output_dir = script_dir
 
@@ -233,19 +251,22 @@ def main():
     test_output = {
         'ground_truth_records': test_ground_truth,
         'rho_record': [gt['rho'] for gt in test_ground_truth],
-        'mu_record': [gt['mu'] for gt in test_ground_truth],
-        'sigma_record': [gt['sigma'] for gt in test_ground_truth],
-        'distribution_type': 'normal',
-        'normalization': 'z-score over 13 weekly values, using INPUT window statistics',
-        'method': 'weekly_average_then_normalize',
+        'raw_mu_record': [gt['raw_mu'] for gt in test_ground_truth],
+        'raw_total_return_record': [gt['raw_total_return'] for gt in test_ground_truth],
+        'normalization': 'min-max normalization of raw_mu within TEST period',
+        'method': 'direct_raw_returns',
+        'min_raw_mu': float(test_min_raw_mu),
+        'max_raw_mu': float(test_max_raw_mu),
         'metadata': {
             'window_len': window_len,
             'window_len_days': window_len * 5,
-            'window_format': 'weekly averages',
+            'window_format': 'weekly averages (input only)',
             'trade_len': trade_len,
             'start_idx': test_idx,
             'end_idx': test_idx_end,
-            'num_steps': len(test_ground_truth)
+            'num_steps': len(test_ground_truth),
+            'ground_truth_description': 'raw_mu = average daily return over next 21 days',
+            'rho_description': 'rho = (raw_mu - min_raw_mu) / (max_raw_mu - min_raw_mu) [computed within TEST period]'
         }
     }
 
@@ -258,19 +279,22 @@ def main():
     val_output = {
         'ground_truth_records': val_ground_truth,
         'rho_record': [gt['rho'] for gt in val_ground_truth],
-        'mu_record': [gt['mu'] for gt in val_ground_truth],
-        'sigma_record': [gt['sigma'] for gt in val_ground_truth],
-        'distribution_type': 'normal',
-        'normalization': 'z-score over 13 weekly values, using INPUT window statistics',
-        'method': 'weekly_average_then_normalize',
+        'raw_mu_record': [gt['raw_mu'] for gt in val_ground_truth],
+        'raw_total_return_record': [gt['raw_total_return'] for gt in val_ground_truth],
+        'normalization': 'min-max normalization of raw_mu within VAL period',
+        'method': 'direct_raw_returns',
+        'min_raw_mu': float(val_min_raw_mu),
+        'max_raw_mu': float(val_max_raw_mu),
         'metadata': {
             'window_len': window_len,
             'window_len_days': window_len * 5,
-            'window_format': 'weekly averages',
+            'window_format': 'weekly averages (input only)',
             'trade_len': trade_len,
             'start_idx': val_idx,
             'end_idx': test_idx,
-            'num_steps': len(val_ground_truth)
+            'num_steps': len(val_ground_truth),
+            'ground_truth_description': 'raw_mu = average daily return over next 21 days',
+            'rho_description': 'rho = (raw_mu - min_raw_mu) / (max_raw_mu - min_raw_mu) [computed within VAL period]'
         }
     }
 
@@ -285,28 +309,35 @@ def main():
     print("="*80)
 
     print("\nTEST SET:")
-    test_mus = [gt['mu'] for gt in test_ground_truth]
-    test_sigmas = [gt['sigma'] for gt in test_ground_truth]
+    test_raw_mu = [gt['raw_mu'] for gt in test_ground_truth]
     test_rhos = [gt['rho'] for gt in test_ground_truth]
+    test_total_returns = [gt['raw_total_return'] for gt in test_ground_truth]
 
-    print(f"  Mu    - Mean: {np.mean(test_mus):7.4f}, Std: {np.std(test_mus):7.4f}, "
-          f"Range: [{np.min(test_mus):7.4f}, {np.max(test_mus):7.4f}]")
-    print(f"  Sigma - Mean: {np.mean(test_sigmas):7.4f}, Std: {np.std(test_sigmas):7.4f}, "
-          f"Range: [{np.min(test_sigmas):7.4f}, {np.max(test_sigmas):7.4f}]")
-    print(f"  Rho   - Mean: {np.mean(test_rhos):7.4f}, Std: {np.std(test_rhos):7.4f}, "
-          f"Range: [{np.min(test_rhos):7.4f}, {np.max(test_rhos):7.4f}]")
+    print(f"  raw_mu       - Mean: {np.mean(test_raw_mu):.8f}, Std: {np.std(test_raw_mu):.8f}")
+    print(f"                 Range: [{np.min(test_raw_mu):.8f}, {np.max(test_raw_mu):.8f}]")
+    print(f"  rho (normed) - Mean: {np.mean(test_rhos):7.4f}, Std: {np.std(test_rhos):7.4f}")
+    print(f"                 Range: [{np.min(test_rhos):7.4f}, {np.max(test_rhos):7.4f}]")
+    print(f"  total_return - Mean: {np.mean(test_total_returns):.8f}, Std: {np.std(test_total_returns):.8f}")
+    print(f"                 Range: [{np.min(test_total_returns):.8f}, {np.max(test_total_returns):.8f}]")
 
     print("\nVALIDATION SET:")
-    val_mus = [gt['mu'] for gt in val_ground_truth]
-    val_sigmas = [gt['sigma'] for gt in val_ground_truth]
+    val_raw_mu = [gt['raw_mu'] for gt in val_ground_truth]
     val_rhos = [gt['rho'] for gt in val_ground_truth]
+    val_total_returns = [gt['raw_total_return'] for gt in val_ground_truth]
 
-    print(f"  Mu    - Mean: {np.mean(val_mus):7.4f}, Std: {np.std(val_mus):7.4f}, "
-          f"Range: [{np.min(val_mus):7.4f}, {np.max(val_mus):7.4f}]")
-    print(f"  Sigma - Mean: {np.mean(val_sigmas):7.4f}, Std: {np.std(val_sigmas):7.4f}, "
-          f"Range: [{np.min(val_sigmas):7.4f}, {np.max(val_sigmas):7.4f}]")
-    print(f"  Rho   - Mean: {np.mean(val_rhos):7.4f}, Std: {np.std(val_rhos):7.4f}, "
-          f"Range: [{np.min(val_rhos):7.4f}, {np.max(val_rhos):7.4f}]")
+    print(f"  raw_mu       - Mean: {np.mean(val_raw_mu):.8f}, Std: {np.std(val_raw_mu):.8f}")
+    print(f"                 Range: [{np.min(val_raw_mu):.8f}, {np.max(val_raw_mu):.8f}]")
+    print(f"  rho (normed) - Mean: {np.mean(val_rhos):7.4f}, Std: {np.std(val_rhos):7.4f}")
+    print(f"                 Range: [{np.min(val_rhos):7.4f}, {np.max(val_rhos):7.4f}]")
+    print(f"  total_return - Mean: {np.mean(val_total_returns):.8f}, Std: {np.std(val_total_returns):.8f}")
+    print(f"                 Range: [{np.min(val_total_returns):.8f}, {np.max(val_total_returns):.8f}]")
+
+    # Correlation check
+    print("\nCorrelation check:")
+    val_corr = np.corrcoef(val_raw_mu, val_total_returns)[0, 1]
+    test_corr = np.corrcoef(test_raw_mu, test_total_returns)[0, 1]
+    print(f"  VAL:  raw_mu vs raw_total_return = {val_corr:.6f}")
+    print(f"  TEST: raw_mu vs raw_total_return = {test_corr:.6f}")
 
     print("\n" + "="*80)
     print("✅ Done!")
