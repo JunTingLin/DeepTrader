@@ -98,11 +98,12 @@ MARKET_CONFIGS = {
         'test_end': 2673,
         'experiment_ids': [
             '1114/035244',
+            # '1119/162715'
         ],
         'plot_ylim': None,
         'json_files': {
-            'test_results': 'test_results.json',
-            'val_results': 'val_results.json'
+            'test_results': 'test_results_ground_truth_rho.json',
+            'val_results': 'val_results_ground_truth_rho.json'
         }
     }
 }

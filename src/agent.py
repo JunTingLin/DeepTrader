@@ -110,9 +110,18 @@ class RLActor(nn.Module):
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
 
-        # Override rho if manual_rho is set
+        # Override rho if manual_rho or ground_truth_rho is set
         if hasattr(self.args, 'manual_rho') and self.args.manual_rho is not None:
             rho = torch.ones((weights.shape[0])).to(self.args.device) * self.args.manual_rho
+        elif hasattr(self.args, 'ground_truth_rho_values') and self.args.ground_truth_rho_values is not None:
+            # Use ground truth rho values (loaded from JSON file)
+            # ground_truth_rho_values should be a list/array with one value per step
+            step_idx = getattr(self.args, '_current_step_idx', 0)
+            if step_idx < len(self.args.ground_truth_rho_values):
+                rho = torch.ones((weights.shape[0])).to(self.args.device) * self.args.ground_truth_rho_values[step_idx]
+            else:
+                # If we run out of ground truth values, use default 0.5
+                rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
 
         portfolio_info = {
             'long_indices': w_idx.detach().cpu().numpy(),
@@ -236,6 +245,10 @@ class RLAgent():
         
         while True:
             steps += 1
+
+            # Track current step index for ground truth rho
+            self.args._current_step_idx = steps - 1
+
             x_a = torch.from_numpy(states[0]).to(self.args.device)
             masks = torch.from_numpy(masks).to(self.args.device)
             if self.args.msu_bool:
@@ -284,9 +297,13 @@ class RLAgent():
         param1_record = []
         param2_record = []
         portfolio_records = []
-        
+
         while True:
             steps += 1
+
+            # Track current step index for ground truth rho
+            self.args._current_step_idx = steps - 1
+
             x_a = torch.from_numpy(states[0]).to(self.args.device)
             masks = torch.from_numpy(masks).to(self.args.device)
             if self.args.msu_bool:

@@ -178,9 +178,10 @@ if __name__ == '__main__':
     parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
     parser.add_argument('--prefix', type=str, help='Experiment output directory prefix')
     parser.add_argument('--manual_rho', type=float, help='Fixed rho value for validation (overrides MSU predictions)')
+    parser.add_argument('--ground_truth_rho', type=str, help='Path to ground truth JSON file for rho values (e.g., data/fake/val_ground_truth.json)')
 
     opts = parser.parse_args()
-    
+
     if opts.prefix:
         PREFIX = opts.prefix
     else:
@@ -197,5 +198,21 @@ if __name__ == '__main__':
             args = ConfigParser(options)
     args.prefix = PREFIX
     args.update(opts)
+
+    # Load ground truth rho values if specified
+    if hasattr(opts, 'ground_truth_rho') and opts.ground_truth_rho is not None:
+        try:
+            with open(opts.ground_truth_rho, 'r') as f:
+                ground_truth_data = json.load(f)
+            args.ground_truth_rho_values = ground_truth_data.get('rho_record', [])
+            print(f"✓ Loaded {len(args.ground_truth_rho_values)} ground truth rho values from {opts.ground_truth_rho}")
+        except FileNotFoundError:
+            print(f"✗ Warning: Ground truth file not found: {opts.ground_truth_rho}")
+            args.ground_truth_rho_values = None
+        except Exception as e:
+            print(f"✗ Error loading ground truth file: {e}")
+            args.ground_truth_rho_values = None
+    else:
+        args.ground_truth_rho_values = None
 
     validate(args)

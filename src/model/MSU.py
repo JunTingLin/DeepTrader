@@ -38,20 +38,24 @@ class MSU(nn.Module):
         :return: Parameters: [batch, 2]
         """
         X = X.permute(1, 0, 2)
+
+        # Backward compatibility: default to True if attribute doesn't exist in old models
+        temporal_attention_bool = getattr(self, 'temporal_attention_bool', True)
+
         if self.transformer_msu_bool:
             outputs = self.TE_1D(X)
-            if self.temporal_attention_bool:
+            if temporal_attention_bool:
                 scores = self.attn2(torch.tanh(self.attn1(outputs)))
                 scores = scores.squeeze(2).transpose(1, 0)
 
         else:
             outputs, (h_n, c_n) = self.lstm(X)  # lstm version
-            if self.temporal_attention_bool:
+            if temporal_attention_bool:
                 H_n = h_n.repeat((self.window_len, 1, 1))
                 scores = self.attn2(torch.tanh(self.attn1(torch.cat([outputs, H_n], dim=2))))  # [L, B*N, 1]
                 scores = scores.squeeze(2).transpose(1, 0)  # [B*N, L]
 
-        if self.temporal_attention_bool:
+        if temporal_attention_bool:
             attn_weights = torch.softmax(scores, dim=1)
             outputs = outputs.permute(1, 0, 2)  # [B*N, L, H]
             attn_embed = torch.bmm(attn_weights.unsqueeze(1), outputs).squeeze(1)
