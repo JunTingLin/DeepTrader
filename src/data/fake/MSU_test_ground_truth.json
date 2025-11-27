@@ -473,13 +473,16 @@
   "min_raw_mu": -0.00018752667937916502,
   "max_raw_mu": 0.00023991693699469994,
   "metadata": {
+    "module": "msu",
     "window_len": 13,
     "window_len_days": 65,
     "window_format": "weekly averages (input only)",
     "trade_len": 21,
     "start_idx": 2087,
     "end_idx": 2673,
+    "step": 21,
     "num_steps": 27,
+    "feature_idx": 0,
     "ground_truth_description": "raw_mu = average daily return over next 21 days",
     "rho_description": "rho = (raw_mu - min_raw_mu) / (max_raw_mu - min_raw_mu) [computed within TEST period]",
     "trend_label_description": "trend_label = 1.0 if raw_mu > 0 else 0.0 (for MSU Stage 1 binary classification)"

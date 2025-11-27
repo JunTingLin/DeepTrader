@@ -3,20 +3,21 @@
 # Test with ground truth rho values
 # Usage: bash test_with_ground_truth_rho.sh [experiment_prefix] [val_gt_file] [test_gt_file]
 # Example: bash test_with_ground_truth_rho.sh outputs/1114/035244
-# Example: bash test_with_ground_truth_rho.sh outputs/1114/035244 data/fake/val_ground_truth.json data/fake/test_ground_truth.json
+# Example: bash test_with_ground_truth_rho.sh outputs/1114/035244 data/fake/MSU_val_ground_truth.json data/fake/MSU_test_ground_truth.json
 
 if [ $# -eq 0 ]; then
     echo "Usage: bash test_with_ground_truth_rho.sh [experiment_prefix] [val_gt_file] [test_gt_file]"
     echo "Example: bash test_with_ground_truth_rho.sh outputs/1114/035244"
-    echo "Example: bash test_with_ground_truth_rho.sh outputs/1114/035244 data/fake/val_ground_truth.json data/fake/test_ground_truth.json"
+    echo "Example: bash test_with_ground_truth_rho.sh outputs/1114/035244 data/fake/MSU_val_ground_truth.json data/fake/MSU_test_ground_truth.json"
     exit 1
 fi
 
 EXPERIMENT_PREFIX=$1
 
 # Default ground truth file paths (can be overridden by arguments)
-VAL_GT_FILE="${2:-data/fake/val_ground_truth.json}"
-TEST_GT_FILE="${3:-data/fake/test_ground_truth.json}"
+# Updated to use new MSU-specific naming convention
+VAL_GT_FILE="${2:-data/fake/MSU_val_ground_truth.json}"
+TEST_GT_FILE="${3:-data/fake/MSU_test_ground_truth.json}"
 
 echo "Testing with Ground Truth Rho Values"
 echo "Experiment: $EXPERIMENT_PREFIX"
@@ -34,15 +35,13 @@ run_validation_ground_truth() {
     echo "📊 Running Validation with Ground Truth Rho..."
     echo "-----------------------------------------------"
 
-    GT_FILE="data/fake/val_ground_truth.json"
-
-    if [ ! -f "$GT_FILE" ]; then
-        echo "✗ Error: Ground truth file not found: $GT_FILE"
+    if [ ! -f "$VAL_GT_FILE" ]; then
+        echo "✗ Error: Ground truth file not found: $VAL_GT_FILE"
         return 1
     fi
 
-    echo "Using ground truth file: $GT_FILE"
-    python validate.py --prefix "$EXPERIMENT_PREFIX" --ground_truth_rho "$GT_FILE"
+    echo "Using ground truth file: $VAL_GT_FILE"
+    python validate.py --prefix "$EXPERIMENT_PREFIX" --ground_truth_rho "$VAL_GT_FILE"
 
     if [ -f "$EXPERIMENT_PREFIX/json_file/val_results.json" ]; then
         mv "$EXPERIMENT_PREFIX/json_file/val_results.json" "$EXPERIMENT_PREFIX/json_file/val_results_ground_truth_rho.json"
