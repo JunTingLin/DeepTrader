@@ -102,8 +102,8 @@ MARKET_CONFIGS = {
         ],
         'plot_ylim': None,
         'json_files': {
-            'test_results': 'test_results_ground_truth_rho.json',
-            'val_results': 'val_results_ground_truth_rho.json'
+            'test_results': 'test_results_msu_original.json',
+            'val_results': 'val_results_msu_original.json'
         }
     }
 }
