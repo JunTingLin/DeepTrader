@@ -393,7 +393,7 @@ def compute_ground_truth_main(args):
             'feature_idx': args.feature_idx,
         }
 
-        output_filename = f"{args.module.upper()}_{split}_ground_truth.json"
+        output_filename = f"{args.module.upper()}_{split}_ground_truth_step{step}.json"
         output_path = os.path.join(args.data_dir, output_filename)
         save_ground_truth(ground_truths, min_val, max_val, config, output_path)
         print()
