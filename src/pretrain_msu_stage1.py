@@ -23,64 +23,9 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import numpy as np
 
-# Import MSU model and dataset
-from msu_dataset import MSUDataset
-from model.MSU import MSU
-
-
-class MSU_Stage1(nn.Module):
-    """
-    MSU for Stage 1 pretraining (trend prediction)
-
-    Wraps the original MSU and replaces the final head.
-    """
-    def __init__(self, msu_model, hidden_dim):
-        super().__init__()
-        # Copy backbone from original MSU
-        self.msu = msu_model
-
-        # Stage 1 head: binary classification (trend prediction)
-        self.trend_head = nn.Linear(hidden_dim, 1)
-
-    def forward(self, X):
-        """
-        Args:
-            X: [batch, window_len, in_features]
-
-        Returns:
-            logits: [batch, 1] raw logits (before sigmoid)
-        """
-        # Use MSU backbone (without linear2)
-        X = X.permute(1, 0, 2)  # [window_len, batch, in_features]
-
-        # Get features from backbone
-        if self.msu.transformer_msu_bool:
-            outputs = self.msu.TE_1D(X)
-            if self.msu.temporal_attention_bool:
-                scores = self.msu.attn2(torch.tanh(self.msu.attn1(outputs)))
-                scores = scores.squeeze(2).transpose(1, 0)
-        else:
-            outputs, (h_n, _) = self.msu.lstm(X)
-            if self.msu.temporal_attention_bool:
-                H_n = h_n.repeat((self.msu.window_len, 1, 1))
-                scores = self.msu.attn2(torch.tanh(self.msu.attn1(torch.cat([outputs, H_n], dim=2))))
-                scores = scores.squeeze(2).transpose(1, 0)
-
-        if self.msu.temporal_attention_bool:
-            attn_weights = torch.softmax(scores, dim=1)
-            outputs = outputs.permute(1, 0, 2)  # [batch, window_len, hidden_dim]
-            attn_embed = torch.bmm(attn_weights.unsqueeze(1), outputs).squeeze(1)
-        else:
-            outputs = outputs.permute(1, 0, 2)
-            attn_embed = outputs.mean(dim=1)
-
-        # Middle layer
-        embed = torch.relu(self.msu.bn1(self.msu.linear1(attn_embed)))  # [batch, hidden_dim]
-
-        # Stage 1 head
-        logits = self.trend_head(embed)  # [batch, 1]
-
-        return logits
+# Import PMSU model and dataset
+from msu_dataset_stage1 import MSUDataset
+from model.PMSU import PMSU
 
 
 def train_one_epoch(model, train_loader, criterion, optimizer, device):
@@ -216,23 +161,14 @@ def main(args):
     print(f"  Imbalance ratio: {n_positive/n_negative:.2f}:1")
 
     # Initialize model
-    print("\nInitializing MSU model...")
+    print("\nInitializing PMSU model (Stage 1: trend prediction)...")
 
     # Get market features from dataset
     market_features = train_dataset.market_data.shape[1]  # Should be 1 for fake data
     print(f"Market features: {market_features}")
 
-    # Initialize original MSU backbone
-    msu_backbone = MSU(
-        in_features=market_features,
-        window_len=13,
-        hidden_dim=args.hidden_dim,
-        transformer_msu_bool=True,
-        temporal_attention_bool=True
-    )
-
-    # Wrap with Stage 1 head
-    model = MSU_Stage1(msu_backbone, args.hidden_dim).to(device)
+    # Initialize PMSU model (all hyperparameters are fixed inside PMSU)
+    model = PMSU(in_features=market_features).to(device)
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
@@ -240,10 +176,16 @@ def main(args):
     # pos_weight: weight for positive class (how much more to weight positive samples)
     # For imbalanced data where positive is majority: pos_weight = n_positive / n_negative
     # This makes the model pay more attention to the minority class (negative)
-    pos_weight = torch.tensor([n_positive / n_negative]).to(device)
-    print(f"\nClass weighting:")
-    print(f"  pos_weight = {pos_weight.item():.4f} (positive/negative ratio)")
-    print(f"  This increases the penalty for positive class errors by {pos_weight.item():.2f}x")
+    if args.pos_weight is not None:
+        pos_weight = torch.tensor([args.pos_weight]).to(device)
+        print(f"\nClass weighting (manual):")
+        print(f"  pos_weight = {pos_weight.item():.4f} (user-specified)")
+        print(f"  This increases the penalty for positive class errors by {pos_weight.item():.2f}x")
+    else:
+        pos_weight = torch.tensor([n_positive / n_negative]).to(device)
+        print(f"\nClass weighting (auto-calculated):")
+        print(f"  pos_weight = {pos_weight.item():.4f} (positive/negative ratio)")
+        print(f"  This increases the penalty for positive class errors by {pos_weight.item():.2f}x")
     print(f"  Goal: Make model pay more attention to minority class (negative)")
 
     # Use BCEWithLogitsLoss which combines Sigmoid + BCE and accepts pos_weight
@@ -304,7 +246,6 @@ def main(args):
                 'val_loss': val_loss,
                 'val_acc': val_acc,
                 'best_val_acc': best_val_acc,
-                'hidden_dim': args.hidden_dim,
                 'market_features': market_features,
                 'args': vars(args),
             }
@@ -355,10 +296,6 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type=str, required=True,
                         help='Directory containing MSU_*_ground_truth.json files')
 
-    # Model
-    parser.add_argument('--hidden_dim', type=int, default=128,
-                        help='Hidden dimension (default: 128)')
-
     # Training
     parser.add_argument('--epochs', type=int, default=100,
                         help='Number of epochs (default: 100)')
@@ -368,6 +305,8 @@ if __name__ == '__main__':
                         help='Learning rate (default: 1e-3)')
     parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help='Weight decay (default: 1e-4)')
+    parser.add_argument('--pos_weight', type=float, default=None,
+                        help='Positive class weight for BCEWithLogitsLoss (default: n_pos/n_neg, auto-calculated)')
 
     # Device
     parser.add_argument('--use_gpu', action='store_true', default=True,

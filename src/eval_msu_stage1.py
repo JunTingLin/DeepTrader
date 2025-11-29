@@ -10,46 +10,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from msu_dataset import MSUDataset
-from model.MSU import MSU
-
-
-class MSU_Stage1(nn.Module):
-    """
-    MSU for Stage 1 pretraining (trend prediction)
-    """
-    def __init__(self, msu_model, hidden_dim):
-        super().__init__()
-        self.msu = msu_model
-        self.trend_head = nn.Linear(hidden_dim, 1)
-
-    def forward(self, X):
-        # Extract backbone features (same as pretraining)
-        X = X.permute(1, 0, 2)
-
-        if self.msu.transformer_msu_bool:
-            outputs = self.msu.TE_1D(X)
-            if self.msu.temporal_attention_bool:
-                scores = self.msu.attn2(torch.tanh(self.msu.attn1(outputs)))
-                scores = scores.squeeze(2).transpose(1, 0)
-        else:
-            outputs, (h_n, _) = self.msu.lstm(X)
-            if self.msu.temporal_attention_bool:
-                H_n = h_n.repeat((self.msu.window_len, 1, 1))
-                scores = self.msu.attn2(torch.tanh(self.msu.attn1(torch.cat([outputs, H_n], dim=2))))
-                scores = scores.squeeze(2).transpose(1, 0)
-
-        if self.msu.temporal_attention_bool:
-            attn_weights = torch.softmax(scores, dim=1)
-            outputs = outputs.permute(1, 0, 2)  # [batch, window_len, hidden_dim]
-            attn_embed = torch.bmm(attn_weights.unsqueeze(1), outputs).squeeze(1)
-        else:
-            outputs = outputs.permute(1, 0, 2)
-            attn_embed = outputs.mean(dim=1)
-
-        embed = torch.relu(self.msu.bn1(self.msu.linear1(attn_embed)))
-        logits = self.trend_head(embed)
-        return logits
+from msu_dataset_stage1 import MSUDataset
+from model.PMSU import PMSU
 
 
 def evaluate_split(model, dataloader, device, split_name='val'):
@@ -144,12 +106,10 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=False)
 
-    # Get hyperparameters (handle old checkpoints without these fields)
-    hidden_dim = checkpoint.get('hidden_dim', 128)  # Default to 128
+    # Get market features
     market_features = checkpoint.get('market_features', 1)  # Default to 1 for fake data
 
     print(f"\nModel configuration:")
-    print(f"  Hidden dim: {hidden_dim}")
     print(f"  Market features: {market_features}")
     print(f"  Epoch: {checkpoint['epoch']}")
     if 'best_val_acc' in checkpoint:
@@ -157,15 +117,8 @@ def main():
     else:
         print(f"  Val acc: {checkpoint['val_acc']:.4f}")
 
-    # Initialize model
-    msu_backbone = MSU(
-        in_features=market_features,
-        window_len=13,
-        hidden_dim=hidden_dim,
-        transformer_msu_bool=True,
-        temporal_attention_bool=True
-    )
-    model = MSU_Stage1(msu_backbone, hidden_dim).to(device)
+    # Initialize PMSU model (all hyperparameters are fixed inside PMSU)
+    model = PMSU(in_features=market_features).to(device)
     model.load_state_dict(checkpoint['model_state_dict'])
 
     print(f"\nModel loaded successfully!")

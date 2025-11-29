@@ -53,8 +53,12 @@ class MSUDataset(Dataset):
         market_data_path = os.path.join(data_dir, 'market_data.npy')
         self.market_data = np.load(market_data_path)  # [T, market_features]
 
-        # Load ground truth (MSU-specific naming)
-        gt_path = os.path.join(data_dir, f'MSU_{split}_ground_truth.json')
+        # Load ground truth for Stage 1
+        gt_path = os.path.join(data_dir, f'MSU_{split}_ground_truth_step1.json')
+        if not os.path.exists(gt_path):
+            raise FileNotFoundError(f"Ground truth file not found: {gt_path}")
+
+        print(f"Loading ground truth from: {os.path.basename(gt_path)}")
         with open(gt_path, 'r') as f:
             gt_data = json.load(f)
 
