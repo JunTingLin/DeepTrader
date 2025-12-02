@@ -201,7 +201,7 @@ class TE_1D(nn.Module):
     def __init__(self, *, window_len=13, dim, depth, heads, mlp_dim, channels=3, dim_head=64, dropout=0., emb_dropout=0.):
         super().__init__()
 
-        # ori input : (b, l, c)
+        # Expected input : (b, l, c) where b=batch, l=sequence_length, c=channels
 
         num_pixels = window_len
         patch_dim = channels
@@ -210,7 +210,7 @@ class TE_1D(nn.Module):
             nn.Linear(patch_dim, dim),
         )
 
-        self.pos_embedding = nn.Parameter(torch.randn(num_pixels, 1, dim))
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_pixels, dim))  # [1, L, dim] for broadcasting
         self.dropout = nn.Dropout(emb_dropout)
         self.transformer = Transformer(
             dim, depth, heads, dim_head, mlp_dim, dropout)
@@ -224,12 +224,13 @@ class TE_1D(nn.Module):
         # )
 
     def forward(self, img):
-        x = self.to_patch_embedding(img)
+        # img: [B, L, C] where B=batch, L=sequence_length, C=channels
+        x = self.to_patch_embedding(img)  # [B, L, dim]
         b, n, _ = x.shape
-        x += self.pos_embedding[:, :n]
+        x += self.pos_embedding[:, :n]  # [B, L, dim] + [1, L, dim] -> [B, L, dim]
         x = self.dropout(x)
 
-        x = self.transformer(x)
+        x = self.transformer(x)  # Self-attention over L (sequence dimension)
         # x = rearrange(x, '1 (t b h w) c -> t b c h w',
         #               t=self.frame_batch, b=self.batch, h=self.h, w=self.w)
 

@@ -37,18 +37,17 @@ class MSU(nn.Module):
         :X: [batch_size(B), window_len(L), in_features(I)]
         :return: Parameters: [batch, 2]
         """
-        X = X.permute(1, 0, 2)
-
         # Backward compatibility: default to True if attribute doesn't exist in old models
         temporal_attention_bool = getattr(self, 'temporal_attention_bool', True)
 
         if self.transformer_msu_bool:
-            outputs = self.TE_1D(X)
+            outputs = self.TE_1D(X)  # Now expects [B, L, I] and returns [B, L, H]
             if temporal_attention_bool:
-                scores = self.attn2(torch.tanh(self.attn1(outputs)))
-                scores = scores.squeeze(2).transpose(1, 0)
+                scores = self.attn2(torch.tanh(self.attn1(outputs)))  # [B, L, 1]
+                scores = scores.squeeze(2)  # [B, L]
 
         else:
+            X = X.permute(1, 0, 2)  # LSTM needs [L, B, I]
             outputs, (h_n, c_n) = self.lstm(X)  # lstm version
             if temporal_attention_bool:
                 H_n = h_n.repeat((self.window_len, 1, 1))
@@ -56,13 +55,20 @@ class MSU(nn.Module):
                 scores = scores.squeeze(2).transpose(1, 0)  # [B*N, L]
 
         if temporal_attention_bool:
-            attn_weights = torch.softmax(scores, dim=1)
-            outputs = outputs.permute(1, 0, 2)  # [B*N, L, H]
-            attn_embed = torch.bmm(attn_weights.unsqueeze(1), outputs).squeeze(1)
+            attn_weights = torch.softmax(scores, dim=1)  # [B, L]
+            # outputs is already [B, L, H] for transformer or [L, B, H] for LSTM
+            if self.transformer_msu_bool:
+                attn_embed = torch.bmm(attn_weights.unsqueeze(1), outputs).squeeze(1)  # [B, H]
+            else:
+                outputs_transposed = outputs.permute(1, 0, 2)  # [B, L, H]
+                attn_embed = torch.bmm(attn_weights.unsqueeze(1), outputs_transposed).squeeze(1)  # [B, H]
         else:
             # Without attention, use mean pooling over all timesteps
-            outputs = outputs.permute(1, 0, 2)  # [B*N, L, H]
-            attn_embed = outputs.mean(dim=1)  # Mean pooling [B*N, H]
+            if self.transformer_msu_bool:
+                attn_embed = outputs.mean(dim=1)  # [B, H]
+            else:
+                outputs_transposed = outputs.permute(1, 0, 2)  # [B, L, H]
+                attn_embed = outputs_transposed.mean(dim=1)  # [B, H]
 
         embed = torch.relu(self.bn1(self.linear1(attn_embed)))
         #embed = self.dropout(embed)
