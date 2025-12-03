@@ -1029,12 +1029,14 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
 
 def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, period='test', save_plot=True):
     """
-    Plot DJIA market trend with predicted rho, ground truth rho, and sigma allocation bars.
+    Plot DJIA market trend with predicted mu, sigma, rho, and ground truth rho.
 
-    Top panel: DJIA closing price trend line
-    Second panel: Predicted Rho values as bar chart (skyblue)
-    Third panel: Ground Truth Rho values as bar chart (lightcoral)
-    Fourth panel: Predicted Sigma values as bar chart (lightgreen)
+    Layout from top to bottom:
+    1. DJIA opening price trend line
+    2. Predicted Mu (μ) values as bar chart
+    3. Predicted Sigma (σ) values as bar chart
+    4. Predicted Rho (ρ) values as bar chart
+    5. Ground Truth Rho (ρ) values as bar chart (if available)
 
     Args:
         experiment_id: Experiment identifier
@@ -1043,7 +1045,7 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
         period: 'val' or 'test'
         save_plot: Whether to save the plot
     """
-    # Load rho records from JSON
+    # Load records from JSON
     from config import JSON_FILES
     json_filename = JSON_FILES[f'{period}_results']
     json_path = os.path.join(outputs_base_path, experiment_id, 'json_file', json_filename)
@@ -1054,27 +1056,39 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
     with open(json_path, 'r', encoding='utf-8') as f:
         results = json.load(f)
 
-    rho_record = results.get('rho_record', [])
+    mu_record = results.get('mu_record', [])
     sigma_record = results.get('sigma_record', [])
+    rho_record = results.get('rho_record', [])
+
     if not rho_record:
         print(f"No rho records found for {experiment_id}")
         return
 
-    rho_array = np.array(rho_record)
+    mu_array = np.array(mu_record) if mu_record else None
     sigma_array = np.array(sigma_record) if sigma_record else None
+    rho_array = np.array(rho_record)
     n_steps = len(rho_array)
 
     # Load ground truth rho records
-    ground_truth_path = f'../data/fake/{period}_ground_truth.json'
+    # Format: MSU_{period}_ground_truth_step{TRADE_LEN}.json
+    ground_truth_path = f'../data/fake/MSU_{period}_ground_truth_step{TRADE_LEN}.json'
     ground_truth_rho = None
+
     if os.path.exists(ground_truth_path):
         with open(ground_truth_path, 'r', encoding='utf-8') as f:
             ground_truth_data = json.load(f)
-        ground_truth_rho = np.array(ground_truth_data.get('rho_record', []))
-        print(f"Loaded ground truth rho with {len(ground_truth_rho)} steps")
+
+        # Extract rho from ground_truth_records
+        if 'ground_truth_records' in ground_truth_data:
+            ground_truth_records = ground_truth_data['ground_truth_records']
+            ground_truth_rho = np.array([record['rho'] for record in ground_truth_records])
+            print(f"Loaded ground truth rho with {len(ground_truth_rho)} steps from {ground_truth_path}")
+        else:
+            print(f"Warning: 'ground_truth_records' not found in {ground_truth_path}")
+            ground_truth_rho = None
 
         # Verify alignment
-        if len(ground_truth_rho) != n_steps:
+        if ground_truth_rho is not None and len(ground_truth_rho) != n_steps:
             print(f"Warning: Ground truth rho length ({len(ground_truth_rho)}) != predicted rho length ({n_steps})")
             # Truncate or pad to match
             if len(ground_truth_rho) > n_steps:
@@ -1125,31 +1139,53 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
     # Verify data alignment
     print(f"DEBUG: n_steps (rho)={n_steps}, djia_points={n_djia_points}, sample_dates={len(sample_dates) if sample_dates is not None else None}")
 
-    # Create figure with four subplots (top: DJIA trend, second: predicted rho, third: ground truth rho, fourth: sigma)
-    if ground_truth_rho is not None and sigma_array is not None:
-        fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(16, 16),
-                                                   gridspec_kw={'height_ratios': [2, 1, 1, 1]})
-    elif ground_truth_rho is not None:
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(16, 12),
-                                             gridspec_kw={'height_ratios': [2, 1, 1]})
-        ax4 = None
-    elif sigma_array is not None:
-        fig, (ax1, ax2, ax4) = plt.subplots(3, 1, figsize=(16, 12),
-                                              gridspec_kw={'height_ratios': [2, 1, 1]})
-        ax3 = None
-    else:
-        # Fallback to two subplots if no ground truth and no sigma
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 8),
-                                         gridspec_kw={'height_ratios': [2, 1]})
-        ax3 = None
-        ax4 = None
+    # Create figure with subplots
+    # Layout: opening price, mu, sigma, rho, ground_truth_rho
+    num_subplots = 1  # Always have opening price
+    if mu_array is not None:
+        num_subplots += 1
+    if sigma_array is not None:
+        num_subplots += 1
+    num_subplots += 1  # Always have predicted rho
+    if ground_truth_rho is not None:
+        num_subplots += 1
 
-    # === Top panel: DJIA opening price trend (n_steps + 1 points) ===
+    # Create height ratios: first panel (opening price) is taller
+    height_ratios = [2] + [1] * (num_subplots - 1)
+
+    fig, axes = plt.subplots(num_subplots, 1, figsize=(16, 4 * num_subplots),
+                             gridspec_kw={'height_ratios': height_ratios})
+
+    # Make sure axes is iterable
+    if num_subplots == 1:
+        axes = [axes]
+
+    # Assign axes to specific panels
+    ax_idx = 0
+    ax1 = axes[ax_idx]  # Opening price
+    ax_idx += 1
+
+    ax2 = axes[ax_idx] if mu_array is not None else None  # Mu
+    if mu_array is not None:
+        ax_idx += 1
+
+    ax3 = axes[ax_idx] if sigma_array is not None else None  # Sigma
+    if sigma_array is not None:
+        ax_idx += 1
+
+    ax4 = axes[ax_idx]  # Predicted Rho (always present)
+    ax_idx += 1
+
+    ax5 = axes[ax_idx] if ground_truth_rho is not None else None  # Ground truth Rho
+    if ground_truth_rho is not None:
+        ax_idx += 1
+
+    # === Panel 1: DJIA opening price trend (n_steps + 1 points) ===
     djia_x_positions = np.arange(n_djia_points)  # 0, 1, 2, ..., n_steps
     ax1.plot(djia_x_positions, djia_open_prices,
              color='darkblue', linewidth=2, marker='o', markersize=3, label='DJIA Open')
     ax1.set_ylabel('DJIA Opening Price', fontsize=12, fontweight='bold')
-    ax1.set_title(f'Market Trend and MSU Rho Allocation - {period.upper()}',
+    ax1.set_title(f'Market Trend and MSU Parameters (μ, σ, ρ) - {period.upper()}',
                   fontsize=14, fontweight='bold')
     ax1.grid(True, alpha=0.3)
     ax1.legend(loc='upper left')
@@ -1157,41 +1193,53 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
     # Format y-axis for prices
     ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:,.0f}'))
 
-    # === Second panel: Predicted Rho bar chart (n_steps bars) ===
-    # Rho bars at x = 0, 1, 2, ..., n_steps-1 (aligned with decision points)
-    rho_x_positions = np.arange(n_steps)
-    ax2.bar(rho_x_positions, rho_array, color='skyblue', edgecolor='steelblue',
-            linewidth=0.5, alpha=0.8, width=0.8)
-    ax2.set_ylabel('Predicted Rho (ρ)', fontsize=12, fontweight='bold')
-    ax2.set_ylim(0, 1.0)
-    ax2.grid(True, alpha=0.3, axis='y')
+    # Positions for bar charts (n_steps bars)
+    bar_x_positions = np.arange(n_steps)
 
-    # Add horizontal reference lines
-    ax2.axhline(y=0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5, label='ρ=0.5 (Balanced)')
-    ax2.legend(loc='upper right', fontsize=9)
-
-    # === Third panel: Ground Truth Rho bar chart (if available) ===
-    if ground_truth_rho is not None and ax3 is not None:
-        ax3.bar(rho_x_positions, ground_truth_rho, color='lightcoral', edgecolor='firebrick',
+    # === Panel 2: Predicted Mu bar chart (if available) ===
+    if mu_array is not None and ax2 is not None:
+        ax2.bar(bar_x_positions, mu_array, color='lightsalmon', edgecolor='darkorange',
                 linewidth=0.5, alpha=0.8, width=0.8)
-        ax3.set_ylabel('Ground Truth Rho (ρ)', fontsize=12, fontweight='bold')
-        ax3.set_ylim(0, 1.0)
-        ax3.grid(True, alpha=0.3, axis='y')
+        ax2.set_ylabel('Predicted Mu (μ)', fontsize=12, fontweight='bold')
+        ax2.grid(True, alpha=0.3, axis='y')
 
-        # Add horizontal reference lines
-        ax3.axhline(y=0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5, label='ρ=0.5 (Balanced)')
+        # Add horizontal reference line at 0
+        ax2.axhline(y=0, color='gray', linestyle='--', linewidth=1, alpha=0.5, label='μ=0 (Neutral)')
+        ax2.legend(loc='upper right', fontsize=9)
+
+    # === Panel 3: Predicted Sigma bar chart (if available) ===
+    if sigma_array is not None and ax3 is not None:
+        ax3.bar(bar_x_positions, sigma_array, color='lightgreen', edgecolor='darkgreen',
+                linewidth=0.5, alpha=0.8, width=0.8)
+        ax3.set_ylabel('Predicted Sigma (σ)', fontsize=12, fontweight='bold')
+        # Sigma typically ranges from 0 to some reasonable max, adjust as needed
+        ax3.set_ylim(0, max(sigma_array) * 1.1 if len(sigma_array) > 0 else 1.0)
+        ax3.grid(True, alpha=0.3, axis='y')
         ax3.legend(loc='upper right', fontsize=9)
 
-    # === Fourth panel: Predicted Sigma bar chart (if available) ===
-    if sigma_array is not None and ax4 is not None:
-        ax4.bar(rho_x_positions, sigma_array, color='lightgreen', edgecolor='darkgreen',
+    # === Panel 4: Predicted Rho bar chart (always present) ===
+    ax4.bar(bar_x_positions, rho_array, color='skyblue', edgecolor='steelblue',
+            linewidth=0.5, alpha=0.8, width=0.8)
+    ax4.set_ylabel('Predicted Rho (ρ)', fontsize=12, fontweight='bold')
+    ax4.set_ylim(0, 1.0)
+    ax4.grid(True, alpha=0.3, axis='y')
+
+    # Add horizontal reference lines
+    ax4.axhline(y=0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5, label='ρ=0.5 (Balanced)')
+    ax4.legend(loc='upper right', fontsize=9)
+
+    # === Panel 5: Ground Truth Rho bar chart (if available) ===
+    if ground_truth_rho is not None and ax5 is not None:
+        ax5.bar(bar_x_positions, ground_truth_rho, color='lightcoral', edgecolor='firebrick',
                 linewidth=0.5, alpha=0.8, width=0.8)
-        ax4.set_ylabel('Predicted Sigma (σ)', fontsize=12, fontweight='bold')
-        ax4.set_xlabel('Decision Date (Action Day)', fontsize=12, fontweight='bold')
-        # Sigma typically ranges from 0 to some reasonable max, adjust as needed
-        ax4.set_ylim(0, max(sigma_array) * 1.1 if len(sigma_array) > 0 else 1.0)
-        ax4.grid(True, alpha=0.3, axis='y')
-        ax4.legend(loc='upper right', fontsize=9)
+        ax5.set_ylabel('Ground Truth Rho (ρ)', fontsize=12, fontweight='bold')
+        ax5.set_xlabel('Decision Date (Action Day)', fontsize=12, fontweight='bold')
+        ax5.set_ylim(0, 1.0)
+        ax5.grid(True, alpha=0.3, axis='y')
+
+        # Add horizontal reference lines
+        ax5.axhline(y=0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5, label='ρ=0.5 (Balanced)')
+        ax5.legend(loc='upper right', fontsize=9)
 
     # Set x-axis labels (actual decision dates from sample_dates)
     if sample_dates is not None and len(sample_dates) >= n_steps:
@@ -1203,30 +1251,30 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
 
         xlabels = [sample_dates[i].strftime('%Y-%m-%d') for i in xticks if i < len(sample_dates)]
 
-        # Set labels only on bottom-most panel
-        if sigma_array is not None and ax4 is not None:
-            # Sigma panel is bottom-most
-            ax4.set_xticks(xticks)
-            ax4.set_xticklabels(xlabels, rotation=45, ha='right')
-            ax2.set_xticks(xticks)
-            ax2.set_xticklabels([])
-            if ax3 is not None:
-                ax3.set_xticks(xticks)
-                ax3.set_xticklabels([])
-        elif ground_truth_rho is not None and ax3 is not None:
-            # Ground truth panel is bottom-most
-            ax3.set_xticks(xticks)
-            ax3.set_xticklabels(xlabels, rotation=45, ha='right')
-            ax2.set_xticks(xticks)
-            ax2.set_xticklabels([])
-        else:
-            # Rho panel is bottom-most
-            ax2.set_xticks(xticks)
-            ax2.set_xticklabels(xlabels, rotation=45, ha='right')
+        # Determine bottom-most panel and set labels
+        bottom_ax = ax5 if ax5 is not None else ax4
 
-        # Also set ticks for ax1 to match
+        # Set x-axis ticks and labels for all panels
         ax1.set_xticks(xticks)
         ax1.set_xticklabels([])  # Hide labels on top panel
+
+        if ax2 is not None:
+            ax2.set_xticks(xticks)
+            ax2.set_xticklabels([])
+
+        if ax3 is not None:
+            ax3.set_xticks(xticks)
+            ax3.set_xticklabels([])
+
+        ax4.set_xticks(xticks)
+        if bottom_ax == ax4:
+            ax4.set_xticklabels(xlabels, rotation=45, ha='right')
+        else:
+            ax4.set_xticklabels([])
+
+        if ax5 is not None:
+            ax5.set_xticks(xticks)
+            ax5.set_xticklabels(xlabels, rotation=45, ha='right')
     else:
         # Fallback: use step numbers
         step_interval = max(1, n_steps // 20)
@@ -1236,32 +1284,40 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
 
         xlabels = [f'Step {i+1}' for i in xticks]
 
-        if sigma_array is not None and ax4 is not None:
-            ax4.set_xticks(xticks)
-            ax4.set_xticklabels(xlabels)
-            ax2.set_xticks(xticks)
-            ax2.set_xticklabels([])
-            if ax3 is not None:
-                ax3.set_xticks(xticks)
-                ax3.set_xticklabels([])
-        elif ground_truth_rho is not None and ax3 is not None:
-            ax3.set_xticks(xticks)
-            ax3.set_xticklabels(xlabels)
-            ax2.set_xticks(xticks)
-            ax2.set_xticklabels([])
-        else:
-            ax2.set_xticks(xticks)
-            ax2.set_xticklabels(xlabels)
+        # Determine bottom-most panel
+        bottom_ax = ax5 if ax5 is not None else ax4
+
+        # Set x-axis ticks and labels for all panels
         ax1.set_xticks(xticks)
         ax1.set_xticklabels([])
 
+        if ax2 is not None:
+            ax2.set_xticks(xticks)
+            ax2.set_xticklabels([])
+
+        if ax3 is not None:
+            ax3.set_xticks(xticks)
+            ax3.set_xticklabels([])
+
+        ax4.set_xticks(xticks)
+        if bottom_ax == ax4:
+            ax4.set_xticklabels(xlabels)
+        else:
+            ax4.set_xticklabels([])
+
+        if ax5 is not None:
+            ax5.set_xticks(xticks)
+            ax5.set_xticklabels(xlabels)
+
     # Set x-axis limits: -0.5 to n_steps+0.5 to show all DJIA points (including the extra one)
     ax1.set_xlim(-0.5, n_steps + 0.5)
-    ax2.set_xlim(-0.5, n_steps + 0.5)
-    if ground_truth_rho is not None and ax3 is not None:
+    if ax2 is not None:
+        ax2.set_xlim(-0.5, n_steps + 0.5)
+    if ax3 is not None:
         ax3.set_xlim(-0.5, n_steps + 0.5)
-    if sigma_array is not None and ax4 is not None:
-        ax4.set_xlim(-0.5, n_steps + 0.5)
+    ax4.set_xlim(-0.5, n_steps + 0.5)
+    if ax5 is not None:
+        ax5.set_xlim(-0.5, n_steps + 0.5)
 
     plt.tight_layout()
 
