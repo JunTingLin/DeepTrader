@@ -65,19 +65,17 @@ class PMSU(nn.Module):
         Returns:
             output: [batch, 1] - Binary logits (before sigmoid)
         """
-        # Permute to [window_len, batch, in_features]
-        X = X.permute(1, 0, 2)
+        # X is already [batch, 13, in_features] - correct format for TE_1D
 
         # ===== Encoder =====
-        outputs = self.TE_1D(X)  # [13, batch, 128]
+        outputs = self.TE_1D(X)  # [batch, 13, 128]
 
         # ===== Temporal Attention =====
-        scores = self.attn2(torch.tanh(self.attn1(outputs)))  # [13, batch, 1]
-        scores = scores.squeeze(2).transpose(1, 0)  # [batch, 13]
+        scores = self.attn2(torch.tanh(self.attn1(outputs)))  # [batch, 13, 1]
+        scores = scores.squeeze(2)  # [batch, 13]
         attn_weights = torch.softmax(scores, dim=1)  # [batch, 13]
 
         # Weighted sum
-        outputs = outputs.permute(1, 0, 2)  # [batch, 13, 128]
         attn_embed = torch.bmm(attn_weights.unsqueeze(1), outputs).squeeze(1)  # [batch, 128]
 
         # ===== Middle Layer =====
