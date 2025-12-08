@@ -110,14 +110,20 @@ def compute_msu_ground_truth_for_step(market_data, idx, window_len_weeks, trade_
     # Step 4: Compute raw returns
     raw_returns = np.diff(pred_prices) / pred_prices[:-1]
     raw_mu = np.mean(raw_returns)  # Average daily return
-    raw_sigma = np.std(raw_returns)
+    raw_sigma = np.std(raw_returns)  # Daily volatility
     raw_total_return = (pred_prices[-1] - pred_prices[0]) / pred_prices[0]
+
+    # Compute 21-day cumulative volatility (for Stage 1 pretrain)
+    # Formula: sigma_T = sigma_daily * sqrt(T) where T=21 days
+    num_days = len(raw_returns)
+    raw_total_sigma = raw_sigma * np.sqrt(num_days)
 
     return {
         # Ground truth: raw_mu (average daily return)
         'raw_mu': float(raw_mu),
         'raw_sigma': float(raw_sigma),
         'raw_total_return': float(raw_total_return),
+        'raw_total_sigma': float(raw_total_sigma),  # 21-day cumulative volatility
 
         # Index information
         'input_start': int(input_start),
@@ -182,28 +188,6 @@ def compute_msu_ground_truth_batch(market_data, start_idx, end_idx, window_len_w
             break
 
     print(f"Generated {len(ground_truths)} MSU ground truth samples")
-    return ground_truths
-
-
-def add_msu_trend_label(ground_truths):
-    """
-    Add trend_label for MSU Stage 1 binary classification.
-
-    Args:
-        ground_truths: list of ground truth records
-
-    Returns:
-        Updated ground_truths with 'trend_label' field
-    """
-    for gt in ground_truths:
-        # Binary label: 1.0 if uptrend, 0.0 otherwise
-        gt['trend_label'] = 1.0 if gt['raw_mu'] > 0 else 0.0
-
-    # Print statistics
-    trend_labels = [gt['trend_label'] for gt in ground_truths]
-    uptrend_count = sum(trend_labels)
-    print(f"MSU Trend labels: {uptrend_count}/{len(trend_labels)} uptrend ({100*uptrend_count/len(trend_labels):.1f}%)")
-
     return ground_truths
 
 
@@ -281,7 +265,7 @@ def save_ground_truth(ground_truths, min_val, max_val, config, output_path):
         'rho_record': [gt.get('rho') for gt in ground_truths],
         'raw_mu_record': [gt.get('raw_mu') for gt in ground_truths],
         'raw_total_return_record': [gt.get('raw_total_return') for gt in ground_truths],
-        'trend_label_record': [gt.get('trend_label') for gt in ground_truths],
+        'raw_total_sigma_record': [gt.get('raw_total_sigma') for gt in ground_truths],
         'normalization': f'min-max normalization of raw_mu within {config["split"].upper()} period',
         'method': 'direct_raw_returns',
         'min_raw_mu': min_val,
@@ -298,8 +282,9 @@ def save_ground_truth(ground_truths, min_val, max_val, config, output_path):
             'num_steps': len(ground_truths),
             'feature_idx': config.get('feature_idx', 0),
             'ground_truth_description': 'raw_mu = average daily return over next 21 days',
-            'rho_description': f'rho = (raw_mu - min_raw_mu) / (max_raw_mu - min_raw_mu) [computed within {config["split"].upper()} period]',
-            'trend_label_description': 'trend_label = 1.0 if raw_mu > 0 else 0.0 (for MSU Stage 1 binary classification)'
+            'raw_total_return_description': 'raw_total_return = total return over 21 days',
+            'raw_total_sigma_description': 'raw_total_sigma = cumulative volatility over 21 days (sigma * sqrt(21))',
+            'rho_description': f'rho = (raw_mu - min_raw_mu) / (max_raw_mu - min_raw_mu) [computed within {config["split"].upper()} period]'
         }
     }
 
@@ -371,7 +356,6 @@ def compute_ground_truth_main(args):
                 data, start_idx, end_idx, args.window_len, args.trade_len,
                 step=step, feature_idx=args.feature_idx
             )
-            ground_truths = add_msu_trend_label(ground_truths)
             ground_truths, min_val, max_val = normalize_msu_rho(ground_truths)
         elif args.module == 'asu':
             ground_truths = compute_asu_ground_truth_batch(
