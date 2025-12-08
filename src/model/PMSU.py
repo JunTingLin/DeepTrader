@@ -1,8 +1,13 @@
 """
-PMSU (Pretrain MSU)
+PMSU (Pretrain MSU) - Masked Reconstruction
 
-Pretrain version of MSU for Stage 1: Binary trend prediction (0 or 1).
-Same architecture as MSU, but with a binary classification head.
+Pretrain version of MSU for Stage 1: Self-supervised masked reconstruction.
+
+Architecture:
+- Encoder (TE_1D): Will be transferred to Stage 2 MSU
+- Decoder: Will be discarded in Stage 2
+
+Task: Reconstruct masked market features
 """
 
 import torch
@@ -12,16 +17,15 @@ from model.TE import TE_1D
 
 class PMSU(nn.Module):
     """
-    PMSU: Pretrain MSU for Stage 1 (binary trend prediction)
+    PMSU: Pretrain MSU for Stage 1 (Masked Reconstruction)
 
-    Fixed architecture:
-        - window_len: 13
-        - hidden_dim: 128
-        - Transformer encoder
-        - Temporal attention
-        - Binary classification head (output: 0 or 1)
+    Architecture:
+        - Encoder: TE_1D transformer (will be transferred to Stage 2)
+        - Decoder: Reconstruction head (will be discarded in Stage 2)
 
-    Only requires in_features to be specified (e.g., 1 for fake data).
+    Task: Given masked market data [13, 27], reconstruct original values
+
+    Only requires in_features to be specified (e.g., 27 for market data).
     """
     def __init__(self, in_features):
         super().__init__()
@@ -31,7 +35,7 @@ class PMSU(nn.Module):
         self.window_len = 13
         self.hidden_dim = 128
 
-        # ===== Transformer Encoder =====
+        # ===== ENCODER (will be transferred to Stage 2) =====
         self.TE_1D = TE_1D(
             window_len=13,
             dim=128,
@@ -44,44 +48,47 @@ class PMSU(nn.Module):
             emb_dropout=0.1
         )
 
-        # ===== Temporal Attention =====
-        self.attn1 = nn.Linear(128, 128)
-        self.attn2 = nn.Linear(128, 1)
-
-        # ===== Middle Layer =====
-        self.linear1 = nn.Linear(128, 128)
-        self.bn1 = nn.BatchNorm1d(128)
-
-        # ===== Binary Classification Head =====
-        self.head = nn.Linear(128, 1)
+        # ===== DECODER (will be discarded in Stage 2) =====
+        # Reconstruct each timestep independently
+        self.decoder = nn.Sequential(
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, in_features)  # Output: 27 features
+        )
 
     def forward(self, X):
         """
         Forward pass
 
         Args:
-            X: [batch, 13, in_features] - Input sequence
+            X: [batch, 13, in_features] - Masked input sequence
 
         Returns:
-            output: [batch, 1] - Binary logits (before sigmoid)
+            reconstructed: [batch, 13, in_features] - Reconstructed sequence
         """
-        # X is already [batch, 13, in_features] - correct format for TE_1D
-
         # ===== Encoder =====
-        outputs = self.TE_1D(X)  # [batch, 13, 128]
+        encoded = self.TE_1D(X)  # [batch, 13, 128]
 
-        # ===== Temporal Attention =====
-        scores = self.attn2(torch.tanh(self.attn1(outputs)))  # [batch, 13, 1]
-        scores = scores.squeeze(2)  # [batch, 13]
-        attn_weights = torch.softmax(scores, dim=1)  # [batch, 13]
+        # ===== Decoder =====
+        # Decode each timestep independently
+        batch_size, seq_len, hidden_dim = encoded.shape
 
-        # Weighted sum
-        attn_embed = torch.bmm(attn_weights.unsqueeze(1), outputs).squeeze(1)  # [batch, 128]
+        # Reshape to process all timesteps at once
+        encoded_flat = encoded.reshape(batch_size * seq_len, hidden_dim)  # [batch*13, 128]
+        decoded_flat = self.decoder(encoded_flat)  # [batch*13, in_features]
 
-        # ===== Middle Layer =====
-        embed = torch.relu(self.bn1(self.linear1(attn_embed)))  # [batch, 128]
+        # Reshape back
+        reconstructed = decoded_flat.reshape(batch_size, seq_len, self.in_features)  # [batch, 13, in_features]
 
-        # ===== Binary Classification Head =====
-        output = self.head(embed)  # [batch, 1]
+        return reconstructed
 
-        return output
+    def get_encoder_state_dict(self):
+        """
+        Get encoder state dict for transfer to Stage 2 MSU
+
+        Returns:
+            dict: State dict containing only encoder (TE_1D)
+        """
+        return {
+            'TE_1D': self.TE_1D.state_dict()
+        }

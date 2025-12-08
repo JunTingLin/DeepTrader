@@ -1,15 +1,19 @@
 """
-MSU Stage 1 Pretraining Script
+MSU Stage 1 Pretraining Script (Masked Reconstruction)
 
-Train MSU with trend prediction task (binary classification).
+Train MSU encoder with self-supervised masked reconstruction task.
+
+Task: Given masked market data, reconstruct the original values at masked positions.
+Strategy: Mask entire weeks (30% of 13 weeks = ~4 weeks)
 
 Usage:
     python pretrain_msu_stage1.py \
-        --data_dir ./data/fake \
-        --save_dir ./checkpoints/msu_stage1 \
+        --data_dir ./data/DJIA/feature34-Inter-P532 \
+        --save_dir ./checkpoints/msu_stage1_masked \
         --epochs 100 \
         --batch_size 32 \
-        --lr 1e-3
+        --lr 1e-3 \
+        --mask_ratio 0.3
 """
 
 import os
@@ -18,6 +22,7 @@ import json
 from datetime import datetime
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
@@ -28,26 +33,78 @@ from msu_dataset_stage1 import MSUDataset
 from model.PMSU import PMSU
 
 
-def train_one_epoch(model, train_loader, criterion, optimizer, device):
-    """Train for one epoch"""
+def create_mask(batch_size, seq_len, mask_ratio=0.3):
+    """
+    Create random temporal mask (mask entire weeks).
+
+    Args:
+        batch_size: Batch size
+        seq_len: Sequence length (13 weeks)
+        mask_ratio: Ratio of weeks to mask (default: 0.3)
+
+    Returns:
+        mask: Boolean tensor [batch, seq_len] where True = masked position
+    """
+    num_masked = int(seq_len * mask_ratio)  # e.g., 13 * 0.3 = 3.9 ≈ 4 weeks
+
+    # For each sample, randomly select weeks to mask
+    mask = torch.zeros(batch_size, seq_len, dtype=torch.bool)
+
+    for i in range(batch_size):
+        # Randomly select indices to mask
+        masked_indices = torch.randperm(seq_len)[:num_masked]
+        mask[i, masked_indices] = True
+
+    return mask
+
+
+def train_one_epoch(model, train_loader, criterion, optimizer, device, mask_ratio=0.3):
+    """
+    Train for one epoch with masked reconstruction.
+
+    Args:
+        model: PMSU model
+        train_loader: Training data loader
+        criterion: Loss function (MSE)
+        optimizer: Optimizer
+        device: Device
+        mask_ratio: Ratio of weeks to mask (default: 0.3)
+
+    Returns:
+        avg_loss: Average reconstruction loss
+        avg_mse_masked: Average MSE on masked positions only
+    """
     model.train()
     total_loss = 0
-    correct = 0
-    total = 0
+    total_mse_masked = 0
 
     pbar = tqdm(train_loader, desc='Training')
-    for market_input, trend_label in pbar:
-        market_input = market_input.to(device)  # [batch, 13, market_features]
-        trend_label = trend_label.to(device)    # [batch]
+    for market_input in pbar:
+        market_input = market_input.to(device)  # [batch, 13, 27]
+        batch_size, seq_len, num_features = market_input.shape
 
-        # Forward
-        logits = model(market_input).squeeze(-1)  # [batch]
+        # Create original data (target for reconstruction)
+        original_data = market_input.clone()  # [batch, 13, 27]
 
-        # Loss (BCEWithLogitsLoss expects logits, not probs)
-        loss = criterion(logits, trend_label)
+        # Create mask: [batch, 13] where True = masked position
+        mask = create_mask(batch_size, seq_len, mask_ratio).to(device)
 
-        # Get predictions (apply sigmoid for accuracy calculation)
-        probs = torch.sigmoid(logits)
+        # Apply mask: set masked positions to 0
+        # Expand mask to [batch, 13, 27]
+        mask_expanded = mask.unsqueeze(-1).expand_as(market_input)  # [batch, 13, 27]
+        masked_input = market_input.clone()
+        masked_input[mask_expanded] = 0.0  # Mask entire weeks (all 27 features)
+
+        # Forward: reconstruct from masked input
+        reconstructed = model(masked_input)  # [batch, 13, 27]
+
+        # Loss: MSE on ALL positions (both masked and unmasked)
+        # - Masked positions: Learn to reconstruct from context
+        # - Unmasked positions: Learn identity mapping (preserve input)
+        loss = criterion(reconstructed, original_data)
+
+        # Also compute MSE on masked positions only for monitoring
+        mse_masked = F.mse_loss(reconstructed[mask_expanded], original_data[mask_expanded])
 
         # Backward
         optimizer.zero_grad()
@@ -56,47 +113,66 @@ def train_one_epoch(model, train_loader, criterion, optimizer, device):
 
         # Statistics
         total_loss += loss.item()
-        predicted = (probs > 0.5).float()
-        correct += (predicted == trend_label).sum().item()
-        total += trend_label.size(0)
+        total_mse_masked += mse_masked.item()
 
-        pbar.set_postfix({'loss': f'{loss.item():.4f}', 'acc': f'{100*correct/total:.2f}%'})
+        pbar.set_postfix({'loss': f'{loss.item():.5f}', 'mse_masked': f'{mse_masked.item():.5f}'})
 
     avg_loss = total_loss / len(train_loader)
-    accuracy = 100 * correct / total
-    return avg_loss, accuracy
+    avg_mse_masked = total_mse_masked / len(train_loader)
+
+    return avg_loss, avg_mse_masked
 
 
-def validate(model, val_loader, criterion, device):
-    """Validate the model"""
+def validate(model, val_loader, criterion, device, mask_ratio=0.3):
+    """
+    Validate the model with masked reconstruction.
+
+    Args:
+        model: PMSU model
+        val_loader: Validation data loader
+        criterion: Loss function (MSE)
+        device: Device
+        mask_ratio: Ratio of weeks to mask (default: 0.3)
+
+    Returns:
+        avg_loss: Average reconstruction loss
+        avg_mse_masked: Average MSE on masked positions only
+    """
     model.eval()
     total_loss = 0
-    correct = 0
-    total = 0
+    total_mse_masked = 0
 
     with torch.no_grad():
-        for market_input, trend_label in val_loader:
-            market_input = market_input.to(device)
-            trend_label = trend_label.to(device)
+        for market_input in val_loader:
+            market_input = market_input.to(device)  # [batch, 13, 27]
+            batch_size, seq_len, num_features = market_input.shape
+
+            # Create original data
+            original_data = market_input.clone()
+
+            # Create mask
+            mask = create_mask(batch_size, seq_len, mask_ratio).to(device)
+
+            # Apply mask
+            mask_expanded = mask.unsqueeze(-1).expand_as(market_input)
+            masked_input = market_input.clone()
+            masked_input[mask_expanded] = 0.0
 
             # Forward
-            logits = model(market_input).squeeze(-1)  # [batch]
+            reconstructed = model(masked_input)
 
-            # Loss (BCEWithLogitsLoss expects logits, not probs)
-            loss = criterion(logits, trend_label)
-
-            # Get predictions (apply sigmoid for accuracy calculation)
-            probs = torch.sigmoid(logits)
+            # Loss on ALL positions (not just masked)
+            loss = criterion(reconstructed, original_data)
+            mse_masked = F.mse_loss(reconstructed[mask_expanded], original_data[mask_expanded])
 
             # Statistics
             total_loss += loss.item()
-            predicted = (probs > 0.5).float()
-            correct += (predicted == trend_label).sum().item()
-            total += trend_label.size(0)
+            total_mse_masked += mse_masked.item()
 
     avg_loss = total_loss / len(val_loader)
-    accuracy = 100 * correct / total
-    return avg_loss, accuracy
+    avg_mse_masked = total_mse_masked / len(val_loader)
+
+    return avg_loss, avg_mse_masked
 
 
 def main(args):
@@ -144,53 +220,21 @@ def main(args):
     print(f"Train samples: {len(train_dataset)}")
     print(f"Val samples: {len(val_dataset)}")
 
-    # Compute class distribution for weighting
-    print("\nComputing class distribution...")
-    train_labels = []
-    for _, label in train_dataset:
-        train_labels.append(label.item())
-    train_labels = torch.tensor(train_labels)
-
-    n_positive = train_labels.sum().item()
-    n_negative = len(train_labels) - n_positive
-    n_total = len(train_labels)
-
-    print(f"Class distribution (train):")
-    print(f"  Positive (1): {n_positive} ({n_positive/n_total*100:.2f}%)")
-    print(f"  Negative (0): {n_negative} ({n_negative/n_total*100:.2f}%)")
-    print(f"  Imbalance ratio: {n_positive/n_negative:.2f}:1")
-
     # Initialize model
-    print("\nInitializing PMSU model (Stage 1: trend prediction)...")
+    print("\nInitializing PMSU model (Stage 1: masked reconstruction)...")
 
     # Get market features from dataset
-    market_features = train_dataset.market_data.shape[1]  # Should be 1 for fake data
+    market_features = train_dataset.market_data.shape[1]  # Should be 27 for DJIA
     print(f"Market features: {market_features}")
 
     # Initialize PMSU model (all hyperparameters are fixed inside PMSU)
     model = PMSU(in_features=market_features).to(device)
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
+    print(f"Mask ratio: {args.mask_ratio}")
 
-    # Loss and optimizer with class weighting
-    # pos_weight: weight for positive class (how much more to weight positive samples)
-    # For imbalanced data where positive is majority: pos_weight = n_positive / n_negative
-    # This makes the model pay more attention to the minority class (negative)
-    if args.pos_weight is not None:
-        pos_weight = torch.tensor([args.pos_weight]).to(device)
-        print(f"\nClass weighting (manual):")
-        print(f"  pos_weight = {pos_weight.item():.4f} (user-specified)")
-        print(f"  This increases the penalty for positive class errors by {pos_weight.item():.2f}x")
-    else:
-        pos_weight = torch.tensor([n_positive / n_negative]).to(device)
-        print(f"\nClass weighting (auto-calculated):")
-        print(f"  pos_weight = {pos_weight.item():.4f} (positive/negative ratio)")
-        print(f"  This increases the penalty for positive class errors by {pos_weight.item():.2f}x")
-    print(f"  Goal: Make model pay more attention to minority class (negative)")
-
-    # Use BCEWithLogitsLoss which combines Sigmoid + BCE and accepts pos_weight
-    # Note: We need to modify forward() to output logits instead of probs
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    # Loss and optimizer
+    criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     # Learning rate scheduler
@@ -200,7 +244,6 @@ def main(args):
 
     # Training loop with early stopping
     best_val_loss = float('inf')
-    best_val_acc = 0
     early_stopping_counter = 0
     early_stopping_patience = 20
 
@@ -213,27 +256,32 @@ def main(args):
         print("-"*80)
 
         # Train
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
-        print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%")
+        train_loss, train_mse_masked = train_one_epoch(
+            model, train_loader, criterion, optimizer, device, mask_ratio=args.mask_ratio
+        )
+        print(f"Train Loss: {train_loss:.5f}, MSE (masked): {train_mse_masked:.5f}")
 
         # Validate
-        val_loss, val_acc = validate(model, val_loader, criterion, device)
-        print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%")
+        val_loss, val_mse_masked = validate(
+            model, val_loader, criterion, device, mask_ratio=args.mask_ratio
+        )
+        print(f"Val Loss: {val_loss:.5f}, MSE (masked): {val_mse_masked:.5f}")
 
         # TensorBoard logging
         writer.add_scalar('Train/Loss', train_loss, epoch)
-        writer.add_scalar('Train/Accuracy', train_acc, epoch)
+        writer.add_scalar('Train/MSE_Masked', train_mse_masked, epoch)
+
         writer.add_scalar('Val/Loss', val_loss, epoch)
-        writer.add_scalar('Val/Accuracy', val_acc, epoch)
+        writer.add_scalar('Val/MSE_Masked', val_mse_masked, epoch)
+
         writer.add_scalar('Learning_Rate', optimizer.param_groups[0]['lr'], epoch)
         writer.flush()
 
         # Learning rate scheduling
         scheduler.step(val_loss)
 
-        # Save best model and check early stopping
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
+        # Save best model (based on validation loss - lower is better)
+        if val_loss < best_val_loss:
             best_val_loss = val_loss
             early_stopping_counter = 0  # Reset counter
 
@@ -242,17 +290,18 @@ def main(args):
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'train_loss': train_loss,
-                'train_acc': train_acc,
+                'train_mse_masked': train_mse_masked,
                 'val_loss': val_loss,
-                'val_acc': val_acc,
-                'best_val_acc': best_val_acc,
+                'val_mse_masked': val_mse_masked,
+                'best_val_loss': best_val_loss,
                 'market_features': market_features,
+                'mask_ratio': args.mask_ratio,
                 'args': vars(args),
             }
 
             save_path = os.path.join(save_dir, 'best_model.pth')
             torch.save(checkpoint, save_path)
-            print(f"✅ Saved best model (acc: {val_acc:.2f}%)")
+            print(f"✅ Saved best model (val_loss: {val_loss:.5f})")
         else:
             early_stopping_counter += 1
             print(f"⏳ No improvement for {early_stopping_counter}/{early_stopping_patience} epochs")
@@ -260,7 +309,7 @@ def main(args):
             # Early stopping
             if early_stopping_counter >= early_stopping_patience:
                 print(f"\n🛑 Early stopping triggered! No improvement for {early_stopping_patience} epochs")
-                print(f"Best Val Acc: {best_val_acc:.2f}% at epoch {epoch - early_stopping_patience}")
+                print(f"Best Val Loss: {best_val_loss:.5f} at epoch {epoch - early_stopping_patience}")
                 break
 
         # Save checkpoint every N epochs
@@ -270,9 +319,7 @@ def main(args):
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'train_loss': train_loss,
-                'train_acc': train_acc,
                 'val_loss': val_loss,
-                'val_acc': val_acc,
             }
 
             save_path = os.path.join(save_dir, f'checkpoint_epoch_{epoch}.pth')
@@ -284,17 +331,16 @@ def main(args):
 
     print("\n" + "="*80)
     print("Training completed!")
-    print(f"Best Val Loss: {best_val_loss:.4f}")
-    print(f"Best Val Acc: {best_val_acc:.2f}%")
+    print(f"Best Val Loss: {best_val_loss:.5f}")
     print(f"Saved to: {save_dir}")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='MSU Stage 1 Pretraining')
+    parser = argparse.ArgumentParser(description='MSU Stage 1 Pretraining (Masked Reconstruction)')
 
     # Data
     parser.add_argument('--data_dir', type=str, required=True,
-                        help='Directory containing MSU_*_ground_truth.json files')
+                        help='Directory containing market_data.npy')
 
     # Training
     parser.add_argument('--epochs', type=int, default=100,
@@ -305,8 +351,10 @@ if __name__ == '__main__':
                         help='Learning rate (default: 1e-3)')
     parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help='Weight decay (default: 1e-4)')
-    parser.add_argument('--pos_weight', type=float, default=None,
-                        help='Positive class weight for BCEWithLogitsLoss (default: n_pos/n_neg, auto-calculated)')
+
+    # Masking
+    parser.add_argument('--mask_ratio', type=float, default=0.3,
+                        help='Ratio of weeks to mask (default: 0.3)')
 
     # Device
     parser.add_argument('--use_gpu', action='store_true', default=True,
@@ -315,8 +363,8 @@ if __name__ == '__main__':
                         help='Number of dataloader workers (default: 4)')
 
     # Checkpointing
-    parser.add_argument('--save_dir', type=str, default='./checkpoints/msu_stage1',
-                        help='Directory to save checkpoints (default: ./checkpoints/msu_stage1)')
+    parser.add_argument('--save_dir', type=str, default='./checkpoints/msu_stage1_masked',
+                        help='Directory to save checkpoints (default: ./checkpoints/msu_stage1_masked)')
     parser.add_argument('--save_every', type=int, default=10,
                         help='Save checkpoint every N epochs (default: 10)')
 

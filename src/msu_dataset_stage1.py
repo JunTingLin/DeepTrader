@@ -1,10 +1,10 @@
 """
 MSU Dataset for Stage 1 Pretraining
 
-This dataset loads market data and ground truth for MSU Stage 1 binary classification.
+Self-supervised learning: Masked market feature reconstruction
 
-Input:  market_data (13 weeks)
-Output: trend_label (0.0 or 1.0)
+Input:  market_data (13 weeks, 27 features) with some weeks masked
+Output: original market_data (for reconstruction)
 """
 
 import torch
@@ -16,72 +16,62 @@ import os
 
 class MSUDataset(Dataset):
     """
-    MSU Stage 1 Pretraining Dataset
+    MSU Stage 1 Pretraining Dataset (Self-Supervised)
 
-    Loads market data and corresponding trend labels for MSU Stage 1 pretraining.
+    Loads market data for masked reconstruction task.
 
     Inputs:
         - market_data: [window_len, market_features] normalized weekly data
 
     Outputs:
-        - trend_label: float in {0.0, 1.0}
-            1.0 if raw_mu > 0 (uptrend)
-            0.0 if raw_mu <= 0 (downtrend/flat)
+        - market_data: [window_len, market_features] original data (for reconstruction target)
+
+    Note: Masking is done in the training loop, not in the dataset
     """
 
     def __init__(self,
                  data_dir,
                  split='train',
-                 window_len=13,
-                 trade_len=21):
+                 window_len=13):
         """
         Args:
-            data_dir: Directory containing market_data.npy and *_ground_truth.json files
+            data_dir: Directory containing market_data.npy
             split: 'train', 'val', or 'test'
             window_len: Input window length in weeks (13)
-            trade_len: Prediction horizon in days (21)
         """
         super().__init__()
 
         self.data_dir = data_dir
         self.split = split
         self.window_len = window_len
-        self.trade_len = trade_len
         self.window_days = window_len * 5  # 13 weeks = 65 days
 
         # Load market data
         market_data_path = os.path.join(data_dir, 'market_data.npy')
         self.market_data = np.load(market_data_path)  # [T, market_features]
 
-        # Load ground truth for Stage 1
-        gt_path = os.path.join(data_dir, f'MSU_{split}_ground_truth_step1.json')
-        if not os.path.exists(gt_path):
-            raise FileNotFoundError(f"Ground truth file not found: {gt_path}")
+        # Define split ranges (same as before from hyper.json)
+        if split == 'train':
+            start_idx = 0
+            end_idx = 1304
+        elif split == 'val':
+            start_idx = 1304
+            end_idx = 2087
+        else:  # test
+            start_idx = 2087
+            end_idx = 2673
 
-        print(f"Loading ground truth from: {os.path.basename(gt_path)}")
-        with open(gt_path, 'r') as f:
-            gt_data = json.load(f)
+        # Generate valid indices (need window_days history)
+        min_idx = self.window_days - 1  # 64
+        max_idx = end_idx - 1
 
-        # Extract records
-        self.records = gt_data['ground_truth_records']
-
-        # Build index mapping: idx -> record
-        self.idx_to_record = {}
-        for record in self.records:
-            # Use input_end as the index (the last day of input window)
-            idx = record['input_end'] - 1  # input_end is exclusive, so -1 to get the actual last day
-            self.idx_to_record[idx] = record
-
-        self.indices = sorted(list(self.idx_to_record.keys()))
+        # Use sliding window with step=1 for training (more data)
+        self.indices = list(range(max(start_idx, min_idx), max_idx))
 
         print(f"MSUDataset [{split}]: {len(self.indices)} samples")
         print(f"  Market data shape: {self.market_data.shape}")
         print(f"  Index range: [{min(self.indices)}, {max(self.indices)}]")
-
-        # Statistics
-        trend_labels = [self.idx_to_record[idx]['trend_label'] for idx in self.indices]
-        uptrend_count = sum(trend_labels)
-        print(f"  Uptrend samples: {uptrend_count}/{len(trend_labels)} ({100*uptrend_count/len(trend_labels):.1f}%)")
+        print(f"  Self-supervised: No labels needed!")
 
     def _extract_weekly_data(self, daily_data):
         """
@@ -119,31 +109,28 @@ class MSUDataset(Dataset):
     def __getitem__(self, i):
         """
         Returns:
-            market_input: [window_len, market_features] torch.FloatTensor
-            trend_label: scalar torch.FloatTensor in {0.0, 1.0}
+            market_data: [window_len, market_features] torch.FloatTensor
+
+        Note: Returns the same data as both input and target.
+              Masking will be applied in the training loop.
         """
         idx = self.indices[i]
-        record = self.idx_to_record[idx]
 
         # Extract input window (past window_days = 65 days)
-        input_start = record['input_start']
-        input_end = record['input_end']
+        input_start = idx - self.window_days + 1
+        input_end = idx + 1
         daily_data = self.market_data[input_start:input_end]  # [65, market_features]
 
         # Extract weekly data
         weekly_data = self._extract_weekly_data(daily_data)  # [13, market_features]
 
         # Normalize
-        market_input = self._normalize_weekly_data(weekly_data)  # [13, market_features]
+        market_data_normalized = self._normalize_weekly_data(weekly_data)  # [13, market_features]
 
-        # Get trend label
-        trend_label = record['trend_label']  # 0.0 or 1.0
+        # Convert to tensor
+        market_data_tensor = torch.from_numpy(market_data_normalized).float()  # [13, market_features]
 
-        # Convert to tensors
-        market_input = torch.from_numpy(market_input).float()  # [13, market_features]
-        trend_label = torch.tensor(trend_label, dtype=torch.float32)  # scalar
-
-        return market_input, trend_label
+        return market_data_tensor
 
 
 def test_dataset():
@@ -163,13 +150,16 @@ def test_dataset():
     print(f"Dataset length: {len(train_dataset)}")
 
     # Test a sample
-    market_input, trend_label = train_dataset[0]
+    market_input, targets = train_dataset[0]
     print(f"Sample 0:")
     print(f"  market_input shape: {market_input.shape}")
     print(f"  market_input dtype: {market_input.dtype}")
     print(f"  market_input range: [{market_input.min():.4f}, {market_input.max():.4f}]")
-    print(f"  trend_label: {trend_label.item()}")
-    print(f"  trend_label dtype: {trend_label.dtype}")
+    print(f"  targets: {targets.tolist()}")
+    print(f"  targets shape: {targets.shape}")
+    print(f"  targets dtype: {targets.dtype}")
+    print(f"    raw_total_return: {targets[0].item():.6f}")
+    print(f"    raw_total_sigma: {targets[1].item():.6f}")
 
     # Test validation set
     print("\n[VAL SET]")
@@ -186,11 +176,12 @@ def test_dataset():
     from torch.utils.data import DataLoader
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
-    for batch_idx, (market_input, trend_label) in enumerate(train_loader):
+    for batch_idx, (market_input, targets) in enumerate(train_loader):
         print(f"Batch {batch_idx}:")
         print(f"  market_input shape: {market_input.shape}")
-        print(f"  trend_label shape: {trend_label.shape}")
-        print(f"  trend_label values: {trend_label[:5].tolist()}")
+        print(f"  targets shape: {targets.shape}")
+        print(f"  targets[:5, 0] (returns): {targets[:5, 0].tolist()}")
+        print(f"  targets[:5, 1] (sigmas): {targets[:5, 1].tolist()}")
         if batch_idx >= 2:
             break
 

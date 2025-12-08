@@ -15,6 +15,65 @@ from agent import *
 from environment.portfolio_env import PortfolioEnv
 
 
+def load_pretrained_msu_encoder(actor, checkpoint_path, logger):
+    """
+    Load pretrained encoder (TE_1D) from Stage 1 PMSU checkpoint to Stage 2 MSU.
+
+    This enables two-stage training:
+    - Stage 1: Pretrain MSU encoder with masked reconstruction (self-supervised)
+    - Stage 2: Fine-tune with RL (use pretrained encoder weights)
+
+    Args:
+        actor: RLActor instance containing the MSU module
+        checkpoint_path: Path to PMSU checkpoint (best_model.pth from Stage 1)
+        logger: Logger instance for logging
+    """
+    from model.PMSU import PMSU
+
+    # Check if MSU is enabled
+    if not actor.args.msu_bool:
+        logger.warning('MSU is disabled (msu_bool=False), skipping pretrained encoder loading.')
+        return
+
+    logger.warning('='*80)
+    logger.warning('Loading Pretrained MSU Encoder (Stage 1 → Stage 2)')
+    logger.warning('='*80)
+    logger.warning(f'Checkpoint path: {checkpoint_path}')
+
+    # Load PMSU checkpoint
+    checkpoint = torch.load(checkpoint_path, map_location=actor.args.device, weights_only=False)
+    market_features = checkpoint.get('market_features', 27)
+
+    logger.warning(f'Stage 1 training info:')
+    logger.warning(f'  Epoch:           {checkpoint["epoch"]}')
+    logger.warning(f'  Best val loss:   {checkpoint.get("best_val_loss", "N/A"):.6f}')
+    logger.warning(f'  Market features: {market_features}')
+    logger.warning(f'  Mask ratio:      {checkpoint.get("mask_ratio", "N/A")}')
+
+    # Initialize PMSU temporarily to extract encoder
+    pmsu = PMSU(in_features=market_features)
+    pmsu.load_state_dict(checkpoint['model_state_dict'])
+
+    # Extract encoder state dict (only TE_1D, not decoder)
+    encoder_state_dict = pmsu.get_encoder_state_dict()
+
+    # Load into MSU's TE_1D
+    missing_keys, unexpected_keys = actor.msu.TE_1D.load_state_dict(
+        encoder_state_dict['TE_1D'], strict=True
+    )
+
+    if len(missing_keys) == 0 and len(unexpected_keys) == 0:
+        logger.warning('✅ Successfully loaded pretrained encoder to MSU.TE_1D')
+    else:
+        logger.warning(f'⚠️  Loading completed with issues:')
+        logger.warning(f'   Missing keys: {missing_keys}')
+        logger.warning(f'   Unexpected keys: {unexpected_keys}')
+
+    logger.warning('='*80)
+    logger.warning('Pretrained encoder loaded. Starting Stage 2 RL training...')
+    logger.warning('='*80)
+
+
 def run(func_args):
     if func_args.seed != -1:
         setup_seed(func_args.seed)
@@ -131,6 +190,13 @@ def run(func_args):
 
     supports = [A]
     actor = RLActor(supports, func_args).to(func_args.device)
+
+    # Load pretrained MSU encoder if specified (Stage 1 → Stage 2 transfer learning)
+    if hasattr(func_args, 'pretrained_msu_path') and func_args.pretrained_msu_path is not None:
+        load_pretrained_msu_encoder(actor, func_args.pretrained_msu_path, logger)
+    else:
+        logger.warning('Training MSU from scratch (no pretrained encoder specified)')
+
     agent = RLAgent(env, actor, func_args)
 
     mini_batch_num = int(np.ceil(len(env.src.order_set) / func_args.batch_size))
@@ -246,6 +312,8 @@ if __name__ == '__main__':
     parser.add_argument('--addaptiveadj', dest='addaptive_adj_bool', action='store_false', default=None)
     parser.add_argument('--no_tfinasu', dest='transformer_asu_bool', action='store_false', default=None)
     parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
+    parser.add_argument('--pretrained_msu_path', type=str, default=None,
+                        help='Path to pretrained MSU encoder checkpoint from Stage 1 (e.g., checkpoints/msu_stage1_masked/.../best_model.pth)')
 
     opts = parser.parse_args()
 
