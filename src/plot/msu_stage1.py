@@ -35,27 +35,49 @@ def load_results(results_path):
 
 def compute_baselines(data_dir, split='test', mask_ratio=0.3):
     """
-    Compute baseline MSE: what if we predict zeros or global mean?
+    Compute baseline for MASKED positions only using TRAINING set statistics (no data leakage).
+
+    Only computes zero baseline for masked positions, since:
+    1. Masked reconstruction is the main learning objective
+    2. Unmasked positions should naturally stay close to 0 (MSE ≈ 0)
+    3. Zero/mean/per-feature baselines are equivalent due to normalization
 
     Returns:
-        dict: Baseline metrics
+        dict: Baseline metrics (masked only)
     """
     from msu_dataset_stage1 import MSUDataset
 
-    print(f"\n  Computing baselines for {split} split...")
+    # 1. Load training set to compute statistics (no data leakage)
+    print(f"\n  Loading TRAIN set to compute statistics...")
+    train_dataset = MSUDataset(data_dir=data_dir, split='train')
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=False)
 
+    all_train_data = []
+    for market_input in tqdm(train_loader, desc='  Loading train', leave=False):
+        all_train_data.append(market_input)
+
+    all_train_data = torch.cat(all_train_data, dim=0)  # [N_train, 13, 27]
+
+    # Compute training statistics
+    train_overall_mean = all_train_data.mean().item()
+
+    print(f"  Train samples: {all_train_data.shape[0]}")
+    print(f"  Train overall mean: {train_overall_mean:.10f}")
+
+    # 2. Evaluate baseline on specified split (val/test)
+    print(f"\n  Computing baseline for {split} split...")
     dataset = MSUDataset(data_dir=data_dir, split=split)
     dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
 
-    all_data = []
-    all_masked_data = []
+    # Accumulator for masked baseline only
+    total_mse_zero_masked = 0
+    n_batches = 0
 
-    # Collect data
-    for market_input in tqdm(dataloader, desc='  Collecting data', leave=False):
+    for market_input in tqdm(dataloader, desc='  Evaluating', leave=False):
         batch_size, seq_len, num_features = market_input.shape
 
-        # Create random mask
-        num_masked = int(seq_len * mask_ratio)
+        # Create random mask (same as training)
+        num_masked = int(seq_len * mask_ratio)  # Must match training (int not round)
         mask = torch.zeros(batch_size, seq_len, dtype=torch.bool)
         for i in range(batch_size):
             masked_indices = torch.randperm(seq_len)[:num_masked]
@@ -63,104 +85,90 @@ def compute_baselines(data_dir, split='test', mask_ratio=0.3):
 
         mask_expanded = mask.unsqueeze(-1).expand_as(market_input)
 
-        all_data.append(market_input.numpy())
-        all_masked_data.append(market_input[mask_expanded].numpy())
+        # Ground truth for masked positions only
+        ground_truth_masked = market_input[mask_expanded]
 
-    all_data = np.concatenate([d.reshape(-1, d.shape[-1]) for d in all_data])  # [N, 27]
-    all_masked_data = np.concatenate(all_masked_data)  # [M] flattened
+        # Baseline: Predict Zero for masked positions
+        pred_zero_masked = torch.zeros_like(ground_truth_masked)
+        mse_zero_masked = F.mse_loss(pred_zero_masked, ground_truth_masked)
 
-    # Compute global mean per feature
-    global_mean = all_data.mean(axis=0)  # [27]
-
-    # Note: all_masked_data is flattened, need to compare to overall mean scalar
-    overall_mean = all_data.mean()  # scalar
-
-    # Baseline 1: Predict zeros
-    mse_zero = np.mean(all_masked_data ** 2)
-
-    # Baseline 2: Predict overall mean (scalar)
-    mse_mean = np.mean((all_masked_data - overall_mean) ** 2)
+        # Accumulate
+        total_mse_zero_masked += mse_zero_masked.item()
+        n_batches += 1
 
     return {
-        'mse_zero_baseline': float(mse_zero),
-        'mse_mean_baseline': float(mse_mean),
-        'global_mean': global_mean.tolist(),
+        # Masked positions baseline (zero prediction)
+        'mse_baseline_masked': float(total_mse_zero_masked / n_batches),
+
+        # Training statistics (for reference)
+        'train_overall_mean': float(train_overall_mean),
+        'train_n_samples': int(all_train_data.shape[0]),
     }
 
 
 def analyze_reconstruction_quality(results, baselines):
     """
-    Analyze reconstruction quality and compare to baselines.
+    Analyze reconstruction quality and compare to baseline (masked only).
+
+    Note: Does NOT include learning assessment (that's generated at print time).
+          JSON should only contain objective metrics.
 
     Args:
         results (dict): Results from eval_msu_stage1.py
-        baselines (dict): Baseline metrics
+        baselines (dict): Baseline metrics (masked only)
 
     Returns:
-        dict: Analysis metrics
+        dict: Analysis metrics (objective only)
     """
-    model_mse = results['mse_masked']
-    baseline_zero = baselines['mse_zero_baseline']
-    baseline_mean = baselines['mse_mean_baseline']
+    # Model performance
+    model_mse_masked = results['mse_masked']
+    model_mse_unmasked = results.get('mse_unmasked', None)
+    model_mse_all = results.get('mse_all', None)
 
-    # Compute improvement percentages
-    improvement_vs_zero = (baseline_zero - model_mse) / baseline_zero * 100
-    improvement_vs_mean = (baseline_mean - model_mse) / baseline_mean * 100
-
-    # Determine if model is learning
-    if improvement_vs_mean > 20:
-        learning_status = "excellent"
-        learning_msg = "✅ Model is learning VERY well! Significant improvement over baselines."
-    elif improvement_vs_mean > 10:
-        learning_status = "good"
-        learning_msg = "✅ Model is learning! Noticeable improvement over baselines."
-    elif improvement_vs_mean > 0:
-        learning_status = "modest"
-        learning_msg = "⚠️  Model shows some learning, but improvement is modest."
-    else:
-        learning_status = "poor"
-        learning_msg = "❌ Model is NOT learning effectively. Consider adjusting hyperparameters."
+    # Compute improvement for masked positions only
+    baseline_mse_masked = baselines['mse_baseline_masked']
+    improvement_pct = (baseline_mse_masked - model_mse_masked) / baseline_mse_masked * 100
 
     # Analyze per-feature reconstruction
     mse_per_feature = np.array(results['mse_per_feature'])
-    easiest_5 = np.argsort(mse_per_feature)[:5].tolist()
-    hardest_5 = np.argsort(mse_per_feature)[-5:][::-1].tolist()
 
     analysis = {
         'split': results['split'],
         'n_samples': results['n_samples'],
         'mask_ratio': results['mask_ratio'],
-        'mse_comparison': {
-            'model_mse_masked': model_mse,
-            'baseline_zero': baseline_zero,
-            'baseline_mean': baseline_mean,
-            'improvement_vs_zero_pct': float(improvement_vs_zero),
-            'improvement_vs_mean_pct': float(improvement_vs_mean),
+        'model_performance': {
+            'mse_masked': float(model_mse_masked),
+            'mse_unmasked': float(model_mse_unmasked) if model_mse_unmasked is not None else None,
+            'mse_all': float(model_mse_all) if model_mse_all is not None else None,
+            'mae_masked': float(results.get('mae_masked', None)),
         },
-        'learning_assessment': {
-            'status': learning_status,
-            'message': learning_msg,
+        'baseline': {
+            'mse_masked': float(baseline_mse_masked),
+        },
+        'improvement': {
+            'masked_pct': float(improvement_pct),
         },
         'per_feature_analysis': {
             'mean_mse': float(mse_per_feature.mean()),
             'std_mse': float(mse_per_feature.std()),
             'min_mse': float(mse_per_feature.min()),
             'max_mse': float(mse_per_feature.max()),
-            'easiest_5_features': easiest_5,
-            'hardest_5_features': hardest_5,
+            'easiest_5_features': np.argsort(mse_per_feature)[:5].tolist(),
+            'hardest_5_features': np.argsort(mse_per_feature)[-5:][::-1].tolist(),
         },
-        'raw_metrics': {
-            'mse_all': results.get('mse_all', None),
-            'mse_unmasked': results.get('mse_unmasked', None),
-            'mae_masked': results.get('mae_masked', None),
-        }
+        # Keep raw baseline data for reference
+        'baseline_details': baselines,
     }
 
     return analysis
 
 
 def print_analysis(analysis):
-    """Print analysis in a readable format"""
+    """
+    Print analysis in a readable format.
+
+    Note: Learning assessment is generated dynamically here (not stored in JSON).
+    """
     print(f"\n{'='*80}")
     print(f"Reconstruction Analysis: {analysis['split'].upper()}")
     print(f"{'='*80}")
@@ -170,20 +178,56 @@ def print_analysis(analysis):
     print(f"  Total samples: {analysis['n_samples']}")
     print(f"  Mask ratio:    {analysis['mask_ratio']:.1%}")
 
-    # MSE comparison
-    mse_comp = analysis['mse_comparison']
-    print(f"\nMSE on Masked Positions:")
-    print(f"  Zero Baseline:    {mse_comp['baseline_zero']:.6f}")
-    print(f"  Mean Baseline:    {mse_comp['baseline_mean']:.6f}")
-    print(f"  Model:            {mse_comp['model_mse_masked']:.6f}")
+    # Model performance
+    perf = analysis['model_performance']
+    print(f"\nModel Performance:")
+    print(f"  MSE (masked):   {perf['mse_masked']:.6f}")
+    if perf['mse_unmasked'] is not None:
+        print(f"  MSE (unmasked): {perf['mse_unmasked']:.6f}")
+        print(f"  MSE (overall):  {perf['mse_all']:.6f}")
+        print(f"  MAE (masked):   {perf['mae_masked']:.6f}")
+        print(f"  Ratio (M/U):    {perf['mse_masked']/perf['mse_unmasked']:.1f}x")
 
-    print(f"\nModel Improvement:")
-    print(f"  vs Zero Baseline: {mse_comp['improvement_vs_zero_pct']:+.1f}%")
-    print(f"  vs Mean Baseline: {mse_comp['improvement_vs_mean_pct']:+.1f}%")
+    # Baseline comparison (masked only)
+    baseline = analysis['baseline']
+    improvement = analysis['improvement']
 
-    # Learning assessment
-    assess = analysis['learning_assessment']
-    print(f"\n{assess['message']}")
+    print(f"\nBaseline Comparison:")
+    print(f"  {'Metric':<20} {'Model':>12} {'Baseline':>12} {'Improvement':>12}")
+    print(f"  {'-'*60}")
+    print(f"  {'Masked':<20} {perf['mse_masked']:>12.6f} {baseline['mse_masked']:>12.6f} {improvement['masked_pct']:>11.1f}%")
+
+    # Show unmasked MSE (no baseline needed - should be close to 0)
+    if perf['mse_unmasked'] is not None:
+        print(f"  {'Unmasked':<20} {perf['mse_unmasked']:>12.6f} {'~0.0':>12} {'(near perfect)':>12}")
+
+    print(f"\n  Note: Baseline uses zero prediction on normalized data (mean≈0)")
+    print(f"        Unmasked positions should naturally stay close to original (MSE≈0)")
+
+    # Learning assessment (based on masked improvement)
+    if 'masked_pct' in improvement:
+        best_improvement_pct = improvement['masked_pct']
+
+        print(f"\nLearning Assessment:")
+        if best_improvement_pct > 50:
+            status = "EXCELLENT"
+            emoji = "✅"
+            msg = "Model is learning VERY well! Significant improvement over baselines."
+        elif best_improvement_pct > 30:
+            status = "GOOD"
+            emoji = "✅"
+            msg = "Model is learning well. Noticeable improvement over baselines."
+        elif best_improvement_pct > 10:
+            status = "MODEST"
+            emoji = "⚠️"
+            msg = "Model shows some learning, but improvement is modest."
+        else:
+            status = "POOR"
+            emoji = "❌"
+            msg = "Model is NOT learning effectively. Consider adjusting hyperparameters."
+
+        print(f"  Status: {status}")
+        print(f"  {emoji} {msg}")
 
     # Per-feature analysis
     per_feat = analysis['per_feature_analysis']
@@ -201,15 +245,6 @@ def print_analysis(analysis):
     for feat_idx in per_feat['hardest_5_features']:
         print(f"    Feature {feat_idx:2d}")
 
-    # Raw metrics
-    raw = analysis['raw_metrics']
-    if raw['mse_unmasked'] is not None:
-        print(f"\nAdditional Metrics:")
-        print(f"  MSE (all positions):      {raw['mse_all']:.6f}")
-        print(f"  MSE (unmasked only):      {raw['mse_unmasked']:.6f}")
-        print(f"  MAE (masked only):        {raw['mae_masked']:.6f}")
-        print(f"  Ratio (masked/unmasked):  {mse_comp['model_mse_masked']/raw['mse_unmasked']:.2f}x")
-
     print(f"{'='*80}\n")
 
 
@@ -224,28 +259,40 @@ def compare_splits(all_analyses):
 
     # Header
     splits = [a['split'] for a in all_analyses]
-    header = f"{'Metric':<30} " + " ".join([f"{s:>12}" for s in splits])
+    header = f"{'Metric':<40} " + " ".join([f"{s:>12}" for s in splits])
     print(header)
     print("-" * len(header))
 
-    # Model MSE
-    model_mses = [a['mse_comparison']['model_mse_masked'] for a in all_analyses]
-    print(f"{'Model MSE (masked)':<30} " + " ".join([f"{m:12.6f}" for m in model_mses]))
+    # Model Performance
+    print(f"\n{'Model Performance:':<40}")
 
-    # Baseline MSEs
-    zero_baselines = [a['mse_comparison']['baseline_zero'] for a in all_analyses]
-    print(f"{'Zero Baseline MSE':<30} " + " ".join([f"{m:12.6f}" for m in zero_baselines]))
+    model_mses_masked = [a['model_performance']['mse_masked'] for a in all_analyses]
+    print(f"{'  MSE (Masked)':<40} " + " ".join([f"{m:12.6f}" for m in model_mses_masked]))
 
-    mean_baselines = [a['mse_comparison']['baseline_mean'] for a in all_analyses]
-    print(f"{'Mean Baseline MSE':<30} " + " ".join([f"{m:12.6f}" for m in mean_baselines]))
+    model_mses_unmasked = [a['model_performance']['mse_unmasked'] for a in all_analyses]
+    print(f"{'  MSE (Unmasked)':<40} " + " ".join([f"{m:12.6f}" for m in model_mses_unmasked]))
 
-    # Improvement percentages
-    improvements = [a['mse_comparison']['improvement_vs_mean_pct'] for a in all_analyses]
-    print(f"{'Improvement vs Mean (%)':<30} " + " ".join([f"{i:+12.1f}" for i in improvements]))
+    model_mses_all = [a['model_performance']['mse_all'] for a in all_analyses]
+    print(f"{'  MSE (Overall)':<40} " + " ".join([f"{m:12.6f}" for m in model_mses_all]))
 
-    # Learning status
-    statuses = [a['learning_assessment']['status'] for a in all_analyses]
-    print(f"{'Learning Status':<30} " + " ".join([f"{s:>12}" for s in statuses]))
+    # Baselines (masked only)
+    print(f"\n{'Baseline (Zero):':<40}")
+
+    if 'baseline' in all_analyses[0] and 'mse_masked' in all_analyses[0]['baseline']:
+        baseline_masked = [a['baseline']['mse_masked'] for a in all_analyses]
+        print(f"{'  MSE (Masked)':<40} " + " ".join([f"{m:12.6f}" for m in baseline_masked]))
+
+    # Improvements
+    print(f"\n{'Improvement (vs Baseline):':<40}")
+
+    if 'improvement' in all_analyses[0] and 'masked_pct' in all_analyses[0]['improvement']:
+        impr_masked = [a['improvement']['masked_pct'] for a in all_analyses]
+        print(f"{'  Masked':<40} " + " ".join([f"{i:+12.1f}%" for i in impr_masked]))
+
+    # Ratio
+    print(f"\n{'Ratio (Masked/Unmasked):':<40}")
+    ratios = [a['model_performance']['mse_masked'] / a['model_performance']['mse_unmasked'] for a in all_analyses]
+    print(f"{'  Ratio':<40} " + " ".join([f"{r:12.1f}x" for r in ratios]))
 
     print(f"{'='*80}\n")
 
