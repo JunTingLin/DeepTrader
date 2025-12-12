@@ -1,4 +1,3 @@
-import math
 import torch
 from torch import nn, einsum
 import torch.nn.functional as F
@@ -11,32 +10,6 @@ from einops.layers.torch import Rearrange
 
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
-
-
-def get_sinusoidal_encoding(seq_len, d_model, device='cpu'):
-    """
-    Generate sinusoidal positional encoding (fixed, not learnable).
-
-    Uses sin/cos functions as in "Attention Is All You Need" (Vaswani et al., 2017).
-    This allows the model to extrapolate to sequence lengths longer than those seen during training.
-
-    Args:
-        seq_len: Length of the sequence
-        d_model: Dimension of the model (must be even)
-        device: Device to create the tensor on
-
-    Returns:
-        Positional encoding tensor of shape [seq_len, d_model]
-    """
-    position = torch.arange(seq_len, dtype=torch.float32, device=device).unsqueeze(1)
-    div_term = torch.exp(torch.arange(0, d_model, 2, dtype=torch.float32, device=device) *
-                         -(math.log(10000.0) / d_model))
-
-    pe = torch.zeros(seq_len, d_model, device=device)
-    pe[:, 0::2] = torch.sin(position * div_term)
-    pe[:, 1::2] = torch.cos(position * div_term)
-
-    return pe
 
 # classes
 
@@ -172,11 +145,11 @@ class TE(nn.Module):
     Temporal Encoder for 2D data (assets × time).
 
     Key design:
-    - Time dimension (w): Uses sinusoidal positional encoding (has order)
+    - Time dimension (w): Uses learnable positional encoding (has temporal order)
     - Asset dimension (h): No positional encoding (permutation invariant set)
 
     This preserves permutation invariance over assets while maintaining
-    temporal order information.
+    temporal order information through learnable embeddings.
 
     Input: [batch, channels, num_assets, time_len]
     Output: [batch, channels, num_assets, time_len]
@@ -198,10 +171,9 @@ class TE(nn.Module):
             nn.Linear(patch_dim, dim),
         )
 
-        # Sinusoidal PE for time dimension only (not assets!)
+        # Learnable PE for time dimension only (not assets!)
         # Shape: [1, 1, time_len, dim] for broadcasting over [batch, assets, time, dim]
-        time_pe = get_sinusoidal_encoding(self.w, dim)  # [time_len, dim]
-        self.register_buffer('time_pos_embedding', time_pe.unsqueeze(0).unsqueeze(0))  # [1, 1, time_len, dim]
+        self.time_pos_embedding = nn.Parameter(torch.randn(1, 1, self.w, dim))
 
         self.dropout = nn.Dropout(emb_dropout)
         self.transformer = Transformer(
@@ -214,12 +186,7 @@ class TE(nn.Module):
 
         # Add positional encoding ONLY for time dimension
         # Assets have no positional encoding (permutation invariant)
-        if w > self.w:
-            # If time length exceeds training length, generate new PE on the fly
-            time_pe = get_sinusoidal_encoding(w, self.dim, device=x.device).unsqueeze(0).unsqueeze(0)
-            x = x + time_pe  # [batch, assets, time, dim] + [1, 1, time, dim]
-        else:
-            x = x + self.time_pos_embedding[:, :, :w, :]  # Broadcast over batch and assets
+        x = x + self.time_pos_embedding[:, :, :w, :]  # Broadcast over batch and assets
 
         x = self.dropout(x)
 
@@ -237,8 +204,8 @@ class TE_1D(nn.Module):
     """
     Temporal Encoder for 1D sequences (time series).
 
-    Uses sinusoidal positional encoding for time dimension (not learnable).
-    This allows extrapolation to longer sequences than seen during training.
+    Uses learnable positional encoding for time dimension.
+    Optimized for fixed-length sequences in financial time series.
 
     Input: [batch, sequence_length, channels]
     Output: [batch, sequence_length, dim]
@@ -247,7 +214,6 @@ class TE_1D(nn.Module):
         super().__init__()
 
         # Expected input : (b, l, c) where b=batch, l=sequence_length, c=channels
-        self.dim = dim
         self.window_len = window_len
 
         patch_dim = channels
@@ -255,10 +221,8 @@ class TE_1D(nn.Module):
             nn.Linear(patch_dim, dim),
         )
 
-        # Use sinusoidal PE instead of learnable PE for time dimension
-        # Registered as buffer (not a parameter) so it won't be trained
-        self.register_buffer('pos_embedding',
-                            get_sinusoidal_encoding(window_len, dim).unsqueeze(0))  # [1, L, dim]
+        # Learnable positional embedding for time dimension
+        self.pos_embedding = nn.Parameter(torch.randn(1, window_len, dim))
 
         self.dropout = nn.Dropout(emb_dropout)
         self.transformer = Transformer(
@@ -269,14 +233,8 @@ class TE_1D(nn.Module):
         x = self.to_patch_embedding(img)  # [B, L, dim]
         b, n, _ = x.shape
 
-        # Add sinusoidal positional encoding
-        # Support variable length sequences (up to window_len)
-        if n > self.window_len:
-            # If sequence is longer than training length, generate new PE on the fly
-            pos_enc = get_sinusoidal_encoding(n, self.dim, device=x.device).unsqueeze(0)
-            x = x + pos_enc
-        else:
-            x = x + self.pos_embedding[:, :n, :]  # [B, L, dim] + [1, L, dim] -> [B, L, dim]
+        # Add learnable positional encoding
+        x = x + self.pos_embedding[:, :n, :]  # [B, L, dim] + [1, L, dim] -> [B, L, dim]
 
         x = self.dropout(x)
         x = self.transformer(x)  # Self-attention over L (sequence dimension)
