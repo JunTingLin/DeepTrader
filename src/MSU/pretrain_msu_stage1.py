@@ -7,9 +7,9 @@ Task: Given masked market data, reconstruct the original values at masked positi
 Strategy: Mask entire weeks (30% of 13 weeks = ~4 weeks)
 
 Usage:
-    python pretrain_msu_stage1.py \
+    python MSU/pretrain_msu_stage1.py \
         --data_dir ./data/DJIA/feature34-Inter-P532 \
-        --save_dir ./checkpoints/msu_stage1_masked \
+        --save_dir ./MSU/checkpoints/msu_stage1_masked \
         --epochs 100 \
         --batch_size 32 \
         --lr 1e-3 \
@@ -29,7 +29,7 @@ from tqdm import tqdm
 import numpy as np
 
 # Import PMSU model and dataset
-from msu_dataset_stage1 import MSUDataset
+from MSU.msu_dataset_stage1 import MSUDataset
 from model.PMSU import PMSU
 
 
@@ -363,8 +363,8 @@ if __name__ == '__main__':
                         help='Number of dataloader workers (default: 4)')
 
     # Checkpointing
-    parser.add_argument('--save_dir', type=str, default='./checkpoints/msu_stage1_masked',
-                        help='Directory to save checkpoints (default: ./checkpoints/msu_stage1_masked)')
+    parser.add_argument('--save_dir', type=str, default='./MSU/checkpoints/msu_stage1_masked',
+                        help='Directory to save checkpoints (default: ./MSU/checkpoints/msu_stage1_masked)')
     parser.add_argument('--save_every', type=int, default=10,
                         help='Save checkpoint every N epochs (default: 10)')
 

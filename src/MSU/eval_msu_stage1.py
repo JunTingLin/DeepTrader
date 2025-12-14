@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from msu_dataset_stage1 import MSUDataset
+from MSU.msu_dataset_stage1 import MSUDataset
 from model.PMSU import PMSU
 
 

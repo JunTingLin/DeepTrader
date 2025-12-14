@@ -10,8 +10,8 @@ Key questions this script answers:
 3. Are masked positions being reconstructed accurately?
 
 Usage:
-    python plot/msu_stage1.py --results_dir ./checkpoints/msu_stage1_masked/1205/184826
-    python plot/msu_stage1.py --results_dir ./checkpoints/msu_stage1_masked/1205/184826 --plot
+    python MSU/analysis_msu_stage1.py --results_dir ./MSU/checkpoints/msu_stage1_masked/1205/184826
+    python MSU/analysis_msu_stage1.py --results_dir ./MSU/checkpoints/msu_stage1_masked/1205/184826 --plot
 """
 import argparse
 import json
@@ -45,7 +45,7 @@ def compute_baselines(data_dir, split='test', mask_ratio=0.3):
     Returns:
         dict: Baseline metrics (masked only)
     """
-    from msu_dataset_stage1 import MSUDataset
+    from MSU.msu_dataset_stage1 import MSUDataset
 
     # 1. Load training set to compute statistics (no data leakage)
     print(f"\n  Loading TRAIN set to compute statistics...")
