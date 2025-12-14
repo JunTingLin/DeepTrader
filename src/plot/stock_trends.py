@@ -272,22 +272,33 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
             all_scores = step_record.get('all_scores', [])
 
             if all_scores and len(all_scores) >= len(stock_symbols):
-                # Calculate future returns for all stocks
-                returns = []
-                scores = []
+                # Get future returns from sim_info (already calculated correctly in validate.py)
+                sim_info = step_record.get('sim_info', {})
+                ror_array = sim_info.get('ror', None)
 
-                for stock_idx in range(len(stock_symbols)):
-                    if stock_idx < len(all_scores):
+                if ror_array is not None:
+                    # Flatten nested list structure if needed
+                    if isinstance(ror_array, list) and len(ror_array) > 0:
+                        if isinstance(ror_array[0], list):
+                            flat_ror = [item for sublist in ror_array for item in sublist]
+                        else:
+                            flat_ror = ror_array
+                    else:
+                        flat_ror = ror_array
+
+                    # Convert ror to return rate percentage
+                    # ror = 1.08 means +8%, ror = 0.98 means -2%
+                    returns = []
+                    scores = []
+
+                    for stock_idx in range(min(len(stock_symbols), len(all_scores), len(flat_ror))):
                         score = all_scores[stock_idx]
-
-                        # Calculate return for this stock
-                        current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
-                        future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
-
-                        if current_price > 0:
-                            return_rate = ((future_price - current_price) / current_price) * 100
-                            scores.append(score)
-                            returns.append(return_rate)
+                        return_rate = (flat_ror[stock_idx] - 1.0) * 100  # Convert to percentage
+                        scores.append(score)
+                        returns.append(return_rate)
+                else:
+                    returns = []
+                    scores = []
 
                 if len(scores) > 0 and len(returns) > 0:
                     # Convert to numpy arrays
@@ -897,44 +908,47 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
         # Create sets for quick lookup
         long_stocks = set([pos['stock_index'] for pos in long_positions])
         short_stocks = set([pos['stock_index'] for pos in short_positions])
-        
+
+        # Get future returns from sim_info (already calculated correctly in validate.py)
+        sim_info = step_record.get('sim_info', {})
+        ror_array = sim_info.get('ror', None)
+
+        if ror_array is None:
+            continue
+
+        # Flatten nested list structure if needed
+        if isinstance(ror_array, list) and len(ror_array) > 0:
+            if isinstance(ror_array[0], list):
+                flat_ror = [item for sublist in ror_array for item in sublist]
+            else:
+                flat_ror = ror_array
+        else:
+            flat_ror = ror_array
+
         # Collect data for this step
         step_scores = []
         step_returns = []
-        
-        for stock_idx in range(len(stock_symbols)):
-            if stock_idx < len(all_step_scores):
-                score = all_step_scores[stock_idx]
-                
-                # Calculate future 21-day return rate
-                if (stock_idx < stocks_data.shape[0] and 
-                    decision_date_idx + 1 >= 0 and 
-                    decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
-                    future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
-                    
-                    if current_price > 0:
-                        return_rate = ((future_price - current_price) / current_price) * 100
-                    else:
-                        return_rate = 0.0
-                else:
-                    return_rate = 0.0
-                
-                all_scores.append(score)
-                all_returns.append(return_rate)
-                step_scores.append(score)
-                step_returns.append(return_rate)
-                
-                # Color and marker based on position type
-                if stock_idx in long_stocks:
-                    all_colors.append('green')
-                    all_markers.append('^')
-                elif stock_idx in short_stocks:
-                    all_colors.append('red')
-                    all_markers.append('v')
-                else:
-                    all_colors.append('gray')
-                    all_markers.append('o')
+
+        for stock_idx in range(min(len(stock_symbols), len(all_step_scores), len(flat_ror))):
+            score = all_step_scores[stock_idx]
+            # Convert ror to return rate percentage (ror = 1.08 means +8%)
+            return_rate = (flat_ror[stock_idx] - 1.0) * 100
+
+            all_scores.append(score)
+            all_returns.append(return_rate)
+            step_scores.append(score)
+            step_returns.append(return_rate)
+
+            # Color and marker based on position type
+            if stock_idx in long_stocks:
+                all_colors.append('green')
+                all_markers.append('^')
+            elif stock_idx in short_stocks:
+                all_colors.append('red')
+                all_markers.append('v')
+            else:
+                all_colors.append('gray')
+                all_markers.append('o')
         # Step correlations are now calculated in compute_correlation_metrics_with_strategy
     
     if not all_scores:
@@ -1071,7 +1085,8 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
 
     # Load ground truth rho records
     # Format: MSU_{period}_ground_truth_step{TRADE_LEN}.json
-    ground_truth_path = f'../data/fake/MSU_{period}_ground_truth_step{TRADE_LEN}.json'
+    # Use relative path from src/plot/ directory
+    ground_truth_path = f'../data/DJIA/feature34-Inter-P532/MSU_{period}_ground_truth_step{TRADE_LEN}.json'
     ground_truth_rho = None
 
     if os.path.exists(ground_truth_path):

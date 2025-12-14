@@ -319,10 +319,10 @@ def compute_correlation_metrics(experiment_id, outputs_base_path, period='test')
         # Calculate returns for each stock (21-day forward returns)
         returns = []
         for stock_idx in range(min(len(scores), n_stocks)):
-            if (decision_date_idx + 1 >= 0 and
-                decision_date_idx + 1 < stocks_data.shape[1] and
+            if (decision_date_idx >= 0 and
+                decision_date_idx < stocks_data.shape[1] and
                 decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
-                current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                current_price = stocks_data[stock_idx, decision_date_idx, STOCK_PRICE_INDEX]
                 future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                 if current_price > 0:
                     return_rate = (future_price - current_price) / current_price
@@ -694,8 +694,8 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
         # Calculate the decision date for this step
         decision_date_idx = date_start_idx + step_idx * TRADE_LEN
 
-        if (decision_date_idx + 1 >= 0 and
-            decision_date_idx + 1 < stocks_data.shape[1] and
+        if (decision_date_idx >= 0 and
+            decision_date_idx < stocks_data.shape[1] and
             decision_date_idx + TRADE_LEN < stocks_data.shape[1]):
 
             # Initialize step-level counters first (before using them)
@@ -713,7 +713,7 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
             scores = np.array(record.get('all_scores', []))
             n_stocks = min(len(scores), stocks_data.shape[0])
             for stock_idx in range(n_stocks):
-                current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                current_price = stocks_data[stock_idx, decision_date_idx, STOCK_PRICE_INDEX]
                 future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                 if current_price > 0:
                     return_rate = (future_price - current_price) / current_price
@@ -731,7 +731,7 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
             for pos in record.get('long_positions', []):
                 stock_idx = pos.get('stock_index')
                 if stock_idx is not None and stock_idx < stocks_data.shape[0]:
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                    current_price = stocks_data[stock_idx, decision_date_idx, STOCK_PRICE_INDEX]
                     future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                     if current_price > 0:
                         return_rate = (future_price - current_price) / current_price
@@ -748,7 +748,7 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
             for pos in record.get('short_positions', []):
                 stock_idx = pos.get('stock_index')
                 if stock_idx is not None and stock_idx < stocks_data.shape[0]:
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                    current_price = stocks_data[stock_idx, decision_date_idx, STOCK_PRICE_INDEX]
                     future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                     if current_price > 0:
                         return_rate = (future_price - current_price) / current_price
@@ -776,7 +776,7 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
                 # Find actual top K performers for this step
                 step_returns = []
                 for stock_idx in range(n_stocks):
-                    current_price = stocks_data[stock_idx, decision_date_idx + 1, STOCK_PRICE_INDEX]
+                    current_price = stocks_data[stock_idx, decision_date_idx, STOCK_PRICE_INDEX]
                     future_price = stocks_data[stock_idx, decision_date_idx + TRADE_LEN, STOCK_PRICE_INDEX]
                     if current_price > 0:
                         return_rate = (future_price - current_price) / current_price
@@ -1025,11 +1025,11 @@ def calculate_msu_market_accuracy(experiment_path, period='val'):
         decision_date_idx = date_start_idx + step_idx * trade_len
 
         # Calculate market return for the next trade_len days
-        if (decision_date_idx + 1 >= 0 and
-            decision_date_idx + 1 < market_data.shape[0] and
+        if (decision_date_idx >= 0 and
+            decision_date_idx < market_data.shape[0] and
             decision_date_idx + trade_len < market_data.shape[0]):
 
-            current_market = market_data[decision_date_idx + 1, MARKET_PRICE_INDEX]
+            current_market = market_data[decision_date_idx, MARKET_PRICE_INDEX]
             future_market = market_data[decision_date_idx + trade_len, MARKET_PRICE_INDEX]
 
             if current_market > 0:
