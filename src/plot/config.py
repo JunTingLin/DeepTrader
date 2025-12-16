@@ -46,7 +46,9 @@ MARKET_CONFIGS = {
         'val_end': 2087,
         'test_end': 2673,
         'experiment_ids': [
-            '0718/181011',
+            # '0718/181011',
+            # '1211/162808',
+            '1212/005123'
         ],
         'plot_ylim': None,
         'json_files': {
@@ -112,7 +114,7 @@ MARKET_CONFIGS = {
 # Global Configuration
 # -------------------------------
 # Change this to 'TW', 'US', or 'FAKE' to switch markets
-CURRENT_MARKET = 'FAKE'
+CURRENT_MARKET = 'US'
 config = MARKET_CONFIGS[CURRENT_MARKET]
 JSON_FILES = config['json_files'].copy()
 
@@ -130,18 +132,18 @@ WEALTH_MODE = 'inter'  # 'inter' or 'intra' for daily returns
 # -------------------------------
 # Paths
 # -------------------------------
-OUTPUTS_BASE_PATH = '../outputs'
+OUTPUTS_BASE_PATH = './src/outputs'
 EXPERIMENT_IDS = config['experiment_ids']
 
 # Set data paths based on current market
 if CURRENT_MARKET == 'FAKE':
-    STOCK_DATA_PATH = '../data/fake/stocks_data.npy'
-    MARKET_DATA_PATH = '../data/fake/market_data.npy'
+    STOCK_DATA_PATH = './src/data/fake/stocks_data.npy'
+    MARKET_DATA_PATH = './src/data/fake/market_data.npy'
     STOCK_PRICE_INDEX = 0     # Stock price index in fake data (only 1 feature)
     MARKET_PRICE_INDEX = 0    # Market price index in fake data (only 1 feature)
 else:
-    STOCK_DATA_PATH = '../data/DJIA/feature34-Inter-P532/stocks_data.npy'
-    MARKET_DATA_PATH = '../data/DJIA/feature34-Inter-P532/market_data.npy'
+    STOCK_DATA_PATH = './src/data/DJIA/feature34-Inter-P532/stocks_data.npy'
+    MARKET_DATA_PATH = './src/data/DJIA/feature34-Inter-P532/market_data.npy'
     STOCK_PRICE_INDEX = 0     # Stock open price index in the 34 stock features
     MARKET_PRICE_INDEX = 6    # Market open price index in the 27 market features (changed from 9 to match strategy's Open-to-Open returns)
 

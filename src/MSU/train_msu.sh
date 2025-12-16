@@ -2,7 +2,7 @@
 # Training script for MSU_LSTM
 
 # Default configuration
-DATA_DIR="src/data/DJIA/feature34-Inter-P532"
+DATA_DIR="./src/data/DJIA/feature34-Inter-P532"
 USE_ALL_FEATURES=true  # Set to false to use only SINGLE_FEATURE_IDX
 SINGLE_FEATURE_IDX=0   # Only used when USE_ALL_FEATURES=false
 WINDOW_LEN=13
@@ -44,7 +44,7 @@ PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
 cd "$PROJECT_ROOT"
 
 # Run training
-python src/MSU/train_msu_lstm.py \
+python ./src/MSU/train_msu_lstm.py \
     --data_dir $DATA_DIR \
     $FEATURE_ARG \
     --window_len $WINDOW_LEN \
@@ -59,7 +59,7 @@ python src/MSU/train_msu_lstm.py \
 
 echo ""
 echo "Training complete!"
-echo "Check src/MSU/checkpoints/ for saved models and tensorboard logs"
+echo "Check ./src/MSU/checkpoints/ for saved models and tensorboard logs"
 echo ""
 echo "To view tensorboard, run:"
-echo "  tensorboard --logdir src/MSU/checkpoints/<run_name>/tensorboard"
+echo "  tensorboard --logdir ./src/MSU/checkpoints/<run_name>/tensorboard"

@@ -142,8 +142,8 @@ def main():
     parser = argparse.ArgumentParser(description='Evaluate trained MSU_LSTM model')
 
     parser.add_argument('--checkpoint_dir', type=str, required=True,
-                        help='Directory containing checkpoint (e.g., src/MSU/checkpoints/MSU_LSTM_20240101_120000)')
-    parser.add_argument('--data_dir', type=str, default='src/data/DJIA/feature34-Inter-P532',
+                        help='Directory containing checkpoint (e.g., ./src/MSU/checkpoints/MSU_LSTM_20240101_120000)')
+    parser.add_argument('--data_dir', type=str, default='./src/data/DJIA/feature34-Inter-P532',
                         help='Directory containing market data')
     parser.add_argument('--split', type=str, default='test', choices=['train', 'val', 'test'],
                         help='Which split to evaluate')
