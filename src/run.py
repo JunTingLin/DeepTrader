@@ -206,15 +206,23 @@ def run(func_args):
         for epoch in range(func_args.epochs):
             epoch_return = 0
             epoch_loss = 0
+            epoch_loss_asu = 0
+            epoch_loss_msu = 0
             for j in tqdm(range(mini_batch_num)):
-                episode_return, avg_rho, avg_mdd, episode_loss = agent.train_episode()
+                episode_return, avg_rho, avg_mdd, episode_loss, episode_loss_asu, episode_loss_msu = agent.train_episode()
                 epoch_return += episode_return
                 epoch_loss += episode_loss
+                epoch_loss_asu += episode_loss_asu
+                epoch_loss_msu += episode_loss_msu
             avg_train_return = epoch_return / mini_batch_num
             avg_epoch_loss = epoch_loss / mini_batch_num
-            logger.warning('[%s]round %d, avg train return %.4f, avg rho %.4f, avg mdd %.4f, avg loss %.4f' %
-                            (start_time, epoch, avg_train_return, avg_rho, avg_mdd, avg_epoch_loss))
+            avg_epoch_loss_asu = epoch_loss_asu / mini_batch_num
+            avg_epoch_loss_msu = epoch_loss_msu / mini_batch_num
+            logger.warning('[%s]round %d, avg train return %.4f, avg rho %.4f, avg mdd %.4f, avg loss %.4f (ASU: %.4f, MSU: %.4f)' %
+                            (start_time, epoch, avg_train_return, avg_rho, avg_mdd, avg_epoch_loss, avg_epoch_loss_asu, avg_epoch_loss_msu))
             writer.add_scalar('Train/Loss', avg_epoch_loss, global_step=epoch)
+            writer.add_scalar('Train/Loss_ASU', avg_epoch_loss_asu, global_step=epoch)
+            writer.add_scalar('Train/Loss_MSU', avg_epoch_loss_msu, global_step=epoch)
             writer.add_scalar('Train/Return', avg_train_return, global_step=epoch)
             writer.add_scalar('Train/Rho', avg_rho, global_step=epoch)
             writer.add_scalar('Train/MDD', avg_mdd, global_step=epoch)

@@ -209,11 +209,19 @@ class RLAgent():
 
                 gradient_asu = torch.stack(steps_asu_grad, dim=1)
 
+                # Calculate ASU loss (always present)
+                loss_asu = - gradient_asu
+                loss_asu_val = loss_asu.mean().item()
+
                 if self.args.msu_bool:
                     gradient_rho = (rewards_mdd * steps_log_p_rho)
-                    loss = - (self.args.gamma * gradient_rho + gradient_asu)
+                    loss_msu = - (self.args.gamma * gradient_rho)
+                    loss_msu_val = loss_msu.mean().item()
+                    loss = loss_msu + loss_asu
                 else:
-                    loss = - (gradient_asu)
+                    loss_msu_val = 0.0
+                    loss = loss_asu
+
                 loss = loss.mean()
                 assert not torch.isnan(loss)
                 self.optimizer.zero_grad()
@@ -228,7 +236,7 @@ class RLAgent():
         rtns = (agent_wealth[:, -1] / agent_wealth[:, 0]).mean()
         avg_rho = np.mean(rho_records)
         avg_mdd = mdd.mean()
-        return rtns, avg_rho, avg_mdd, loss_val
+        return rtns, avg_rho, avg_mdd, loss_val, loss_asu_val, loss_msu_val
 
     def evaluation(self, logger=None):
         self.__set_eval()
