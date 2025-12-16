@@ -2,11 +2,11 @@ import pandas as pd
 import numpy as np
 
 # Define date range constants
-START_DATE = '2015-01-01'
-END_DATE = '2025-08-31'
+START_DATE = '2000-01-01'
+END_DATE = '2025-03-31'
 
 # Feature mode: 'close_only' for DJI Close only, 'basic' for 4 DJIA features, 'full' for all market features
-FEATURE_MODE = 'close_only'  # Options: 'close_only', 'basic', 'full'
+FEATURE_MODE = 'full'  # Options: 'close_only', 'basic', 'full'
 
 # Create business day date range
 unique_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
