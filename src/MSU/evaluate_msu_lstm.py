@@ -70,7 +70,7 @@ def evaluate(model, test_loader, device):
     }
 
 
-def plot_predictions(results, output_dir):
+def plot_predictions(results, output_dir, split='test'):
     """Plot predictions vs targets"""
     preds = results['predictions']
     targets = results['targets']
@@ -82,7 +82,7 @@ def plot_predictions(results, output_dir):
     axes[0].plot([targets.min(), targets.max()], [targets.min(), targets.max()], 'r--', lw=2)
     axes[0].set_xlabel('Target Rho')
     axes[0].set_ylabel('Predicted Rho')
-    axes[0].set_title(f'Predictions vs Targets\nCorrelation: {results["correlation"]:.4f}')
+    axes[0].set_title(f'Predictions vs Targets ({split.upper()})\nCorrelation: {results["correlation"]:.4f}')
     axes[0].grid(True)
 
     # Time series plot
@@ -90,18 +90,18 @@ def plot_predictions(results, output_dir):
     axes[1].plot(preds, label='Prediction', marker='x', linestyle='--', alpha=0.7)
     axes[1].set_xlabel('Sample Index')
     axes[1].set_ylabel('Rho')
-    axes[1].set_title('Time Series Comparison')
+    axes[1].set_title(f'Time Series Comparison ({split.upper()})')
     axes[1].legend()
     axes[1].grid(True)
 
     plt.tight_layout()
-    output_path = os.path.join(output_dir, 'predictions.png')
+    output_path = os.path.join(output_dir, f'predictions_{split}.png')
     plt.savefig(output_path, dpi=150)
     print(f"  📊 Saved prediction plot to: {output_path}")
     plt.close()
 
 
-def plot_attention_weights(model, test_loader, device, output_dir, num_samples=5):
+def plot_attention_weights(model, test_loader, device, output_dir, split='test', num_samples=5):
     """Plot attention weights for sample inputs"""
     model.eval()
 
@@ -126,13 +126,13 @@ def plot_attention_weights(model, test_loader, device, output_dir, num_samples=5
                 ax.bar(range(len(attn)), attn)
                 ax.set_xlabel('Week Index')
                 ax.set_ylabel('Attention Weight')
-                ax.set_title(f'Sample {i+1}: Target Rho = {rho_target[i]:.4f}, Index = {idx[i]}')
+                ax.set_title(f'{split.upper()} Sample {i+1}: Target Rho = {rho_target[i]:.4f}, Index = {idx[i]}')
                 ax.grid(True, alpha=0.3)
 
             break  # Only use first batch
 
     plt.tight_layout()
-    output_path = os.path.join(output_dir, 'attention_weights.png')
+    output_path = os.path.join(output_dir, f'attention_weights_{split}.png')
     plt.savefig(output_path, dpi=150)
     print(f"  📊 Saved attention weights plot to: {output_path}")
     plt.close()
@@ -143,8 +143,8 @@ def main():
 
     parser.add_argument('--checkpoint_dir', type=str, required=True,
                         help='Directory containing checkpoint (e.g., ./src/MSU/checkpoints/MSU_LSTM_20240101_120000)')
-    parser.add_argument('--data_dir', type=str, default='./src/data/DJIA/feature34-Inter-P532',
-                        help='Directory containing market data')
+    parser.add_argument('--data_dir', type=str, default=None,
+                        help='Directory containing market data (default: read from config.json)')
     parser.add_argument('--split', type=str, default='test', choices=['train', 'val', 'test'],
                         help='Which split to evaluate')
 
@@ -160,6 +160,13 @@ def main():
         config = json.load(f)
 
     print(f"\n📁 Loading from: {args.checkpoint_dir}")
+
+    # Use data_dir from config if not specified
+    if args.data_dir is None:
+        args.data_dir = config['data_dir']
+        print(f"📂 Using data_dir from config: {args.data_dir}")
+    else:
+        print(f"📂 Using specified data_dir: {args.data_dir}")
 
     # Load dataloaders
     print(f"\n📊 Loading data...")
@@ -229,8 +236,8 @@ def main():
 
     # Plot predictions
     print(f"\n📊 Generating plots...")
-    plot_predictions(results, args.checkpoint_dir)
-    plot_attention_weights(model, loader, device, args.checkpoint_dir, num_samples=5)
+    plot_predictions(results, args.checkpoint_dir, split=args.split)
+    plot_attention_weights(model, loader, device, args.checkpoint_dir, split=args.split, num_samples=5)
 
     print("\n✅ Evaluation complete!")
 

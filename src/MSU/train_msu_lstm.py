@@ -28,6 +28,21 @@ from model.MSU_LSTM import MSU_LSTM
 from MSU.msu_lstm_dataset import get_dataloaders
 
 
+def set_seed(seed=42):
+    """
+    Set random seed for reproducibility
+    """
+    import random
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # Make cudnn deterministic (may reduce performance)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
 class EarlyStopping:
     """
     Early stopping to stop training when validation loss doesn't improve
@@ -131,8 +146,10 @@ def validate(model, val_loader, criterion, device):
     all_preds = np.array(all_preds)
     all_targets = np.array(all_targets)
 
+    # Always compute both MSE and MAE for consistency, regardless of training loss
+    mse = np.mean((all_preds - all_targets) ** 2)
     mae = np.mean(np.abs(all_preds - all_targets))
-    rmse = np.sqrt(np.mean((all_preds - all_targets) ** 2))
+    rmse = np.sqrt(mse)
 
     # Compute correlation (handle edge cases)
     if len(all_preds) > 1:
@@ -143,7 +160,8 @@ def validate(model, val_loader, criterion, device):
         corr = 0.0
 
     return {
-        'loss': avg_loss,
+        'loss': avg_loss,  # This is the actual training loss (MSE or MAE depending on criterion)
+        'mse': mse,
         'mae': mae,
         'rmse': rmse,
         'correlation': corr,
@@ -192,6 +210,7 @@ def train(args):
     config = vars(args)
     config['device'] = str(device)
     config['run_name'] = run_name
+    config['loss_function'] = 'MAE' if args.use_mae else 'MSE'
     with open(os.path.join(checkpoint_dir, 'config.json'), 'w') as f:
         json.dump(config, f, indent=2)
 
@@ -232,7 +251,16 @@ def train(args):
     print(f"  Trainable parameters: {trainable_params:,}")
 
     # Loss and optimizer
-    criterion = nn.MSELoss()
+    # Use MAE instead of MSE to encourage extreme predictions
+    # MSE penalizes extreme errors heavily -> model predicts safe middle values
+    # MAE treats all errors equally -> model more willing to predict extremes
+    use_mae = args.use_mae if hasattr(args, 'use_mae') else False
+    if use_mae:
+        criterion = nn.L1Loss()  # MAE
+        print("  Using MAE Loss (more tolerant to extreme predictions)")
+    else:
+        criterion = nn.MSELoss()  # Default
+        print("  Using MSE Loss (conservative, predicts middle values)")
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=0.5, patience=10, verbose=True
@@ -302,28 +330,13 @@ def train(args):
     print("\nTo view TensorBoard, run:")
     print(f"  tensorboard --logdir {checkpoint_dir}")
 
-    # Evaluate on test set
+    # Training complete
     print("\n" + "="*80)
-    print("📊 Evaluating on test set...")
-
-    # Load best checkpoint
-    best_checkpoint = torch.load(os.path.join(checkpoint_dir, 'best_checkpoint.pth'))
-    model.load_state_dict(best_checkpoint['model_state_dict'])
-
-    test_results = validate(model, test_loader, criterion, device)
-    print(f"Test Loss: {test_results['loss']:.6f} | MAE: {test_results['mae']:.6f} | RMSE: {test_results['rmse']:.6f} | Corr: {test_results['correlation']:.4f}")
-
-    # Save test results
-    test_output = {
-        'test_loss': test_results['loss'],
-        'test_mae': test_results['mae'],
-        'test_rmse': test_results['rmse'],
-        'test_correlation': test_results['correlation'],
-        'predictions': test_results['predictions'],
-        'targets': test_results['targets'],
-    }
-    with open(os.path.join(checkpoint_dir, 'test_results.json'), 'w') as f:
-        json.dump(test_output, f, indent=2)
+    print("✅ Training complete!")
+    print("="*80)
+    print(f"\n📊 To evaluate the model, run:")
+    print(f"  python src/MSU/evaluate_msu_lstm.py --checkpoint_dir {checkpoint_dir}")
+    print(f"  python src/MSU/evaluate_msu_lstm.py --checkpoint_dir {checkpoint_dir} --split val")
 
     writer.close()
 
@@ -362,8 +375,19 @@ def main():
                         help='Number of data loading workers')
     parser.add_argument('--checkpoint_dir', type=str, default='src/MSU/checkpoints',
                         help='Directory to save checkpoints')
+    parser.add_argument('--seed', type=int, default=42,
+                        help='Random seed for reproducibility')
+
+    # Loss function
+    parser.add_argument('--use_mae', action='store_true',
+                        help='Use MAE loss instead of MSE (better for extreme predictions)')
 
     args = parser.parse_args()
+
+    # Set random seed for reproducibility
+    set_seed(args.seed)
+    print(f"🎲 Random seed set to: {args.seed}")
+    print("="*80)
 
     # Print configuration
     print("="*80)
