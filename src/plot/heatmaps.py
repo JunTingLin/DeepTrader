@@ -167,7 +167,7 @@ def plot_portfolio_heatmap(experiment_id, outputs_base_path, stock_symbols, samp
     
     if save_plot:
         # Create output directory for this experiment
-        output_dir = f'plot_outputs/{experiment_id}'
+        output_dir = f'src/plot/plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
         # Save PNG
@@ -320,7 +320,7 @@ def plot_future_return_heatmap(experiment_id, outputs_base_path, stock_symbols, 
 
     if save_plot:
         # Create output directory for this experiment
-        output_dir = f'plot_outputs/{experiment_id}'
+        output_dir = f'src/plot/plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
         # Save PNG
@@ -482,7 +482,7 @@ def plot_profit_heatmap(experiment_id, outputs_base_path, sample_dates, period='
 
     if save_plot:
         # Create output directory for this experiment
-        output_dir = f'plot_outputs/{experiment_id}'
+        output_dir = f'src/plot/plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
         # Save PNG
@@ -683,7 +683,7 @@ def plot_precision_analysis_heatmap(experiment_id, outputs_base_path, sample_dat
 
     # Save plot
     if save_plot:
-        output_dir = f'plot_outputs/{experiment_id}'
+        output_dir = f'src/plot/plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
         # Save PNG
@@ -882,7 +882,7 @@ def plot_individual_stock_returns_heatmap(experiment_id, outputs_base_path, stoc
 
     if save_plot:
         # Create output directory for this experiment
-        output_dir = f'plot_outputs/{experiment_id}'
+        output_dir = f'src/plot/plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
         # Save PNG
@@ -999,7 +999,7 @@ def plot_market_profit_heatmap(df_market, period='val', save_plot=True):
 
     if save_plot:
         # Create output directory
-        output_dir = f'plot_outputs'
+        output_dir = f'src/plot/plot_outputs'
         os.makedirs(output_dir, exist_ok=True)
 
         # Save PNG
@@ -1169,7 +1169,7 @@ def plot_selection_quality_heatmap(experiment_id, outputs_base_path, sample_date
 
     if save_plot:
         # Create output directory for this experiment
-        output_dir = f'plot_outputs/{experiment_id}'
+        output_dir = f'src/plot/plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
 
         # Save PNG

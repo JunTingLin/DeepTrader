@@ -54,7 +54,7 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
         date_end_idx = config['test_end']
     
     # Create output directory for stock price plots
-    output_dir = f'plot_outputs/{experiment_id}/stock_price_plots'
+    output_dir = f'src/plot/plot_outputs/{experiment_id}/stock_price_plots'
     os.makedirs(output_dir, exist_ok=True)
     
     # Generate business day range for the entire dataset
@@ -222,7 +222,7 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
     full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
     
     # Create output directory
-    output_dir = f'plot_outputs/{experiment_id}/step_analysis'
+    output_dir = f'src/plot/plot_outputs/{experiment_id}/step_analysis'
     os.makedirs(output_dir, exist_ok=True)
 
     # Iterate through all trading steps (use portfolio_records length as the limit)
@@ -511,7 +511,7 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
     full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
     
     # Create output directory
-    output_dir = f'plot_outputs/{experiment_id}/msu_step_analysis'
+    output_dir = f'src/plot/plot_outputs/{experiment_id}/msu_step_analysis'
     os.makedirs(output_dir, exist_ok=True)
 
     # Iterate through all trading steps (use portfolio_records length as the limit)
@@ -631,7 +631,7 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
     full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
 
     # Create output directory
-    output_dir = f'plot_outputs/{experiment_id}/score_scatter_plots'
+    output_dir = f'src/plot/plot_outputs/{experiment_id}/score_scatter_plots'
     os.makedirs(output_dir, exist_ok=True)
 
     # Iterate through all trading steps
@@ -1033,7 +1033,7 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
 
     if save_plots:
         # Save the plot
-        output_dir = f'plot_outputs/{experiment_id}/score_scatter_plots'
+        output_dir = f'src/plot/plot_outputs/{experiment_id}/score_scatter_plots'
         os.makedirs(output_dir, exist_ok=True)
         filename = f'{output_dir}/all_steps_{period}_score_scatter.png'
         plt.savefig(filename, dpi=200, bbox_inches='tight')
@@ -1086,7 +1086,7 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
     # Load ground truth rho records
     # Format: MSU_{period}_ground_truth_step{TRADE_LEN}.json
     # Use relative path from src/plot/ directory
-    ground_truth_path = f'../data/DJIA/feature34-Inter-P532/MSU_{period}_ground_truth_step{TRADE_LEN}.json'
+    ground_truth_path = f'src/data/DJIA/feature34-Inter-P532/MSU_{period}_ground_truth_step{TRADE_LEN}.json'
     ground_truth_rho = None
 
     if os.path.exists(ground_truth_path):
@@ -1337,7 +1337,7 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
     plt.tight_layout()
 
     if save_plot:
-        output_dir = f'plot_outputs/{experiment_id}'
+        output_dir = f'src/plot/plot_outputs/{experiment_id}'
         os.makedirs(output_dir, exist_ok=True)
         filename = f'{output_dir}/rho_market_trend_{period}.png'
         plt.savefig(filename, dpi=150, bbox_inches='tight')
