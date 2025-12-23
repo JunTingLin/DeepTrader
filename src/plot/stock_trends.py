@@ -11,7 +11,8 @@ import os
 # spearmanr is now imported and used in analysis.py
 from config import (
     config, START_DATE, END_DATE, TRADE_LEN,
-    STOCK_DATA_PATH, STOCK_PRICE_INDEX, MARKET_DATA_PATH, MARKET_PRICE_INDEX
+    STOCK_DATA_PATH, STOCK_PRICE_INDEX, MARKET_DATA_PATH, MARKET_PRICE_INDEX,
+    GROUND_TRUTH_PREFIX
 )
 
 
@@ -1085,8 +1086,8 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
 
     # Load ground truth rho records
     # Format: MSU_{period}_ground_truth_step{TRADE_LEN}.json
-    # Use relative path from src/plot/ directory
-    ground_truth_path = f'src/data/DJIA/feature34-Inter-P532/MSU_{period}_ground_truth_step{TRADE_LEN}.json'
+    # Use GROUND_TRUTH_PREFIX from config to allow switching between datasets
+    ground_truth_path = f'{GROUND_TRUTH_PREFIX}/MSU_{period}_ground_truth_step{TRADE_LEN}.json'
     ground_truth_rho = None
 
     if os.path.exists(ground_truth_path):

@@ -37,7 +37,7 @@ MARKET_CONFIGS = {
         'name': 'US',
         'start_date': "2015-01-01",
         'end_date': "2025-03-31",
-        'market_file': "^DJI.csv",
+        'market_file': "./src/data/DJIA/market_data/^DJI.csv",
         'stock_symbols': DJIA_STOCKS,
         'benchmark_column': 'DowJones',
         'benchmark_label': 'DJIA',
@@ -48,7 +48,8 @@ MARKET_CONFIGS = {
         'experiment_ids': [
             # '0718/181011',
             # '1211/162808',
-            '1212/005123'
+            # '1212/005123'
+            '1223/024432'
         ],
         'plot_ylim': None,
         'json_files': {
@@ -139,11 +140,13 @@ EXPERIMENT_IDS = config['experiment_ids']
 if CURRENT_MARKET == 'FAKE':
     STOCK_DATA_PATH = './src/data/fake/stocks_data.npy'
     MARKET_DATA_PATH = './src/data/fake/market_data.npy'
+    GROUND_TRUTH_PREFIX = './src/data/fake'
     STOCK_PRICE_INDEX = 0     # Stock price index in fake data (only 1 feature)
     MARKET_PRICE_INDEX = 0    # Market price index in fake data (only 1 feature)
 else:
-    STOCK_DATA_PATH = './src/data/DJIA/feature34-Inter-P532/stocks_data.npy'
-    MARKET_DATA_PATH = './src/data/DJIA/feature34-Inter-P532/market_data.npy'
+    STOCK_DATA_PATH = 'src/data/DJIA/feature34-Inter-P532-Reversed/stocks_data.npy'
+    MARKET_DATA_PATH = 'src/data/DJIA/feature34-Inter-P532-Reversed/market_data.npy'
+    GROUND_TRUTH_PREFIX = 'src/data/DJIA/feature34-Inter-P532-Reversed'  # Ground truth JSON files directory
     STOCK_PRICE_INDEX = 0     # Stock open price index in the 34 stock features
     MARKET_PRICE_INDEX = 6    # Market open price index in the 27 market features (changed from 9 to match strategy's Open-to-Open returns)
 
