@@ -1,11 +1,13 @@
 """
-Evaluation script for trained MSU_LSTM model
+Generic evaluation script for trained MSU models (LSTM or TE1D)
 
 Features:
+- Automatically detect model type from config.json
 - Load trained checkpoint
-- Evaluate on test set
+- Evaluate on test/val/train set
 - Visualize predictions
-- Analyze attention weights
+- Analyze attention weights (if applicable)
+- Compute evaluation metrics (MSE, RMSE, MAE, Correlation)
 """
 
 import os
@@ -21,13 +23,65 @@ import torch
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from model.MSU_LSTM import MSU_LSTM
-from MSU.msu_lstm_dataset import get_dataloaders
+from model.MSU_TE1D import MSU_TE1D
+from MSU.msu_dataset import get_dataloaders
 
 
 def load_checkpoint(checkpoint_path, device):
     """Load model from checkpoint"""
     checkpoint = torch.load(checkpoint_path, map_location=device)
     return checkpoint
+
+
+def create_model_from_config(config, in_features, device):
+    """
+    Create model instance based on config
+
+    Args:
+        config: Configuration dictionary
+        in_features: Number of input features
+        device: Device to load model on
+
+    Returns:
+        model: Model instance (MSU_LSTM or MSU_TE1D)
+        model_type: String indicating model type ('lstm' or 'te1d')
+    """
+    # Detect model type from run_name or explicit model_type field
+    run_name = config.get('run_name', '')
+    model_type_field = config.get('model_type', '')
+
+    if 'TE1D' in run_name or 'te1d' in model_type_field.lower():
+        # MSU_TE1D
+        model = MSU_TE1D(
+            in_features=in_features,
+            window_len=config['window_len'],
+            hidden_dim=config['hidden_dim'],
+            depth=config.get('depth', 2),
+            heads=config.get('heads', 4),
+            mlp_dim=config.get('mlp_dim', 32),
+            dim_head=config.get('dim_head', 4),
+            dropout=config.get('dropout', 0.1),
+            emb_dropout=config.get('emb_dropout', 0.1),
+            mlp_hidden_dim=config.get('mlp_hidden_dim', 128)
+        ).to(device)
+        model_type = 'te1d'
+        print(f"📦 Created MSU_TE1D model")
+
+    elif 'LSTM' in run_name or 'lstm' in model_type_field.lower():
+        # MSU_LSTM
+        model = MSU_LSTM(
+            in_features=in_features,
+            window_len=config['window_len'],
+            hidden_dim=config['hidden_dim'],
+            dropout=config['dropout']
+        ).to(device)
+        model_type = 'lstm'
+        print(f"📦 Created MSU_LSTM model")
+
+    else:
+        raise ValueError(f"Cannot determine model type from config. run_name: {run_name}")
+
+    return model, model_type
 
 
 def evaluate(model, test_loader, device):
@@ -101,6 +155,39 @@ def plot_predictions(results, output_dir, split='test'):
     plt.close()
 
 
+def plot_error_distribution(results, output_dir, split='test'):
+    """Plot error distribution"""
+    preds = results['predictions']
+    targets = results['targets']
+    errors = preds - targets
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Error histogram
+    axes[0].hist(errors, bins=30, alpha=0.7, edgecolor='black')
+    axes[0].axvline(x=0, color='r', linestyle='--', linewidth=2)
+    axes[0].set_xlabel('Prediction Error (Predicted - Target)')
+    axes[0].set_ylabel('Frequency')
+    axes[0].set_title(f'Error Distribution ({split.upper()})\nMean: {np.mean(errors):.4f}, Std: {np.std(errors):.4f}')
+    axes[0].grid(True, alpha=0.3)
+
+    # Absolute error plot
+    abs_errors = np.abs(errors)
+    axes[1].plot(abs_errors, marker='o', linestyle='-', alpha=0.6)
+    axes[1].axhline(y=np.mean(abs_errors), color='r', linestyle='--', linewidth=2, label=f'MAE: {np.mean(abs_errors):.4f}')
+    axes[1].set_xlabel('Sample Index')
+    axes[1].set_ylabel('Absolute Error')
+    axes[1].set_title(f'Absolute Error per Sample ({split.upper()})')
+    axes[1].legend()
+    axes[1].grid(True)
+
+    plt.tight_layout()
+    output_path = os.path.join(output_dir, f'error_distribution_{split}.png')
+    plt.savefig(output_path, dpi=150)
+    print(f"  📊 Saved error distribution plot to: {output_path}")
+    plt.close()
+
+
 def plot_attention_weights(model, test_loader, device, output_dir, split='test', num_samples=5):
     """Plot attention weights for sample inputs"""
     model.eval()
@@ -139,7 +226,7 @@ def plot_attention_weights(model, test_loader, device, output_dir, split='test',
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Evaluate trained MSU_LSTM model')
+    parser = argparse.ArgumentParser(description='Evaluate trained MSU model (LSTM or TE1D)')
 
     parser.add_argument('--checkpoint_dir', type=str, required=True,
                         help='Directory containing checkpoint (e.g., ./src/MSU/checkpoints/MSU_LSTM_20240101_120000)')
@@ -189,13 +276,8 @@ def main():
     sample_X, _, _ = loader.dataset[0]
     in_features = sample_X.shape[1]
 
-    # Create model
-    model = MSU_LSTM(
-        in_features=in_features,
-        window_len=config['window_len'],
-        hidden_dim=config['hidden_dim'],
-        dropout=config['dropout']
-    ).to(device)
+    # Create model based on config
+    model, model_type = create_model_from_config(config, in_features, device)
 
     # Load checkpoint
     checkpoint_path = os.path.join(args.checkpoint_dir, 'best_checkpoint.pth')
@@ -213,6 +295,7 @@ def main():
     print("\n" + "="*80)
     print("Evaluation Results")
     print("="*80)
+    print(f"Model Type:  {model_type.upper()}")
     print(f"MSE:         {results['mse']:.6f}")
     print(f"RMSE:        {results['rmse']:.6f}")
     print(f"MAE:         {results['mae']:.6f}")
@@ -222,6 +305,7 @@ def main():
     # Save results
     results_path = os.path.join(args.checkpoint_dir, f'{args.split}_evaluation.json')
     results_to_save = {
+        'model_type': model_type,
         'mse': float(results['mse']),
         'rmse': float(results['rmse']),
         'mae': float(results['mae']),
@@ -234,9 +318,12 @@ def main():
         json.dump(results_to_save, f, indent=2)
     print(f"\n💾 Saved results to: {results_path}")
 
-    # Plot predictions
+    # Plot predictions and errors
     print(f"\n📊 Generating plots...")
     plot_predictions(results, args.checkpoint_dir, split=args.split)
+    plot_error_distribution(results, args.checkpoint_dir, split=args.split)
+
+    # Plot attention weights (both LSTM and TE1D support this)
     plot_attention_weights(model, loader, device, args.checkpoint_dir, split=args.split, num_samples=5)
 
     print("\n✅ Evaluation complete!")

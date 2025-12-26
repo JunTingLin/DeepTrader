@@ -1,12 +1,13 @@
 """
-Training script for MSU_LSTM
+Training script for MSU_TE1D
 
 Features:
-- MSE loss for rho prediction
+- MSE/MAE loss for rho prediction
 - Early stopping based on validation loss
 - TensorBoard logging
 - Model checkpointing
 - Learning rate scheduling
+- Optional pre-trained TE_1D encoder loading
 """
 
 import os
@@ -24,7 +25,7 @@ from torch.utils.tensorboard import SummaryWriter
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from model.MSU_LSTM import MSU_LSTM
+from model.MSU_TE1D import MSU_TE1D
 from MSU.msu_dataset import get_dataloaders
 
 
@@ -199,7 +200,7 @@ def train(args):
 
     # Create output directories
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    run_name = f"MSU_LSTM_{timestamp}"
+    run_name = f"MSU_TE1D_{timestamp}"
     checkpoint_dir = os.path.join(args.checkpoint_dir, run_name)
     os.makedirs(checkpoint_dir, exist_ok=True)
 
@@ -236,24 +237,32 @@ def train(args):
     print(f"\n🔢 Input features: {in_features}")
 
     # Create model
-    model = MSU_LSTM(
+    model = MSU_TE1D(
         in_features=in_features,
         window_len=args.window_len,
         hidden_dim=args.hidden_dim,
-        dropout=args.dropout
+        depth=args.depth,
+        heads=args.heads,
+        mlp_dim=args.mlp_dim,
+        dim_head=args.dim_head,
+        dropout=args.dropout,
+        emb_dropout=args.emb_dropout,
+        mlp_hidden_dim=args.mlp_hidden_dim
     ).to(device)
+
+    # Load pre-trained encoder if specified
+    if args.pretrained_encoder:
+        print(f"\n🔄 Loading pre-trained TE_1D encoder from: {args.pretrained_encoder}")
+        model.load_pretrained_encoder(args.pretrained_encoder)
 
     # Count parameters
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"\n🧠 Model: MSU_LSTM")
+    print(f"\n🧠 Model: MSU_TE1D")
     print(f"  Total parameters: {total_params:,}")
     print(f"  Trainable parameters: {trainable_params:,}")
 
     # Loss and optimizer
-    # Use MAE instead of MSE to encourage extreme predictions
-    # MSE penalizes extreme errors heavily -> model predicts safe middle values
-    # MAE treats all errors equally -> model more willing to predict extremes
     use_mae = args.use_mae if hasattr(args, 'use_mae') else False
     if use_mae:
         criterion = nn.L1Loss()  # MAE
@@ -261,6 +270,7 @@ def train(args):
     else:
         criterion = nn.MSELoss()  # Default
         print("  Using MSE Loss (conservative, predicts middle values)")
+
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=0.5, patience=10, verbose=True
@@ -335,14 +345,14 @@ def train(args):
     print("✅ Training complete!")
     print("="*80)
     print(f"\n📊 To evaluate the model, run:")
-    print(f"  python src/MSU/evaluate_msu_lstm.py --checkpoint_dir {checkpoint_dir}")
-    print(f"  python src/MSU/evaluate_msu_lstm.py --checkpoint_dir {checkpoint_dir} --split val")
+    print(f"  python src/MSU/evaluate_msu_te1d.py --checkpoint_dir {checkpoint_dir}")
+    print(f"  python src/MSU/evaluate_msu_te1d.py --checkpoint_dir {checkpoint_dir} --split val")
 
     writer.close()
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Train MSU_LSTM for market trend prediction')
+    parser = argparse.ArgumentParser(description='Train MSU_TE1D for market trend prediction')
 
     # Data
     parser.add_argument('--data_dir', type=str, default='src/data/DJIA/feature34-Inter-P532',
@@ -350,13 +360,29 @@ def main():
     parser.add_argument('--feature_idx', type=int, default=None,
                         help='Feature index to use (None = all features)')
 
-    # Model
+    # Model architecture
     parser.add_argument('--window_len', type=int, default=13,
                         help='Window length in weeks')
     parser.add_argument('--hidden_dim', type=int, default=128,
-                        help='LSTM hidden dimension')
-    parser.add_argument('--dropout', type=float, default=0.5,
+                        help='Transformer hidden dimension')
+    parser.add_argument('--depth', type=int, default=2,
+                        help='Number of transformer layers')
+    parser.add_argument('--heads', type=int, default=4,
+                        help='Number of attention heads')
+    parser.add_argument('--mlp_dim', type=int, default=32,
+                        help='MLP dimension in transformer')
+    parser.add_argument('--dim_head', type=int, default=4,
+                        help='Dimension per attention head')
+    parser.add_argument('--dropout', type=float, default=0.1,
                         help='Dropout rate')
+    parser.add_argument('--emb_dropout', type=float, default=0.1,
+                        help='Embedding dropout rate')
+    parser.add_argument('--mlp_hidden_dim', type=int, default=128,
+                        help='Hidden dimension for prediction MLP head')
+
+    # Pre-trained encoder
+    parser.add_argument('--pretrained_encoder', type=str, default=None,
+                        help='Path to pre-trained Stage 1 PMSU checkpoint (optional)')
 
     # Training
     parser.add_argument('--epochs', type=int, default=200,
@@ -391,7 +417,7 @@ def main():
 
     # Print configuration
     print("="*80)
-    print("MSU_LSTM Training Configuration")
+    print("MSU_TE1D Training Configuration")
     print("="*80)
     for key, value in vars(args).items():
         print(f"{key:20s}: {value}")
