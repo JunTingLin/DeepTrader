@@ -26,12 +26,11 @@ class MSUDataset(Dataset):
         idx: int - Sample index
     """
 
-    def __init__(self, market_data_path, ground_truth_path, window_len=13, feature_idx=None):
+    def __init__(self, market_data_path, ground_truth_path, feature_idx=None):
         super(MSUDataset, self).__init__()
 
         # Load market data
         self.market_data = np.load(market_data_path)  # [T, num_features]
-        self.window_len = window_len
         self.feature_idx = feature_idx
 
         # Load ground truth
@@ -41,10 +40,14 @@ class MSUDataset(Dataset):
         self.ground_truths = gt_data['ground_truth_records']
         self.metadata = gt_data['metadata']
 
+        # Read window_len from metadata (instead of passing as parameter)
+        self.window_len = self.metadata['window_len']
+
         print(f"Loaded dataset:")
         print(f"  Market data shape: {self.market_data.shape}")
         print(f"  Number of samples: {len(self.ground_truths)}")
-        print(f"  Window length: {window_len} weeks")
+        print(f"  Window length: {self.window_len} weeks (from JSON metadata)")
+        print(f"  Step size: {self.metadata['step']}")
         print(f"  Feature index: {feature_idx if feature_idx is not None else 'All features'}")
 
     def __len__(self):
@@ -126,7 +129,10 @@ class MSUDataset(Dataset):
         return normed, mean, std
 
 
-def get_dataloaders(data_dir, batch_size=32, num_workers=4, feature_idx=None):
+def get_dataloaders(data_dir, batch_size=32, num_workers=4, feature_idx=None,
+                    train_gt_file='MSU_train_ground_truth_w13_step1.json',
+                    val_gt_file='MSU_val_ground_truth_w13_step21.json',
+                    test_gt_file='MSU_test_ground_truth_w13_step21.json'):
     """
     Create train/val/test dataloaders
 
@@ -135,6 +141,9 @@ def get_dataloaders(data_dir, batch_size=32, num_workers=4, feature_idx=None):
         batch_size (int): Batch size for training
         num_workers (int): Number of workers for data loading
         feature_idx (int): Which feature to use (None = all features)
+        train_gt_file (str): Training ground truth JSON filename
+        val_gt_file (str): Validation ground truth JSON filename
+        test_gt_file (str): Test ground truth JSON filename
 
     Returns:
         train_loader, val_loader, test_loader
@@ -144,22 +153,22 @@ def get_dataloaders(data_dir, batch_size=32, num_workers=4, feature_idx=None):
 
     market_data_path = os.path.join(data_dir, 'market_data.npy')
 
-    # Create datasets
+    # Create datasets - window_len will be read from JSON metadata
     train_dataset = MSUDataset(
         market_data_path=market_data_path,
-        ground_truth_path=os.path.join(data_dir, 'MSU_train_ground_truth_step1.json'),
+        ground_truth_path=os.path.join(data_dir, train_gt_file),
         feature_idx=feature_idx
     )
 
     val_dataset = MSUDataset(
         market_data_path=market_data_path,
-        ground_truth_path=os.path.join(data_dir, 'MSU_val_ground_truth_step21.json'),
+        ground_truth_path=os.path.join(data_dir, val_gt_file),
         feature_idx=feature_idx
     )
 
     test_dataset = MSUDataset(
         market_data_path=market_data_path,
-        ground_truth_path=os.path.join(data_dir, 'MSU_test_ground_truth_step21.json'),
+        ground_truth_path=os.path.join(data_dir, test_gt_file),
         feature_idx=feature_idx
     )
 
@@ -197,7 +206,7 @@ if __name__ == '__main__':
 
     data_dir = 'src/data/DJIA/feature34-Inter-P532'
     market_data_path = f'{data_dir}/market_data.npy'
-    ground_truth_path = f'{data_dir}/MSU_train_ground_truth_step1.json'
+    ground_truth_path = f'{data_dir}/MSU_train_ground_truth_w13_step1.json'
 
     # Test with all features
     print("\n=== Test with all features ===")

@@ -2,14 +2,17 @@
 # Training script for MSU_TE1D (Transformer Encoder)
 
 # Default configuration
-DATA_DIR="src/data/DJIA/feature34-Inter-P532"
-USE_ALL_FEATURES=true  # Set to false to use only SINGLE_FEATURE_IDX
-SINGLE_FEATURE_IDX=0   # Only used when USE_ALL_FEATURES=false
+DATA_DIR="src/data/DJIA/feature34-Inter-2"
+USE_ALL_FEATURES=false  # Set to false to use only SINGLE_FEATURE_IDX
+SINGLE_FEATURE_IDX=9   # Only used when USE_ALL_FEATURES=false
 LOSS="MSE"             # Loss function: "MSE" (default) or "MAE" (better for extreme predictions)
 SEED=42                # Random seed for reproducibility
 
 # Model architecture
 WINDOW_LEN=13
+TRAIN_STEP=1           # Step size for training ground truth (default: 1)
+VAL_STEP=1            # Step size for validation ground truth (default: 21)
+TEST_STEP=1           # Step size for test ground truth (default: 21)
 HIDDEN_DIM=128         # Transformer hidden dimension
 DEPTH=2                # Number of transformer layers
 HEADS=8                # Number of attention heads (increased from 4)
@@ -66,6 +69,7 @@ else
 fi
 
 echo "Random seed: $SEED"
+echo "Ground truth steps: train=$TRAIN_STEP, val=$VAL_STEP, test=$TEST_STEP"
 echo "=============================================================================="
 echo "Model Architecture:"
 echo "  Window length: $WINDOW_LEN weeks"
@@ -100,6 +104,9 @@ python ./src/MSU/train_msu_te1d.py \
     $LOSS_ARG \
     $PRETRAINED_ARG \
     --seed $SEED \
+    --train_step $TRAIN_STEP \
+    --val_step $VAL_STEP \
+    --test_step $TEST_STEP \
     --window_len $WINDOW_LEN \
     --hidden_dim $HIDDEN_DIM \
     --depth $DEPTH \

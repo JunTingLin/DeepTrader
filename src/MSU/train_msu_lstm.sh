@@ -7,7 +7,10 @@ USE_ALL_FEATURES=true  # Set to false to use only SINGLE_FEATURE_IDX
 SINGLE_FEATURE_IDX=0   # Only used when USE_ALL_FEATURES=false
 LOSS="MSE"             # Loss function: "MSE" (default) or "MAE" (better for extreme predictions)
 SEED=42                # Random seed for reproducibility
-WINDOW_LEN=13
+WINDOW_LEN=13          # Window length in weeks (13 or 26, must match ground truth JSON)
+TRAIN_STEP=1           # Step size for training ground truth (default: 1)
+VAL_STEP=1            # Step size for validation ground truth (default: 21)
+TEST_STEP=1           # Step size for test ground truth (default: 21)
 HIDDEN_DIM=128
 DROPOUT=0.5
 EPOCHS=200
@@ -42,6 +45,7 @@ else
 fi
 echo "Random seed: $SEED"
 echo "Window length: $WINDOW_LEN weeks"
+echo "Ground truth steps: train=$TRAIN_STEP, val=$VAL_STEP, test=$TEST_STEP"
 echo "Hidden dim: $HIDDEN_DIM"
 echo "Dropout: $DROPOUT"
 echo "Epochs: $EPOCHS"
@@ -64,6 +68,9 @@ python ./src/MSU/train_msu_lstm.py \
     $FEATURE_ARG \
     $LOSS_ARG \
     --seed $SEED \
+    --train_step $TRAIN_STEP \
+    --val_step $VAL_STEP \
+    --test_step $TEST_STEP \
     --window_len $WINDOW_LEN \
     --hidden_dim $HIDDEN_DIM \
     --dropout $DROPOUT \

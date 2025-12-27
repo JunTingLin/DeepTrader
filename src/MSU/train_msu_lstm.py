@@ -216,11 +216,24 @@ def train(args):
 
     # Create dataloaders
     print(f"\n📊 Loading data from: {args.data_dir}")
+
+    # Construct ground truth filenames based on window_len and step parameters
+    train_gt_file = f'MSU_train_ground_truth_w{args.window_len}_step{args.train_step}.json'
+    val_gt_file = f'MSU_val_ground_truth_w{args.window_len}_step{args.val_step}.json'
+    test_gt_file = f'MSU_test_ground_truth_w{args.window_len}_step{args.test_step}.json'
+
+    print(f"  Train GT: {train_gt_file}")
+    print(f"  Val GT:   {val_gt_file}")
+    print(f"  Test GT:  {test_gt_file}")
+
     train_loader, val_loader, test_loader = get_dataloaders(
         data_dir=args.data_dir,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        feature_idx=args.feature_idx
+        feature_idx=args.feature_idx,
+        train_gt_file=train_gt_file,
+        val_gt_file=val_gt_file,
+        test_gt_file=test_gt_file
     )
 
     print(f"\n📈 Dataset statistics:")
@@ -381,6 +394,14 @@ def main():
     # Loss function
     parser.add_argument('--use_mae', action='store_true',
                         help='Use MAE loss instead of MSE (better for extreme predictions)')
+
+    # Step sizes for ground truth files
+    parser.add_argument('--train_step', type=int, default=1,
+                        help='Step size for training ground truth (default: 1)')
+    parser.add_argument('--val_step', type=int, default=21,
+                        help='Step size for validation ground truth (default: 21)')
+    parser.add_argument('--test_step', type=int, default=21,
+                        help='Step size for test ground truth (default: 21)')
 
     args = parser.parse_args()
 
