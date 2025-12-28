@@ -124,7 +124,7 @@ def evaluate(model, test_loader, device):
     }
 
 
-def plot_predictions(results, output_dir, split='test'):
+def plot_predictions(results, output_dir, split='test', window_len=13, step=21):
     """Plot predictions vs targets"""
     preds = results['predictions']
     targets = results['targets']
@@ -149,13 +149,13 @@ def plot_predictions(results, output_dir, split='test'):
     axes[1].grid(True)
 
     plt.tight_layout()
-    output_path = os.path.join(output_dir, f'predictions_{split}.png')
+    output_path = os.path.join(output_dir, f'predictions_{split}_w{window_len}_step{step}.png')
     plt.savefig(output_path, dpi=150)
     print(f"  📊 Saved prediction plot to: {output_path}")
     plt.close()
 
 
-def plot_error_distribution(results, output_dir, split='test'):
+def plot_error_distribution(results, output_dir, split='test', window_len=13, step=21):
     """Plot error distribution"""
     preds = results['predictions']
     targets = results['targets']
@@ -182,13 +182,13 @@ def plot_error_distribution(results, output_dir, split='test'):
     axes[1].grid(True)
 
     plt.tight_layout()
-    output_path = os.path.join(output_dir, f'error_distribution_{split}.png')
+    output_path = os.path.join(output_dir, f'error_distribution_{split}_w{window_len}_step{step}.png')
     plt.savefig(output_path, dpi=150)
     print(f"  📊 Saved error distribution plot to: {output_path}")
     plt.close()
 
 
-def plot_attention_weights(model, test_loader, device, output_dir, split='test', num_samples=5):
+def plot_attention_weights(model, test_loader, device, output_dir, split='test', num_samples=5, window_len=13, step=21):
     """Plot attention weights for sample inputs"""
     model.eval()
 
@@ -219,7 +219,7 @@ def plot_attention_weights(model, test_loader, device, output_dir, split='test',
             break  # Only use first batch
 
     plt.tight_layout()
-    output_path = os.path.join(output_dir, f'attention_weights_{split}.png')
+    output_path = os.path.join(output_dir, f'attention_weights_{split}_w{window_len}_step{step}.png')
     plt.savefig(output_path, dpi=150)
     print(f"  📊 Saved attention weights plot to: {output_path}")
     plt.close()
@@ -234,6 +234,14 @@ def main():
                         help='Directory containing market data (default: read from config.json)')
     parser.add_argument('--split', type=str, default='test', choices=['train', 'val', 'test'],
                         help='Which split to evaluate')
+
+    # Optional: Override step parameters from config
+    parser.add_argument('--train_step', type=int, default=None,
+                        help='Override train step size (default: use config value)')
+    parser.add_argument('--val_step', type=int, default=None,
+                        help='Override val step size (default: use config value)')
+    parser.add_argument('--test_step', type=int, default=None,
+                        help='Override test step size (default: use config value)')
 
     args = parser.parse_args()
 
@@ -257,11 +265,36 @@ def main():
 
     # Load dataloaders
     print(f"\n📊 Loading data...")
+
+    # Construct ground truth filenames from config or command line args
+    window_len = config['window_len']
+
+    # Use command line args if provided, otherwise use config values
+    train_step = args.train_step if args.train_step is not None else config.get('train_step', 1)
+    val_step = args.val_step if args.val_step is not None else config.get('val_step', 21)
+    test_step = args.test_step if args.test_step is not None else config.get('test_step', 21)
+
+    train_gt_file = f'MSU_train_ground_truth_w{window_len}_step{train_step}.json'
+    val_gt_file = f'MSU_val_ground_truth_w{window_len}_step{val_step}.json'
+    test_gt_file = f'MSU_test_ground_truth_w{window_len}_step{test_step}.json'
+
+    print(f"  Ground truth files:")
+    if args.train_step is not None or args.val_step is not None or args.test_step is not None:
+        print(f"    (Using command line overrides where specified)")
+    else:
+        print(f"    (Using step values from config.json)")
+    print(f"    Train: {train_gt_file} (step={train_step})")
+    print(f"    Val:   {val_gt_file} (step={val_step})")
+    print(f"    Test:  {test_gt_file} (step={test_step})")
+
     train_loader, val_loader, test_loader = get_dataloaders(
         data_dir=args.data_dir,
         batch_size=config['batch_size'],
         num_workers=0,  # Use 0 for evaluation
-        feature_idx=config.get('feature_idx', None)
+        feature_idx=config.get('feature_idx', None),
+        train_gt_file=train_gt_file,
+        val_gt_file=val_gt_file,
+        test_gt_file=test_gt_file
     )
 
     # Select split
@@ -302,10 +335,21 @@ def main():
     print(f"Correlation: {results['correlation']:.6f}")
     print("="*80)
 
-    # Save results
-    results_path = os.path.join(args.checkpoint_dir, f'{args.split}_evaluation.json')
+    # Determine step size for current split
+    if args.split == 'train':
+        current_step = train_step
+    elif args.split == 'val':
+        current_step = val_step
+    else:  # test
+        current_step = test_step
+
+    # Save results with window_len and step in filename
+    results_filename = f'{args.split}_evaluation_w{window_len}_step{current_step}.json'
+    results_path = os.path.join(args.checkpoint_dir, results_filename)
     results_to_save = {
         'model_type': model_type,
+        'window_len': window_len,
+        'step': current_step,
         'mse': float(results['mse']),
         'rmse': float(results['rmse']),
         'mae': float(results['mae']),
@@ -320,11 +364,11 @@ def main():
 
     # Plot predictions and errors
     print(f"\n📊 Generating plots...")
-    plot_predictions(results, args.checkpoint_dir, split=args.split)
-    plot_error_distribution(results, args.checkpoint_dir, split=args.split)
+    plot_predictions(results, args.checkpoint_dir, split=args.split, window_len=window_len, step=current_step)
+    plot_error_distribution(results, args.checkpoint_dir, split=args.split, window_len=window_len, step=current_step)
 
     # Plot attention weights (both LSTM and TE1D support this)
-    plot_attention_weights(model, loader, device, args.checkpoint_dir, split=args.split, num_samples=5)
+    plot_attention_weights(model, loader, device, args.checkpoint_dir, split=args.split, num_samples=5, window_len=window_len, step=current_step)
 
     print("\n✅ Evaluation complete!")
 

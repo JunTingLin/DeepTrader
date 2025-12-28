@@ -2,15 +2,23 @@
 # Training script for MSU_LSTM
 
 # Default configuration
-DATA_DIR="src/data/DJIA/feature34-Inter-P532"
+DATA_DIR="src/data/DJIA/feature34-Inter-2"
 USE_ALL_FEATURES=true  # Set to false to use only SINGLE_FEATURE_IDX
 SINGLE_FEATURE_IDX=0   # Only used when USE_ALL_FEATURES=false
-LOSS="MSE"             # Loss function: "MSE" (default) or "MAE" (better for extreme predictions)
 SEED=42                # Random seed for reproducibility
+
+# Loss function configuration
+LOSS_FUNCTION="MSE"    # Options: MSE, MAE, Sharpe, IC, Corr, Combined
+# For Combined loss only:
+ALPHA=0.7              # Weight for MSE component (0.0-1.0)
+BETA=0.3               # Weight for trend component (0.0-1.0)
+TREND_LOSS_TYPE="sharpe"  # Options: sharpe, ic, corr
+
+# Data parameters
 WINDOW_LEN=13          # Window length in weeks (13 or 26, must match ground truth JSON)
-TRAIN_STEP=1           # Step size for training ground truth (default: 1)
-VAL_STEP=1            # Step size for validation ground truth (default: 21)
-TEST_STEP=1           # Step size for test ground truth (default: 21)
+TRAIN_STEP=21           # Step size for training ground truth (default: 1)
+VAL_STEP=21            # Step size for validation ground truth (default: 21)
+TEST_STEP=21           # Step size for test ground truth (default: 21)
 HIDDEN_DIM=128
 DROPOUT=0.5
 EPOCHS=200
@@ -33,15 +41,12 @@ else
 fi
 
 # Handle loss function argument
-if [ "$LOSS" = "MAE" ]; then
-    echo "Loss function: MAE (better for extreme predictions)"
-    LOSS_ARG="--use_mae"
-elif [ "$LOSS" = "MSE" ]; then
-    echo "Loss function: MSE (default)"
-    LOSS_ARG=""
-else
-    echo "ERROR: Invalid LOSS value '$LOSS'. Must be 'MSE' or 'MAE'."
-    exit 1
+echo "Loss function: $LOSS_FUNCTION"
+LOSS_ARG="--loss_function $LOSS_FUNCTION"
+
+if [ "$LOSS_FUNCTION" = "Combined" ]; then
+    echo "  Combined loss weights: alpha=$ALPHA (MSE), beta=$BETA ($TREND_LOSS_TYPE)"
+    LOSS_ARG="$LOSS_ARG --alpha $ALPHA --beta $BETA --trend_loss_type $TREND_LOSS_TYPE"
 fi
 echo "Random seed: $SEED"
 echo "Window length: $WINDOW_LEN weeks"

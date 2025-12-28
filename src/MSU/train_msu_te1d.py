@@ -27,6 +27,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from model.MSU_TE1D import MSU_TE1D
 from MSU.msu_dataset import get_dataloaders
+from MSU.losses import get_loss_function
 
 
 def set_seed(seed=42):
@@ -211,7 +212,6 @@ def train(args):
     config = vars(args)
     config['device'] = str(device)
     config['run_name'] = run_name
-    config['loss_function'] = 'MAE' if args.use_mae else 'MSE'
     with open(os.path.join(checkpoint_dir, 'config.json'), 'w') as f:
         json.dump(config, f, indent=2)
 
@@ -276,13 +276,30 @@ def train(args):
     print(f"  Trainable parameters: {trainable_params:,}")
 
     # Loss and optimizer
-    use_mae = args.use_mae if hasattr(args, 'use_mae') else False
-    if use_mae:
-        criterion = nn.L1Loss()  # MAE
-        print("  Using MAE Loss (more tolerant to extreme predictions)")
-    else:
-        criterion = nn.MSELoss()  # Default
-        print("  Using MSE Loss (conservative, predicts middle values)")
+    # Build loss function kwargs
+    loss_kwargs = {}
+    if args.loss_function.upper() == 'COMBINED':
+        loss_kwargs['alpha'] = args.alpha
+        loss_kwargs['beta'] = args.beta
+        loss_kwargs['trend_loss_type'] = args.trend_loss_type
+
+    criterion = get_loss_function(args.loss_function, **loss_kwargs)
+
+    # Print loss information
+    print(f"  Using {args.loss_function.upper()} Loss")
+    if args.loss_function.upper() == 'MSE':
+        print("    ℹ️  MSE: Conservative, predicts middle values, good numerical accuracy")
+    elif args.loss_function.upper() == 'MAE':
+        print("    ℹ️  MAE: More tolerant to extreme predictions than MSE")
+    elif args.loss_function.upper() == 'SHARPE':
+        print("    ℹ️  Sharpe: Directly optimizes risk-adjusted returns (direction matters!)")
+    elif args.loss_function.upper() == 'IC':
+        print("    ℹ️  IC: Spearman rank correlation (quantitative finance standard)")
+    elif args.loss_function.upper() in ['CORR', 'CORRELATION']:
+        print("    ℹ️  Correlation: Pearson correlation (trend consistency)")
+    elif args.loss_function.upper() == 'COMBINED':
+        print(f"    ℹ️  Combined: {args.alpha:.2f} * MSE + {args.beta:.2f} * {args.trend_loss_type.upper()}")
+        print(f"    ℹ️  Balances numerical accuracy with trend prediction")
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -418,8 +435,16 @@ def main():
                         help='Random seed for reproducibility')
 
     # Loss function
-    parser.add_argument('--use_mae', action='store_true',
-                        help='Use MAE loss instead of MSE (better for extreme predictions)')
+    parser.add_argument('--loss_function', type=str, default='MSE',
+                        choices=['MSE', 'MAE', 'Sharpe', 'IC', 'Corr', 'Correlation', 'Combined'],
+                        help='Loss function to use (default: MSE)')
+    parser.add_argument('--alpha', type=float, default=0.5,
+                        help='Weight for MSE in Combined loss (default: 0.5)')
+    parser.add_argument('--beta', type=float, default=0.5,
+                        help='Weight for trend loss in Combined loss (default: 0.5)')
+    parser.add_argument('--trend_loss_type', type=str, default='sharpe',
+                        choices=['sharpe', 'ic', 'corr'],
+                        help='Trend loss type for Combined loss (default: sharpe)')
 
     # Step sizes for ground truth files
     parser.add_argument('--train_step', type=int, default=1,

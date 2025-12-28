@@ -2,11 +2,17 @@
 # Training script for MSU_TE1D (Transformer Encoder)
 
 # Default configuration
-DATA_DIR="src/data/DJIA/feature34-Inter-2"
+DATA_DIR="src/data/DJIA/feature34-Inter-P532"
 USE_ALL_FEATURES=false  # Set to false to use only SINGLE_FEATURE_IDX
 SINGLE_FEATURE_IDX=9   # Only used when USE_ALL_FEATURES=false
-LOSS="MSE"             # Loss function: "MSE" (default) or "MAE" (better for extreme predictions)
 SEED=42                # Random seed for reproducibility
+
+# Loss function configuration
+LOSS_FUNCTION="MSE"    # Options: MSE, MAE, Sharpe, IC, Corr, Combined
+# For Combined loss only:
+ALPHA=0.5              # Weight for MSE component (0.0-1.0)
+BETA=0.5               # Weight for trend component (0.0-1.0)
+TREND_LOSS_TYPE="sharpe"  # Options: sharpe, ic, corr
 
 # Model architecture
 WINDOW_LEN=13
@@ -15,10 +21,10 @@ VAL_STEP=1            # Step size for validation ground truth (default: 21)
 TEST_STEP=1           # Step size for test ground truth (default: 21)
 HIDDEN_DIM=128         # Transformer hidden dimension
 DEPTH=2                # Number of transformer layers
-HEADS=8                # Number of attention heads (increased from 4)
-MLP_DIM=256            # MLP dimension in transformer (increased from 32)
-DIM_HEAD=16            # Dimension per attention head (increased from 4)
-DROPOUT=0.2            # Dropout rate (increased from 0.1)
+HEADS=4                # Number of attention heads (must match pretrained model!)
+MLP_DIM=32             # MLP dimension in transformer (must match pretrained model!)
+DIM_HEAD=4             # Dimension per attention head (must match pretrained model!)
+DROPOUT=0.1            # Dropout rate (must match pretrained model!)
 EMB_DROPOUT=0.1        # Embedding dropout rate
 MLP_HIDDEN_DIM=128     # Hidden dimension for prediction MLP head
 
@@ -48,15 +54,12 @@ else
 fi
 
 # Handle loss function argument
-if [ "$LOSS" = "MAE" ]; then
-    echo "Loss function: MAE (better for extreme predictions)"
-    LOSS_ARG="--use_mae"
-elif [ "$LOSS" = "MSE" ]; then
-    echo "Loss function: MSE (default)"
-    LOSS_ARG=""
-else
-    echo "ERROR: Invalid LOSS value '$LOSS'. Must be 'MSE' or 'MAE'."
-    exit 1
+echo "Loss function: $LOSS_FUNCTION"
+LOSS_ARG="--loss_function $LOSS_FUNCTION"
+
+if [ "$LOSS_FUNCTION" = "Combined" ]; then
+    echo "  Combined loss weights: alpha=$ALPHA (MSE), beta=$BETA ($TREND_LOSS_TYPE)"
+    LOSS_ARG="$LOSS_ARG --alpha $ALPHA --beta $BETA --trend_loss_type $TREND_LOSS_TYPE"
 fi
 
 # Handle pre-trained encoder
