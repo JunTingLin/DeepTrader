@@ -1,10 +1,11 @@
 """
-Random Portfolio Testing Script
---------------------------------
+Random Portfolio Testing Script (Score-based Selection)
+--------------------------------------------------------
 This script tests a random portfolio strategy on val or test period:
-- Randomly selects G stocks for long positions (equal weight)
-- Randomly selects G stocks for short positions (equal weight)
-- No stock can be both long and short
+- Generates random scores for all stocks (uniform [0,1])
+- Selects top-G stocks for long positions (highest scores, equal weight)
+- Selects bottom-G stocks for short positions (lowest scores, equal weight)
+- Mimics DeepTrader's selection workflow but with random scores
 - Uses the same PortfolioSim to calculate returns
 - Generates val_results_random.json or test_results_random.json
 """
@@ -33,7 +34,8 @@ def random_portfolio_test(func_args, period='test'):
     np.random.seed(func_args.seed)
 
     print("\n" + "="*60)
-    print(f"Random Portfolio Testing - {period.upper()} (seed={func_args.seed})")
+    print(f"Random Portfolio Testing (Score-based) - {period.upper()}")
+    print(f"Seed: {func_args.seed}")
     print("="*60)
 
     # Load data
@@ -77,6 +79,7 @@ def random_portfolio_test(func_args, period='test'):
     )
 
     print(f"Portfolio settings: allow_short={allow_short}, fee={fee}, G={G}, trade_len={trade_len}")
+    print(f"Selection strategy: Random scores -> Top-{G} long / Bottom-{G} short (equal weights)")
 
     # Initialize tracking variables
     agent_wealth = [1.0]  # Start with $1
@@ -94,15 +97,17 @@ def random_portfolio_test(func_args, period='test'):
         # Calculate cursor
         cursor = period_idx + step * trade_len
 
-        # Random stock selection
-        all_stocks = list(range(num_stocks))
+        # Random stock selection (score-based)
+        # Step 1: Generate random scores for all stocks
+        random_scores = np.random.random(num_stocks)  # Random scores [0, 1]
 
-        # Randomly select G stocks for long positions
-        long_stocks = sorted(random.sample(all_stocks, G))
+        # Step 2: Select top-G stocks for long (highest scores)
+        top_g_indices = np.argsort(random_scores)[-G:]  # Top G indices
+        long_stocks = sorted(top_g_indices.tolist())
 
-        # Randomly select G stocks for short positions from remaining stocks
-        remaining_stocks = [s for s in all_stocks if s not in long_stocks]
-        short_stocks = sorted(random.sample(remaining_stocks, G))
+        # Step 3: Select bottom-G stocks for short (lowest scores)
+        bottom_g_indices = np.argsort(random_scores)[:G]  # Bottom G indices
+        short_stocks = sorted(bottom_g_indices.tolist())
 
         # Calculate equal weight (1/G for each position)
         equal_weight = 1.0 / G
@@ -129,7 +134,12 @@ def random_portfolio_test(func_args, period='test'):
         ror = ror[np.newaxis, :]  # (1, num_stocks)
 
         # Set rho (MSU allocation)
-        rho = np.array([0.5])
+        # Use manual_rho from config if available, otherwise default to 0.5
+        manual_rho = getattr(func_args, 'manual_rho', None)
+        if manual_rho is not None:
+            rho = np.array([manual_rho])
+        else:
+            rho = np.array([0.5])
 
         # Execute step
         reward, info, done = sim._step(weights, ror, rho)
@@ -151,7 +161,7 @@ def random_portfolio_test(func_args, period='test'):
             'long_weights': [long_weights],  # (1, G)
             'short_indices': [short_stocks],  # (1, G)
             'short_weights': [short_weights],  # (1, G)
-            'all_scores': np.array([[0.5] * num_stocks]),  # (1, num_stocks) - random has no score
+            'all_scores': np.array([random_scores]),  # (1, num_stocks) - random scores
             'sim_info': info
         }
 
@@ -236,9 +246,13 @@ def random_portfolio_test(func_args, period='test'):
         json_portfolio_records.append(step_data)
 
     # Prepare output JSON
+    # Get rho value used in simulation
+    manual_rho = getattr(func_args, 'manual_rho', None)
+    rho_value = manual_rho if manual_rho is not None else 0.5
+
     results = {
         'agent_wealth': agent_wealth_array.tolist(),
-        'rho_record': [0.5] * num_steps,  # Fixed at 0.5 for random
+        'rho_record': [rho_value] * num_steps,  # Fixed rho for random baseline
         'mu_record': [None] * num_steps,  # Not applicable
         'sigma_record': [None] * num_steps,  # Not applicable
         'portfolio_records': json_portfolio_records,
@@ -251,13 +265,13 @@ def random_portfolio_test(func_args, period='test'):
             'CR': convert_to_native_type(metrics['CR'])
         },
         'summary': {
-            'strategy': 'random',
+            'strategy': 'random_score_based',
             'period': period,
             'seed': func_args.seed,
             'G': G,
             'total_steps': num_steps,
             'final_wealth': convert_to_native_type(agent_wealth[-1]),
-            'total_return': convert_to_native_type(agent_wealth[-1] - 1.0)
+            'total_return': convert_to_native_type(agent_wealth[-1] - 1.0),
         }
     }
 
