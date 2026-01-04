@@ -244,8 +244,11 @@ def test_and_generate_json(model, dataloader, device, output_path, k=4, allow_sh
             rho_array = np.array([rho])
             reward, info, done = sim._step(weights, ror_sim, rho_array)
 
-            # Record wealth
+            # Record wealth and calculate step return BEFORE appending
+            previous_wealth = agent_wealth[-1]
             current_wealth = sim.v[0]
+            step_return = (current_wealth - previous_wealth) / previous_wealth if previous_wealth > 0 else 0.0
+
             agent_wealth.append(current_wealth)
             rho_record.append(rho)
 
@@ -287,8 +290,32 @@ def test_and_generate_json(model, dataloader, device, output_path, k=4, allow_sh
             # ROR: future returns as ratios (1 + return_rate)
             # Note: DeepTrader uses nested list format [[stock1, stock2, ...]] for batch compatibility
             ror_ratios = [(1.0 + future_ror_np).tolist()]  # Wrap in list for batch dimension
-            long_returns = [float(future_ror_np[idx]) for idx in long_indices]
-            short_returns = [float(future_ror_np[idx]) for idx in short_indices]
+
+            # Build long_returns and short_returns arrays in DeepTrader format
+            # Format: array of length num_stocks, with 0.0 for unselected stocks
+            long_returns_array = np.zeros(num_stocks)
+            for idx in long_indices:
+                long_returns_array[idx] = float(future_ror_np[idx])
+
+            short_returns_array = np.zeros(num_stocks)
+            for idx in short_indices:
+                # For short positions, store the profit (negative of return)
+                # If stock drops 10% (-0.10), short gains 10% (+0.10)
+                short_returns_array[idx] = -float(future_ror_np[idx])
+
+            # Wrap in nested list for batch compatibility
+            long_returns = [long_returns_array.tolist()]
+            short_returns = [short_returns_array.tolist()]
+
+            # Calculate position returns for profit heatmap
+            # Average return for long positions (raw return rate, not percentage)
+            selected_long_returns = [float(future_ror_np[idx]) for idx in long_indices]
+            avg_long_return = np.mean(selected_long_returns) if len(selected_long_returns) > 0 else 0.0
+
+            # Average return for short positions (negate for short profit: if stock drops, short profits)
+            selected_short_returns = [float(future_ror_np[idx]) for idx in short_indices]
+            avg_short_return = -np.mean(selected_short_returns) if len(selected_short_returns) > 0 else 0.0
+
 
             portfolio_records.append({
                 'step': int(step_idx),
@@ -298,8 +325,12 @@ def test_and_generate_json(model, dataloader, device, output_path, k=4, allow_sh
                 'all_scores': scores_np.tolist(),  # All 30 stocks' scores for scatter plots
                 'sim_info': {
                     'ror': ror_ratios,  # [[stock1_ratio, stock2_ratio, ...]] - nested list format
-                    'long_returns': long_returns,  # Long positions' returns
-                    'short_returns': short_returns  # Short positions' returns
+                    'long_returns': long_returns,  # [[stock1, stock2, ...]] - 0.0 for unselected
+                    'short_returns': short_returns,  # [[stock1, stock2, ...]] - 0.0 for unselected
+                    # For profit heatmap compatibility
+                    'LongPosition_return': avg_long_return,
+                    'ShortPosition_return': avg_short_return,
+                    'rate_of_return': step_return
                 }
             })
 

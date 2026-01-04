@@ -1213,7 +1213,8 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
     bar_x_positions = np.arange(n_steps)
 
     # === Panel 2: Predicted Mu bar chart (if available) ===
-    if mu_array is not None and ax2 is not None:
+    # Check if mu_array exists and doesn't contain None values
+    if mu_array is not None and ax2 is not None and not all(x is None for x in mu_array):
         ax2.bar(bar_x_positions, mu_array, color='lightsalmon', edgecolor='darkorange',
                 linewidth=0.5, alpha=0.8, width=0.8)
         ax2.set_ylabel('Predicted Mu (μ)', fontsize=12, fontweight='bold')
@@ -1224,7 +1225,8 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
         ax2.legend(loc='upper right', fontsize=9)
 
     # === Panel 3: Predicted Sigma bar chart (if available) ===
-    if sigma_array is not None and ax3 is not None:
+    # Check if sigma_array exists and doesn't contain None values
+    if sigma_array is not None and ax3 is not None and not all(x is None for x in sigma_array):
         ax3.bar(bar_x_positions, sigma_array, color='lightgreen', edgecolor='darkgreen',
                 linewidth=0.5, alpha=0.8, width=0.8)
         ax3.set_ylabel('Predicted Sigma (σ)', fontsize=12, fontweight='bold')
