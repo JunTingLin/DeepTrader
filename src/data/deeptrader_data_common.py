@@ -266,8 +266,17 @@ def process_one_stock(args):
     if feature_mode == 'basic':
         used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
     else:
-        drop_cols = ['Date', 'Ticker', 'Adj Close', 'Returns', 'MACD', 'MACD_Hist']
-        used_cols = [col for col in final_data.columns if col not in drop_cols]
+        # Full mode: OHLCV + Technical indicators + Alpha factors
+        # IMPORTANT: Explicitly order OHLCV first to ensure consistency
+        ohlcv_names = ['Open', 'High', 'Low', 'Close', 'Volume']
+        tech_names = ['MA20', 'MA60', 'RSI', 'MACD_Signal', 'K', 'D',
+                      'BBands_Upper', 'BBands_Middle', 'BBands_Lower']
+
+        # Get all alpha columns dynamically (in sorted order for consistency)
+        alpha_cols = sorted([col for col in final_data.columns if col.startswith('Alpha')])
+
+        # Combine in the correct order
+        used_cols = ohlcv_names + tech_names + alpha_cols
     
     # Fill the array with the aligned data
     per_stock_array[:, :] = final_data[used_cols].values
@@ -379,8 +388,8 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
     # Calculate returns
     returns = np.zeros((num_stocks, num_days))
     for i in range(1, num_days):
-        # Inter-day return: (today_open - yesterday_open) / yesterday_open
-        returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+        # Inter-day return: (today_close - yesterday_close) / yesterday_close
+        returns[:, i] = (reshaped_data[:, i, 3] - reshaped_data[:, i - 1, 3]) / reshaped_data[:, i - 1, 3]
     # Alternative intraday return calculation:
     # for i in range(1, num_days):
     #     returns[:, i] = (reshaped_data[:, i, 3] / reshaped_data[:, i, 0]) - 1
