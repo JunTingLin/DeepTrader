@@ -4,6 +4,11 @@
 
 import os
 
+# Get the project root directory (DeepTrader/)
+# This file is at: DeepTrader/src/plot/config.py
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+DATA_DIR = os.path.join(PROJECT_ROOT, 'src', 'data')
+
 # Stock symbols for different markets
 
 # 2025-05-29 wiki updated
@@ -20,13 +25,46 @@ DJIA_STOCKS = [
     "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "V", "VZ", "WBA"
 ]
 
+# 2016-01-01~2025-12-31 intersect TWII stocks list
 TWII_STOCKS = [
-    "1101.TW", "1216.TW", "1301.TW", "1303.TW", "2002.TW", "2207.TW", "2301.TW", "2303.TW", "2308.TW", "2317.TW",
-    "2327.TW", "2330.TW", "2345.TW", "2357.TW", "2379.TW", "2382.TW", "2383.TW", "2395.TW", "2412.TW", "2454.TW",
-    "2603.TW", "2609.TW", "2615.TW", "2880.TW", "2881.TW", "2882.TW", "2883.TW", "2884.TW", "2885.TW", "2886.TW",
-    "2887.TW", "2890.TW", "2891.TW", "2892.TW", "2912.TW", "3008.TW", "3017.TW", "3034.TW", "3045.TW", "3231.TW",
-    "3661.TW", "3711.TW", "4904.TW", "4938.TW", "5871.TW", "5876.TW", "5880.TW", "6446.TW", "6505.TW"
+    "1216.TW",  # 統一
+    "1301.TW",  # 台塑
+    "1303.TW",  # 南亞
+    "2002.TW",  # 中鋼
+    "2303.TW",  # 聯電
+    "2308.TW",  # 台達電
+    "2317.TW",  # 鴻海
+    "2330.TW",  # 台積電
+    "2357.TW",  # 華碩
+    "2382.TW",  # 廣達
+    "2395.TW",  # 研華
+    "2412.TW",  # 中華電
+    "2454.TW",  # 聯發科
+    "2880.TW",  # 華南金
+    "2881.TW",  # 富邦金
+    "2882.TW",  # 國泰金
+    "2884.TW",  # 玉山金
+    "2885.TW",  # 元大金
+    "2886.TW",  # 兆豐金
+    "2887.TW",  # 台新新光金
+    "2891.TW",  # 中信金
+    "2892.TW",  # 第一金
+    "2912.TW",  # 統一超
+    "3008.TW",  # 大立光
+    "3045.TW",  # 台灣大
+    "3711.TW",  # 日月光投控
+    "4904.TW",  # 遠傳
+    "5880.TW",  # 合庫金
+    "6505.TW",  # 台塑化
 ]
+
+# TWII_STOCKS = [
+#     "1101.TW", "1216.TW", "1301.TW", "1303.TW", "2002.TW", "2207.TW", "2301.TW", "2303.TW", "2308.TW", "2317.TW",
+#     "2327.TW", "2330.TW", "2345.TW", "2357.TW", "2379.TW", "2382.TW", "2383.TW", "2395.TW", "2412.TW", "2454.TW",
+#     "2603.TW", "2609.TW", "2615.TW", "2880.TW", "2881.TW", "2882.TW", "2883.TW", "2884.TW", "2885.TW", "2886.TW",
+#     "2887.TW", "2890.TW", "2891.TW", "2892.TW", "2912.TW", "3008.TW", "3017.TW", "3034.TW", "3045.TW", "3231.TW",
+#     "3661.TW", "3711.TW", "4904.TW", "4938.TW", "5871.TW", "5876.TW", "5880.TW", "6446.TW", "6505.TW"
+# ]
 
 FAKE_STOCKS = [
     "Stock A", "Stock B"
@@ -46,40 +84,34 @@ MARKET_CONFIGS = {
         'val_end': 2087,
         'test_end': 2673,
         'experiment_ids': [
-            # '0718/181011',
-            # '1211/162808',
-            # '1212/005123'
-            '1223/024432'
+            # '1231/013419',
+            # '0101/023300',
+            # '0101/133244'
+            'random/01',
+            'random/24',
+            'random/42',
+            # 'asu_supervised_20260102_212119' 
         ],
         'plot_ylim': None,
         'json_files': {
-            'test_results': 'test_results.json',
-            'val_results': 'val_results.json'
+            'test_results': 'test_results_random.json',
+            'val_results': 'val_results_random.json'
         }
     },
     'TW': {
         'name': 'Taiwan',
-        'start_date': "2015-01-01",
-        'end_date': "2025-03-31",
-        'market_file': "0050.TW.csv",
+        'start_date': "2016-01-01",
+        'end_date': "2025-12-31",
+        'market_file': "./src/data/TWII/market_data/0050.TW.csv",
         'stock_symbols': TWII_STOCKS,
         'benchmark_column': '0050.TW',
         'benchmark_label': 'TWII',
         'title': 'DeepTrader vs. TWII',
-        'train_end': 1304,
-        'val_end': 2087,
-        'test_end': 2673,
+        'train_end': 1305,
+        'val_end': 2086,
+        'test_end': 2609,
         'experiment_ids': [
-            '0718/141038',
-            '0718/141055',
-            '0718/213952',
-            '0718/214006',
-            '0719/140312',
-            '0719/140324',
-            '0719/230025',
-            '0719/230035',
-            '0720/104851',
-            '0720/104859'
+            '0108/012635'
         ],
         'plot_ylim': None,
         'json_files': {
@@ -115,7 +147,7 @@ MARKET_CONFIGS = {
 # Global Configuration
 # -------------------------------
 # Change this to 'TW', 'US', or 'FAKE' to switch markets
-CURRENT_MARKET = 'US'
+CURRENT_MARKET = 'TW'
 config = MARKET_CONFIGS[CURRENT_MARKET]
 JSON_FILES = config['json_files'].copy()
 
@@ -144,11 +176,11 @@ if CURRENT_MARKET == 'FAKE':
     STOCK_PRICE_INDEX = 0     # Stock price index in fake data (only 1 feature)
     MARKET_PRICE_INDEX = 0    # Market price index in fake data (only 1 feature)
 else:
-    STOCK_DATA_PATH = 'src/data/DJIA/feature34-Inter-P532-Reversed/stocks_data.npy'
-    MARKET_DATA_PATH = 'src/data/DJIA/feature34-Inter-P532-Reversed/market_data.npy'
-    GROUND_TRUTH_PREFIX = 'src/data/DJIA/feature34-Inter-P532-Reversed'  # Ground truth JSON files directory
-    STOCK_PRICE_INDEX = 0     # Stock open price index in the 34 stock features
-    MARKET_PRICE_INDEX = 6    # Market open price index in the 27 market features (changed from 9 to match strategy's Open-to-Open returns)
+    STOCK_DATA_PATH = 'src/data/TWII/feature5-2016-2025/stocks_data.npy'
+    MARKET_DATA_PATH = 'src/data/TWII/feature5-2016-2025/market_data.npy'
+    GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-2016-2025'  # Ground truth JSON files directory
+    STOCK_PRICE_INDEX = 3
+    MARKET_PRICE_INDEX = 3
 
 # -------------------------------
 # Plotting Style Configuration

@@ -18,6 +18,8 @@ from config import (
     config, get_stock_symbols, START_DATE, END_DATE,
     EXPERIMENT_IDS, OUTPUTS_BASE_PATH
 )
+import os
+os.chdir('/mnt/d/Code/PythonProjects/DeepTrader')
 
 def main():
     print(f"Using {config['name']} market configuration")
@@ -87,10 +89,10 @@ def main():
         plot_selection_quality_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
 
         # Plot and save stock price trends with trading positions
-        print(f"Generating stock price trend plots for {exp_id}...")
-        print(f"This will create {len(symbols) * 2} PNG files (val + test for each stock)")
-        plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'val', save_plots=True)
-        plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'test', save_plots=True)
+        # print(f"Generating stock price trend plots for {exp_id}...")
+        # print(f"This will create {len(symbols) * 2} PNG files (val + test for each stock)")
+        # plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'val', save_plots=True)
+        # plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'test', save_plots=True)
 
         # Plot score vs return scatter plots for all trading steps
         print(f"Generating score vs return scatter plots for {exp_id}...")
@@ -104,16 +106,16 @@ def main():
         plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
         
         # Plot and save step analysis with all stocks per step
-        print(f"Generating step analysis plots for {exp_id}...")
-        print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
-        plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
-        plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
+        # print(f"Generating step analysis plots for {exp_id}...")
+        # print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
+        # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
+        # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
         
         # Plot and save MSU step analysis with DJIA trends and rho values
-        print(f"Generating MSU step analysis plots for {exp_id}...")
-        print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test MSU analysis files")
-        plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plots=True)
-        plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plots=True)
+        # print(f"Generating MSU step analysis plots for {exp_id}...")
+        # print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test MSU analysis files")
+        # plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plots=True)
+        # plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plots=True)
 
         # Force garbage collection to free memory
         gc.collect()

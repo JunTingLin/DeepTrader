@@ -5,10 +5,18 @@ from deeptrader_data_common import process_stocks_data
 
 # Hardcoded DJIA stocks list (學姐的版本)
 # Note: Removed CRM (listed 2004-06-23) and V (listed 2008-03-19) to match feature34-Inter (28 stocks)
+# DJIA_STOCKS = [
+#     "AAPL", "AMGN", "AXP", "BA", "CAT", "CSCO", "CVX", "DIS", "GS",
+#     "HD", "HON", "HPQ", "IBM", "INTC", "JNJ", "JPM", "KO", "MCD", "MMM",
+#     "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "VZ", "WBA"
+# ]
+
+# 2025-12-31 updated DJIA stocks list (intersect)
 DJIA_STOCKS = [
-    "AAPL", "AMGN", "AXP", "BA", "CAT", "CSCO", "CVX", "DIS", "GS",
-    "HD", "HON", "HPQ", "IBM", "INTC", "JNJ", "JPM", "KO", "MCD", "MMM",
-    "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "VZ", "WBA"
+    "AXP", "BA", "CAT", "CSCO", "CVX", "DIS",
+    "GS", "HD", "IBM", "JNJ", "JPM", "KO",
+    "MCD", "MMM", "MRK", "MSFT", "NKE", "PG",
+    "TRV", "UNH", "V", "VZ", "WMT"
 ]
 
 if __name__ == '__main__':

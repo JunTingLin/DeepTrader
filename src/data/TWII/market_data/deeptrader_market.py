@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 
 # Define date range constants
-START_DATE = '2015-01-01'
-END_DATE = '2025-03-31'
+START_DATE = '2016-01-01'
+END_DATE = '2025-12-31'
 
 # Feature mode: 'basic' for 4 TWII features only, 'full' for all market features
 FEATURE_MODE = 'full'  # Change to 'basic' to use only TWII OHLC
