@@ -83,17 +83,35 @@ def test(func_args):
         )
     
     PREFIX = func_args.prefix
-    best_model_path = os.path.join(PREFIX, 'model_file')
-    model_sort = sorted(
-        [x for x in os.listdir(best_model_path) if "best_cr" in x],
-        key=lambda s: int(re.search(r'\d+', s).group())
-    )
-    model_sort = [x for x in model_sort if "best_cr" in x]
-    best_model = model_sort[-1]
-    print("best_model_path: ", best_model_path)
-    print("best_model: ", best_model)
 
-    actor = torch.load(os.path.join(best_model_path, best_model), weights_only=False)
+    # Check if user specified a direct model path
+    if hasattr(func_args, 'model_path') and func_args.model_path is not None:
+        model_file_path = func_args.model_path
+        print(f"Using user-specified model: {model_file_path}")
+        if not os.path.exists(model_file_path):
+            raise FileNotFoundError(f"Specified model file not found: {model_file_path}")
+    else:
+        # Original logic: find best_cr model automatically
+        best_model_path = os.path.join(PREFIX, 'model_file')
+        model_sort = sorted(
+            [x for x in os.listdir(best_model_path) if "best_cr" in x],
+            key=lambda s: int(re.search(r'\d+', s).group())
+        )
+
+        if len(model_sort) == 0:
+            # No best_cr model found, try to use final_model.pkl
+            if os.path.exists(os.path.join(best_model_path, 'final_model.pkl')):
+                model_file_path = os.path.join(best_model_path, 'final_model.pkl')
+                print(f"Warning: No best_cr model found, using final_model.pkl instead")
+            else:
+                raise FileNotFoundError(f"No model found in {best_model_path}. Please specify --model_path or ensure a model exists.")
+        else:
+            best_model = model_sort[-1]
+            model_file_path = os.path.join(best_model_path, best_model)
+            print(f"Using best model: {best_model}")
+
+    print(f"Loading model from: {model_file_path}")
+    actor = torch.load(model_file_path, weights_only=False)
     actor.eval()
 
     # Update actor's args with current func_args
@@ -177,6 +195,7 @@ if __name__ == '__main__':
     parser.add_argument('--no_tfinasu', dest='transformer_asu_bool', action='store_false', default=None)
     parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
     parser.add_argument('--prefix', type=str, help='Experiment output directory prefix')
+    parser.add_argument('--model_path', type=str, help='Direct path to model file (e.g., src/outputs/0108/012635/model_file/best_cr-1200.pkl). If specified, overrides automatic model selection.')
     parser.add_argument('--manual_rho', type=float, help='Fixed rho value for testing (overrides MSU predictions)')
     parser.add_argument('--ground_truth_rho', type=str, help='Path to ground truth JSON file for rho values (e.g., data/fake/test_ground_truth.json)')
 
