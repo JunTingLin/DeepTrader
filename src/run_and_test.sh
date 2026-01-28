@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Automated script to run training (run.py) followed by testing (test.py)
-# Usage:
-#   ./run_and_test.sh -c hyper.json    # Use specified config file (required)
+# Usage (from project root):
+#   bash src/run_and_test.sh -c src/hyper.json
 
 set -e  # Exit on any error
 
@@ -31,7 +31,7 @@ done
 if [ -z "$CONFIG" ]; then
     echo "Error: Config file is required!"
     echo "Usage: $0 -c CONFIG"
-    echo "Example: $0 -c hyper.json"
+    echo "Example: $0 -c src/hyper.json"
     exit 1
 fi
 
@@ -44,8 +44,8 @@ fi
 echo "Using config file: $CONFIG"
 echo "Starting training..."
 
-# Build run.py command
-RUN_CMD="python run.py -c $CONFIG"
+# Build run.py command (run from src directory)
+RUN_CMD="python src/run.py -c $CONFIG"
 
 echo "Executing command: $RUN_CMD"
 
@@ -88,8 +88,8 @@ echo "========================================"
 echo "Starting testing..."
 echo "========================================"
 
-# Build test.py command
-TEST_CMD="python test.py --prefix \"$PREFIX\""
+# Build test.py command (run from src directory)
+TEST_CMD="python src/test.py --prefix \"$PREFIX\""
 
 echo "Executing command: $TEST_CMD"
 
