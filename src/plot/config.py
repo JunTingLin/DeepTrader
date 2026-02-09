@@ -100,18 +100,19 @@ MARKET_CONFIGS = {
     },
     'TW': {
         'name': 'Taiwan',
-        'start_date': "2016-01-01",
-        'end_date': "2025-12-31",
-        'market_file': "./src/data/TWII/market_data/0050.TW.csv",
+        'start_date': "2006-01-01",
+        'end_date': "2015-12-31",
+        'market_file': "./src/data/TWII/market_data/0050_finlab.csv",
         'stock_symbols': TWII_STOCKS,
-        'benchmark_column': '0050.TW',
-        'benchmark_label': 'TWII',
+        'benchmark_column': '0050',
+        'benchmark_label': '0050',
         'title': 'DeepTrader vs. TWII',
         'train_end': 1305,
-        'val_end': 2086,
+        'val_end': 2087,
         'test_end': 2609,
         'experiment_ids': [
-            '0108/012635'
+            # '0205/084659',
+            # '0205/084852'
         ],
         'plot_ylim': None,
         'json_files': {
@@ -176,9 +177,9 @@ if CURRENT_MARKET == 'FAKE':
     STOCK_PRICE_INDEX = 0     # Stock price index in fake data (only 1 feature)
     MARKET_PRICE_INDEX = 0    # Market price index in fake data (only 1 feature)
 else:
-    STOCK_DATA_PATH = 'src/data/TWII/feature5-2016-2025/stocks_data.npy'
-    MARKET_DATA_PATH = 'src/data/TWII/feature5-2016-2025/market_data.npy'
-    GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-2016-2025'  # Ground truth JSON files directory
+    STOCK_DATA_PATH = 'src/data/TWII/feature5-sc29-2006-2015/stocks_data.npy'
+    MARKET_DATA_PATH = 'src/data/TWII/feature5-sc29-2006-2015/market_data.npy'
+    GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-sc29-2006-2015'  # Ground truth JSON files directory
     STOCK_PRICE_INDEX = 3
     MARKET_PRICE_INDEX = 3
 

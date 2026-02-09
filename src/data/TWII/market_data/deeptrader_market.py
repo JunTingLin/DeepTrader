@@ -2,11 +2,11 @@ import pandas as pd
 import numpy as np
 
 # Define date range constants
-START_DATE = '2016-01-01'
-END_DATE = '2025-12-31'
+START_DATE = '2006-01-01'
+END_DATE = '2015-12-31'
 
 # Feature mode: 'basic' for 4 TWII features only, 'full' for all market features
-FEATURE_MODE = 'full'  # Change to 'basic' to use only TWII OHLC
+FEATURE_MODE = 'basic'  # Change to 'basic' to use only TWII OHLC
 
 # Create business day date range
 unique_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
