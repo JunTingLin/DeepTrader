@@ -8,10 +8,14 @@ END_DATE = '2025-03-31'
 # Feature mode: 'close_only' for DJI Close only, 'basic' for 4 DJIA features, 'full' for all market features
 FEATURE_MODE = 'full'  # Options: 'close_only', 'basic', 'full'
 
-# Create business day date range
-unique_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
-unique_dates = unique_dates.to_pydatetime()
+# Get actual trading days from reference ticker (^DJI.csv)
+# This is more accurate than pd.bdate_range which uses generic US business days
+ref_df = pd.read_csv('^DJI.csv', parse_dates=['Date'])
+ref_df = ref_df[(ref_df['Date'] >= START_DATE) & (ref_df['Date'] <= END_DATE)]
+ref_df = ref_df.sort_values('Date')
+unique_dates = ref_df['Date'].dt.to_pydatetime()
 unique_dates = np.array(unique_dates)
+print(f"Using {len(unique_dates)} actual trading days from ^DJI.csv")
 
 file_paths = ['BAMLCC0A4BBBTRIV.csv', 'BAMLCC0A0CMTRIV.csv', 'BAMLCC0A1AAATRIV.csv', 'BAMLHYH0A3CMTRIV.csv', 'DGS10.csv', 'DGS30.csv']
 dfs = [pd.read_csv(file) for file in file_paths]
@@ -24,7 +28,6 @@ merged_df = merged_df.reset_index(drop=True)
 merged_df = merged_df.rename(columns={'observation_date': 'Date'})
 merged_df['Date'] = pd.to_datetime(merged_df['Date'])
 csv_files = ['^DJI.csv', 'xauusd_d.csv', '^VIX.csv', '^GSPC.csv']
-# csv_dfs = [pd.read_csv(file, parse_dates=['Date']) for file in csv_files]
 
 def rename_columns_with_prefix(df, prefix):
     new_cols = {}
@@ -37,7 +40,6 @@ csv_dfs = []
 for file in csv_files:
     # ex: '^DJI.csv' -> 'DJI' as prefix
     prefix = file.replace('.csv', '').replace('^','').replace('_d','')
-    
     tmp_df = pd.read_csv(file, parse_dates=['Date'])
     tmp_df = rename_columns_with_prefix(tmp_df, prefix)
     csv_dfs.append(tmp_df)

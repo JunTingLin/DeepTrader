@@ -5,6 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 import talib
 import multiprocessing as mp
 
+
 def calculate_returns(df):
     df['Returns'] = df['Close'].pct_change()
     return df
@@ -284,23 +285,42 @@ def process_one_stock(args):
     return (i, per_stock_array)
 
 
-def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-31', 
+def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-31',
                        feature_mode='full', output_prefix='./',
-                       download_start_date='2000-01-01', download_end_date='2025-08-31'):
+                       download_start_date='2000-01-01', download_end_date='2025-08-31',
+                       trading_date_reference='^TWII'):
     """
     Process stock data and generate required outputs
-    
+
     Parameters:
     stock_list: list of stock symbols
-    start_date: start date for final data range (business days)
-    end_date: end date for final data range (business days)
+    start_date: start date for final data range (real trading days)
+    end_date: end date for final data range (real trading days)
     feature_mode: 'basic' for OHLCV only, 'full' for all features (auto-determined)
     output_prefix: prefix path for output files
     download_start_date: start date for yfinance download (to ensure enough data for indicators)
     download_end_date: end date for yfinance download
+    trading_date_reference: reference ticker for real trading days (default: ^TWII)
     """
     df_stock = pd.DataFrame()
-    
+
+    # Download reference ticker to get real trading days
+    print(f"Downloading trading dates reference: {trading_date_reference}")
+    ref_data = yf.download(trading_date_reference, start=download_start_date, end=download_end_date, auto_adjust=False, progress=False)
+    if ref_data.empty:
+        raise ValueError(f"Cannot download reference ticker {trading_date_reference} for trading dates")
+    ref_data.reset_index(inplace=True)
+    ref_data.columns = ref_data.columns.droplevel(level=1)
+    all_trading_dates = set(ref_data['Date'].dt.date)
+
+    # Filter to the specified date range
+    start_dt = pd.to_datetime(start_date).date()
+    end_dt = pd.to_datetime(end_date).date()
+    filtered_dates = sorted([d for d in all_trading_dates if start_dt <= d <= end_dt])
+    unique_dates = np.array([pd.Timestamp(d) for d in filtered_dates])
+    print(f"Using {len(unique_dates)} real trading days from {trading_date_reference}")
+    print(f"Date range: {filtered_dates[0]} to {filtered_dates[-1]}")
+
     # Download data for each stock
     for ticker in stock_list:
         print(f"Downloading: {ticker}")
@@ -309,7 +329,7 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
             if stock_data.empty:
                 print(f"  Skipping: {ticker} - no data available in the specified period")
                 continue
-            
+
             # Print first available date for this stock
             first_date = stock_data.index[0].strftime('%Y-%m-%d')
             print(f"  First available date: {first_date}")
@@ -317,6 +337,18 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
             # Reset index so 'Date' becomes a normal column
             stock_data.reset_index(inplace=True)
             stock_data.columns = stock_data.columns.droplevel(level=1)
+
+            # Calculate adjusted OHLC using adjustment factor from Adj Close / Close
+            # This accounts for dividends and stock splits
+            adj_factor = stock_data['Adj Close'] / stock_data['Close']
+            stock_data['Open'] = stock_data['Open'] * adj_factor
+            stock_data['High'] = stock_data['High'] * adj_factor
+            stock_data['Low'] = stock_data['Low'] * adj_factor
+            stock_data['Close'] = stock_data['Adj Close']  # Use Adj Close as Close
+
+            # Drop Adj Close column as it's no longer needed
+            stock_data = stock_data.drop(columns=['Adj Close'])
+
             stock_data['Ticker'] = ticker
             print(f"Downloaded {ticker}")
             df_stock = pd.concat([df_stock, stock_data], ignore_index=True)
@@ -328,11 +360,6 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
     # Process dates and sort data
     df_stock['Date'] = pd.to_datetime(df_stock['Date'])
     df_stock = df_stock.sort_values(by=['Ticker', 'Date'])
-
-    # Create business date range for final output
-    unique_dates = pd.bdate_range(start=start_date, end=end_date)
-    unique_dates = unique_dates.to_pydatetime()
-    unique_dates = np.array(unique_dates)
     
     # alpha list
     alphas = ['Alpha001', 'Alpha002', 'Alpha003', 'Alpha004', 'Alpha006', 'Alpha012', 'Alpha019',
@@ -385,11 +412,17 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
     output_file = output_prefix + 'stocks_data.npy'
     np.save(output_file, reshaped_data)
 
+    # Save trading dates for downstream use (plotting, index calculation, etc.)
+    trading_dates_file = output_prefix + 'trading_dates.npy'
+    np.save(trading_dates_file, unique_dates)
+    print(f"Saved trading dates to {trading_dates_file}")
+
     # Calculate returns
     returns = np.zeros((num_stocks, num_days))
     for i in range(1, num_days):
-        # Inter-day return: (today_close - yesterday_close) / yesterday_close
-        returns[:, i] = (reshaped_data[:, i, 3] - reshaped_data[:, i - 1, 3]) / reshaped_data[:, i - 1, 3]
+        # Inter-day return: (today_open - yesterday_open) / yesterday_open
+        returns[:, i] = (reshaped_data[:, i, 0] - reshaped_data[:, i - 1, 0]) / reshaped_data[:, i - 1, 0]
+        # returns[:, i] = (reshaped_data[:, i, 3] - reshaped_data[:, i - 1, 3]) / reshaped_data[:, i - 1, 3]
     # Alternative intraday return calculation:
     # for i in range(1, num_days):
     #     returns[:, i] = (reshaped_data[:, i, 3] / reshaped_data[:, i, 0]) - 1

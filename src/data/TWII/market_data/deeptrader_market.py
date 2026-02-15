@@ -2,16 +2,21 @@ import pandas as pd
 import numpy as np
 
 # Define date range constants
-START_DATE = '2006-01-01'
-END_DATE = '2015-12-31'
+START_DATE = '2016-01-01'
+END_DATE = '2025-12-31'
 
 # Feature mode: 'basic' for 4 TWII features only, 'full' for all market features
 FEATURE_MODE = 'basic'  # Change to 'basic' to use only TWII OHLC
 
-# Create business day date range
-unique_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
-unique_dates = unique_dates.to_pydatetime()
+# Get actual trading days from reference ticker (^TWII.csv)
+# This is more accurate than pd.bdate_range which uses US business days
+ref_df = pd.read_csv('^TWII.csv', parse_dates=['Date'])
+ref_df['Date'] = ref_df['Date'].dt.tz_localize(None)
+ref_df = ref_df[(ref_df['Date'] >= START_DATE) & (ref_df['Date'] <= END_DATE)]
+ref_df = ref_df.sort_values('Date')
+unique_dates = ref_df['Date'].dt.to_pydatetime()
 unique_dates = np.array(unique_dates)
+print(f"Using {len(unique_dates)} actual trading days from ^TWII.csv")
 
 # Function to process bond data files
 def process_bond_file(file_path):
@@ -147,7 +152,7 @@ merged_df.sort_values(by='Date', inplace=True)
 merged_df = merged_df[(merged_df['Date'] >= START_DATE) & (merged_df['Date'] <= END_DATE)]
 merged_df = merged_df.reset_index(drop=True)
 
-# Reindex to ensure all business days are included
+# Reindex to ensure all trading days are included
 unique_dates_pd = pd.to_datetime(unique_dates)
 merged_df.set_index('Date', inplace=True)
 merged_df = merged_df.reindex(unique_dates_pd)

@@ -45,23 +45,33 @@ def load_agent_wealth():
     
     return agent_wealth
 
-def get_business_day_segments():
+def get_business_day_segments(trading_dates_file=None):
     """
-    Generate full business day date range from START_DATE to END_DATE,
-    and split into training, validation, and testing segments based on market config.
+    Load real trading days from file and split into training, validation, and testing segments.
+
+    Args:
+        trading_dates_file: Path to trading_dates.npy file. If None, will load from GROUND_TRUTH_PREFIX.
     """
-    full_days = pd.bdate_range(start=START_DATE, end=END_DATE)
+    from config import GROUND_TRUTH_PREFIX
+
+    if trading_dates_file is None:
+        trading_dates_file = os.path.join(GROUND_TRUTH_PREFIX, 'trading_dates.npy')
+
+    if not os.path.exists(trading_dates_file):
+        raise FileNotFoundError(f"Trading dates file not found: {trading_dates_file}")
+
+    full_days = pd.DatetimeIndex(np.load(trading_dates_file, allow_pickle=True))
     total_days = len(full_days)
-    print(f"Total business days: {total_days}")
-    
+    print(f"Total trading days: {total_days} (from {trading_dates_file})")
+
     train_days = full_days[0:config['train_end']]
     val_days = full_days[config['train_end']:config['val_end']]
     test_days = full_days[config['val_end']:config['test_end']]
-    
+
     print(f"Training days: {len(train_days)}")
     print(f"Validation days: {len(val_days)}")
     print(f"Test days: {len(test_days)}")
-    
+
     return full_days, train_days, val_days, test_days
 
 def get_market_data(full_days, file_path=None):

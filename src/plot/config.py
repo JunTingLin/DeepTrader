@@ -73,16 +73,16 @@ FAKE_STOCKS = [
 MARKET_CONFIGS = {
     'US': {
         'name': 'US',
-        'start_date': "2015-01-01",
-        'end_date': "2025-03-31",
-        'market_file': "./src/data/DJIA/market_data/^DJI.csv",
+        'start_date': "2016-01-01",
+        'end_date': "2025-12-31",
+        'market_file': "./src/data/DJIA/market_data/DIA.csv",  # DIA ETF (tracks DJIA)
         'stock_symbols': DJIA_STOCKS,
-        'benchmark_column': 'DowJones',
-        'benchmark_label': 'DJIA',
-        'title': 'DeepTrader vs. DJIA',
-        'train_end': 1304,
-        'val_end': 2087,
-        'test_end': 2673,
+        'benchmark_column': 'DIA',
+        'benchmark_label': 'DIA',
+        'title': 'DeepTrader vs. DIA',
+        'train_end': 1258,
+        'val_end': 2013,
+        'test_end': 2516,
         'experiment_ids': [
             # '1231/013419',
             # '0101/023300',
@@ -90,7 +90,7 @@ MARKET_CONFIGS = {
             'random/01',
             'random/24',
             'random/42',
-            # 'asu_supervised_20260102_212119' 
+            # 'asu_supervised_20260102_212119'
         ],
         'plot_ylim': None,
         'json_files': {
@@ -100,19 +100,18 @@ MARKET_CONFIGS = {
     },
     'TW': {
         'name': 'Taiwan',
-        'start_date': "2006-01-01",
-        'end_date': "2015-12-31",
-        'market_file': "./src/data/TWII/market_data/0050_finlab.csv",
+        'start_date': "2016-01-01",
+        'end_date': "2025-12-31",
+        'market_file': "./src/data/TWII/market_data/0050.TW.csv",  # 0050 ETF
         'stock_symbols': TWII_STOCKS,
         'benchmark_column': '0050',
         'benchmark_label': '0050',
-        'title': 'DeepTrader vs. TWII',
-        'train_end': 1305,
-        'val_end': 2087,
-        'test_end': 2609,
+        'title': 'DeepTrader vs. 0050',
+        'train_end': 1216,
+        'val_end': 1944,
+        'test_end': 2429,
         'experiment_ids': [
-            # '0205/084659',
-            # '0205/084852'
+            '0215/014900',
         ],
         'plot_ylim': None,
         'json_files': {
@@ -176,11 +175,17 @@ if CURRENT_MARKET == 'FAKE':
     GROUND_TRUTH_PREFIX = './src/data/fake'
     STOCK_PRICE_INDEX = 0     # Stock price index in fake data (only 1 feature)
     MARKET_PRICE_INDEX = 0    # Market price index in fake data (only 1 feature)
-else:
-    STOCK_DATA_PATH = 'src/data/TWII/feature5-sc29-2006-2015/stocks_data.npy'
-    MARKET_DATA_PATH = 'src/data/TWII/feature5-sc29-2006-2015/market_data.npy'
-    GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-sc29-2006-2015'  # Ground truth JSON files directory
-    STOCK_PRICE_INDEX = 3
+elif CURRENT_MARKET == 'US':
+    STOCK_DATA_PATH = 'src/data/DJIA/stocks_data.npy'
+    MARKET_DATA_PATH = 'src/data/DJIA/market_data.npy'
+    GROUND_TRUTH_PREFIX = 'src/data/DJIA'
+    STOCK_PRICE_INDEX = 3     # Close price index (OHLCV: 0,1,2,3,4)
+    MARKET_PRICE_INDEX = 3
+else:  # TW
+    STOCK_DATA_PATH = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td/stocks_data.npy'
+    MARKET_DATA_PATH = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td/market_data.npy'
+    GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td'
+    STOCK_PRICE_INDEX = 3     # Close price index (OHLCV: 0,1,2,3,4)
     MARKET_PRICE_INDEX = 3
 
 # -------------------------------

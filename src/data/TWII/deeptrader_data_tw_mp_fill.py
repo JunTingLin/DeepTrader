@@ -54,14 +54,14 @@ TWII_STOCKS = [
 if __name__ == '__main__':
     # Choose feature mode: 'basic' for OHLCV (5 features) or 'full' for all features (34 features)
     FEATURE_MODE = 'basic'  # Change to 'basic' if you only want OHLCV features
-    
     # Process TWII stocks
     unique_stock_ids, reshaped_data = process_stocks_data(
         stock_list=TWII_STOCKS,
-        start_date='2006-01-01',      # Final data range start
-        end_date='2015-12-31',         # Final data range end
+        start_date='2016-01-01',       # Final data range start
+        end_date='2025-12-31',         # Final data range end
         feature_mode=FEATURE_MODE,     # Automatically determines feature count
         output_prefix='./',
-        download_start_date='2000-01-01',  # Download more data for technical indicators
-        download_end_date='2015-12-31'     # Same as final end date
+        download_start_date='2010-01-01',  # Download more data for technical indicators
+        download_end_date='2026-01-01',    # Same as final end date
+        trading_date_reference='^TWII'     # Use TWII index for Taiwan trading days
     )
