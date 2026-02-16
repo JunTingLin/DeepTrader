@@ -122,3 +122,11 @@ outputs_*
 
 plot_outputs
 checkpoints
+
+TWStock
+feature*
+
+reverse_market_data.py
+verify_reversal.py
+
+summaries*
