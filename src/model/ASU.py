@@ -1,8 +1,10 @@
 import math
 from model.TE import TE
+from model.news_encoder import NewsIntegrationModule
 
 import torch
 import torch.nn as nn
+from typing import Optional
 
 
 class nconv(nn.Module):
@@ -269,7 +271,9 @@ class ASU(nn.Module):
     def __init__(self, num_nodes, in_features, hidden_dim, window_len,
                  dropout=0.3, kernel_size=2, layers=4, supports=None,
                  spatial_bool=True, addaptiveadj=True, aptinit=None,
-                 transformer_asu_bool=True, num_assets=30):
+                 transformer_asu_bool=True, num_assets=30,
+                 news_embedding_bool=False, fusion_method='concat',
+                 news_embedding_dim=768, news_aggregation='mean'):
         super(ASU, self).__init__()
         self.sagcn = SAGCN(num_nodes, in_features, hidden_dim, window_len, dropout, kernel_size, layers,
                            supports, spatial_bool, addaptiveadj, aptinit, transformer_asu_bool, num_assets)
@@ -283,14 +287,33 @@ class ASU(nn.Module):
         self.transformer_asu_bool = transformer_asu_bool
         self.num_assets = num_assets
 
-    def forward(self, inputs, mask):
+        # News embedding fusion (Path B)
+        self.news_embedding_bool = news_embedding_bool
+        if news_embedding_bool:
+            self.news_integration = NewsIntegrationModule(
+                embedding_dim=news_embedding_dim,
+                hidden_dim=hidden_dim,
+                window_len=window_len,
+                fusion_method=fusion_method,
+                dropout=dropout,
+                aggregation=news_aggregation
+            )
+            print(f"ASU: News embedding fusion enabled (method={fusion_method})")
+
+    def forward(self, inputs, mask, news_embeddings: Optional[torch.Tensor] = None):
         """
         inputs: [batch, num_stock, window_len, num_features]
         mask: [batch, num_stock]
+        news_embeddings: [batch, num_stock, window_len, embedding_dim] (optional)
         outputs: [batch, scores]
         """
 
-        x = self.bn1(self.sagcn(inputs))
+        x = self.bn1(self.sagcn(inputs))  # [batch, num_stock, hidden_dim]
+
+        # Fuse with news embeddings if enabled
+        if self.news_embedding_bool and news_embeddings is not None:
+            x = self.news_integration(x, news_embeddings)  # [batch, num_stock, hidden_dim]
+
         x = self.linear1(x).squeeze(-1)
         score = 1 / ((-x).exp() + 1)
         score[mask] = -math.inf

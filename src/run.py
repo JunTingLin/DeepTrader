@@ -127,6 +127,10 @@ def run(func_args):
     logger.addHandler(chlr)
     logger.addHandler(fhlr)
 
+    # Initialize news embeddings variable
+    news_embeddings = None
+    news_embedding_bool = getattr(func_args, 'news_embedding_bool', False)
+
     if func_args.market == 'DJIA':
         logger.info('using DJIA data')
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
@@ -140,6 +144,18 @@ def run(func_args):
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end
         allow_short = getattr(func_args, 'allow_short', True)
+
+        # Load news embeddings (Path B) if enabled
+        if news_embedding_bool:
+            sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/DJIA/sentiment/')
+            news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+            if os.path.exists(news_embeddings_file):
+                news_embeddings = np.load(news_embeddings_file)
+                logger.info(f'Loaded news embeddings: {news_embeddings.shape}')
+            else:
+                logger.warning(f'News embeddings file not found: {news_embeddings_file}')
+                logger.warning('Disabling news_embedding_bool')
+                news_embedding_bool = False
     elif func_args.market == 'TWII':
         logger.info('using TWII data')
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
@@ -153,6 +169,22 @@ def run(func_args):
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end
         allow_short = getattr(func_args, 'allow_short', True)
+
+        # Load news embeddings (Path B) if enabled
+        news_embedding_bool = getattr(func_args, 'news_embedding_bool', False)
+        if news_embedding_bool:
+            sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/TWII/sentiment/')
+            news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+            if os.path.exists(news_embeddings_file):
+                news_embeddings = np.load(news_embeddings_file)
+                logger.info(f'Loaded news embeddings: {news_embeddings.shape}')
+            else:
+                logger.warning(f'News embeddings file not found: {news_embeddings_file}')
+                logger.warning('Disabling news_embedding_bool')
+                news_embedding_bool = False
+                news_embeddings = None
+        else:
+            news_embeddings = None
     elif func_args.market == 'HSI':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load(data_prefix + 'ror.npy')
@@ -185,7 +217,9 @@ def run(func_args):
         max_steps=func_args.max_steps,
         norm_type=func_args.norm_type,
         allow_short=allow_short,
-        logger=logger
+        logger=logger,
+        news_embeddings=news_embeddings,
+        news_embedding_bool=news_embedding_bool
         )
 
     supports = [A]

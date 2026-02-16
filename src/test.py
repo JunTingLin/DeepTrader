@@ -22,6 +22,10 @@ def test(func_args):
     matrix_path = data_prefix + func_args.relation_file
 
 
+    # Initialize news embeddings variable
+    news_embeddings = None
+    news_embedding_bool = getattr(func_args, 'news_embedding_bool', False)
+
     if func_args.market == 'DJIA':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load( data_prefix + 'ror.npy')
@@ -34,6 +38,17 @@ def test(func_args):
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end
         allow_short = getattr(func_args, 'allow_short', True)
+
+        # Load news embeddings (Path B) if enabled
+        if news_embedding_bool:
+            sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/DJIA/sentiment/')
+            news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+            if os.path.exists(news_embeddings_file):
+                news_embeddings = np.load(news_embeddings_file)
+                print(f'Loaded news embeddings: {news_embeddings.shape}')
+            else:
+                print(f'Warning: News embeddings file not found: {news_embeddings_file}')
+                news_embedding_bool = False
     elif func_args.market == 'TWII':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load( data_prefix + 'ror.npy')
@@ -46,6 +61,17 @@ def test(func_args):
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end
         allow_short = getattr(func_args, 'allow_short', True)
+
+        # Load news embeddings (Path B) if enabled
+        if news_embedding_bool:
+            sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/TWII/sentiment/')
+            news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+            if os.path.exists(news_embeddings_file):
+                news_embeddings = np.load(news_embeddings_file)
+                print(f'Loaded news embeddings: {news_embeddings.shape}')
+            else:
+                print(f'Warning: News embeddings file not found: {news_embeddings_file}')
+                news_embedding_bool = False
     elif func_args.market == 'HSI':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load(data_prefix + 'ror.npy')
@@ -65,7 +91,7 @@ def test(func_args):
 
     env = PortfolioEnv(
         assets_data=stocks_data,
-        market_data=market_history, 
+        market_data=market_history,
         rtns_data=rate_of_return,
         in_features=func_args.in_features,
         train_idx=train_idx,
@@ -79,7 +105,9 @@ def test(func_args):
         max_steps=func_args.max_steps,
         norm_type=func_args.norm_type,
         allow_short=allow_short,
-        logger=None
+        logger=None,
+        news_embeddings=news_embeddings,
+        news_embedding_bool=news_embedding_bool
         )
     
     PREFIX = func_args.prefix

@@ -28,7 +28,9 @@ class DataGenerator():
                  window_len=20,
                  trade_len=7,
                  allow_short=True,
-                 logger=None
+                 logger=None,
+                 news_embeddings=None,
+                 news_embedding_bool=False
                  ):
 
         self.assets_features = in_features[0]
@@ -47,6 +49,16 @@ class DataGenerator():
         self.trade_len = trade_len
         self.allow_short = allow_short
         self.logger = logger
+
+        # News embedding support (Path B)
+        self.news_embedding_bool = news_embedding_bool
+        self.__news_embeddings = news_embeddings  # shape: (num_stocks, num_days, embedding_dim)
+        if news_embedding_bool and news_embeddings is not None:
+            self.embedding_dim = news_embeddings.shape[2]
+            if logger is not None:
+                logger.info(f"News embeddings loaded: shape {news_embeddings.shape}")
+        else:
+            self.embedding_dim = 0
 
         self.__org_assets_data = assets_data.copy()[:, :, :in_features[0]]
         self.__ror_data = rtns_data
@@ -79,8 +91,8 @@ class DataGenerator():
             # if self.cursor + self.trade_len >= self.__assets_data.shape[1] - 1:
             # 修改此處：使用 test_idx_end 作為測試區間的結束判斷
             if self.cursor + self.trade_len >= self.test_idx_end:
-                return None, None, None, None, None, None, None, True
-        obs, market_obs, future_return, past_return = self._get_data()
+                return None, None, None, None, None, None, None, None, True
+        obs, market_obs, future_return, past_return, news_obs = self._get_data()
         obs_masks, future_return_masks = self._get_masks(obs, future_return)
         trade_masks = np.logical_or(obs_masks, future_return_masks)
         obs = self._fillna(obs, obs_masks)
@@ -115,7 +127,11 @@ class DataGenerator():
         future_ror = future_ror.astype(np.float32)
         future_p = future_p.astype(np.float32)
 
-        return obs, obs_normed, market_obs, market_obs_normed, future_ror, future_p, trade_masks, done
+        # News embeddings
+        if news_obs is not None:
+            news_obs = news_obs.astype(np.float32)
+
+        return obs, obs_normed, market_obs, market_obs_normed, future_ror, future_p, trade_masks, news_obs, done
 
     def reset(self, start_point=None):
         """
@@ -135,7 +151,7 @@ class DataGenerator():
             self.cursor = self.tmp_order[:min(self.batch_size, len(self.tmp_order))]
             self.tmp_order = self.tmp_order[min(self.batch_size, len(self.tmp_order)):]
 
-        obs, market_obs, future_return, past_return = self._get_data()
+        obs, market_obs, future_return, past_return, news_obs = self._get_data()
         obs_masks, future_return_masks = self._get_masks(obs, future_return)
         trade_masks = np.logical_or(obs_masks, future_return_masks)
         obs = self._fillna(obs, obs_masks)
@@ -167,7 +183,11 @@ class DataGenerator():
             market_obs_normed = market_obs_normed.astype(np.float32)
         future_ror = future_ror.astype(np.float32)
 
-        return obs, obs_normed, market_obs, market_obs_normed, future_ror, trade_masks, done
+        # News embeddings
+        if news_obs is not None:
+            news_obs = news_obs.astype(np.float32)
+
+        return obs, obs_normed, market_obs, market_obs_normed, future_ror, trade_masks, news_obs, done
 
     def _get_data(self):
 
@@ -178,25 +198,45 @@ class DataGenerator():
             market_states = np.zeros((len(self.cursor), self.window_len, self.market_features))
         else:
             market_states = None
+
+        # News embeddings (Path B)
+        if self.news_embedding_bool and self.__news_embeddings is not None:
+            news_states = np.zeros((len(self.cursor), self.__assets_data.shape[0], self.window_len, self.embedding_dim))
+        else:
+            news_states = None
+
         future_return = np.zeros((len(self.cursor), self.__assets_data.shape[0], self.trade_len))
         past_return = np.zeros((len(self.cursor), self.__assets_data.shape[0], self.window_len))
         for i, idx in enumerate(self.cursor):
             raw_states[i] = self.__assets_data[:, idx - (self.window_len + 1) * 5 + 1:idx + 1].copy()
             # raw_states shape = (37, 30, 70, 34)
             tmp_states = raw_states.reshape(raw_states.shape[0], raw_states.shape[1], self.window_len + 1, 5, -1)
-            
+
             # 直接使用原始特徵，取每個窗口的最後一個子時間點
             for feature_idx in range(self.assets_features):
                 assets_states[i, :, :, feature_idx] = tmp_states[i, :, 1:, -1, feature_idx]
                 # = tmp_states[樣本i, 所有股票, 後13週, 每週最後一天, 特徵feature_idx]
-                
+
             if self.allow_short:
                 tmp_states = self.__market_data[idx - (self.window_len) * 5 + 1:idx + 1].reshape(self.window_len, 5, -1)
                 market_states[i] = np.mean(tmp_states, axis=1)
+
+            # Extract news embeddings for the window (same weekly aggregation as assets)
+            if self.news_embedding_bool and self.__news_embeddings is not None:
+                # news_embeddings shape: (num_stocks, num_days, embedding_dim)
+                # Extract daily embeddings and aggregate to weekly (mean of each week)
+                raw_news = self.__news_embeddings[:, idx - (self.window_len + 1) * 5 + 1:idx + 1, :]
+                # raw_news shape: (num_stocks, (window_len+1)*5, embedding_dim)
+                tmp_news = raw_news.reshape(raw_news.shape[0], self.window_len + 1, 5, -1)
+                # tmp_news shape: (num_stocks, window_len+1, 5, embedding_dim)
+                # Take mean of each week, skip first week (like assets)
+                news_states[i] = np.mean(tmp_news[:, 1:, :, :], axis=2)
+                # news_states[i] shape: (num_stocks, window_len, embedding_dim)
+
             future_return[i] = self.__ror_data[:, idx + 1:min(idx + 1 + self.trade_len, self.__ror_data.shape[-1])]
             past_return[i] = self.__ror_data[:, idx - self.window_len + 1:idx + 1]
 
-        return assets_states, market_states, future_return, past_return
+        return assets_states, market_states, future_return, past_return, news_states
 
     def _fillna(self, obs, masks):
         """
@@ -460,7 +500,9 @@ class PortfolioEnv(object):
                  is_norm=True,
                  allow_short=True,
                  assets_name=None,
-                 logger=None
+                 logger=None,
+                 news_embeddings=None,
+                 news_embedding_bool=False
                  ):
 
         self.window_len = window_len
@@ -475,13 +517,15 @@ class PortfolioEnv(object):
         self.test_idx_end = test_idx_end
         self.allow_short = allow_short
         self.logger = logger
+        self.news_embedding_bool = news_embedding_bool
 
         self.src = DataGenerator(assets_data=assets_data, rtns_data=rtns_data, market_data=market_data,
                                  in_features=in_features, train_idx=train_idx, train_idx_end=train_idx_end,
                                  val_idx=val_idx, test_idx=test_idx, test_idx_end=test_idx_end,
                                  batch_size=batch_size, max_steps=max_steps, norm_type=norm_type,
                                  window_len=window_len, trade_len=trade_len, allow_short=allow_short,
-                                 logger=logger)
+                                 logger=logger, news_embeddings=news_embeddings,
+                                 news_embedding_bool=news_embedding_bool)
 
         self.sim = PortfolioSim(num_assets=self.num_assets, fee=fee, time_cost=time_cost, allow_short=allow_short)
 
@@ -490,7 +534,7 @@ class PortfolioEnv(object):
         if simulation:
             raise NotImplementedError
         else:
-            obs, obs_normed, market_obs, market_obs_normed, future_ror, future_p, trade_masks, done1 = self.src._step()
+            obs, obs_normed, market_obs, market_obs_normed, future_ror, future_p, trade_masks, news_obs, done1 = self.src._step()
 
         ror = self.ror
 
@@ -498,19 +542,19 @@ class PortfolioEnv(object):
 
         self.ror = future_ror
         if self.is_norm:
-            return [obs_normed, market_obs_normed], rewards, future_p, trade_masks, done1 or done2.any(), info
+            return [obs_normed, market_obs_normed, news_obs], rewards, future_p, trade_masks, done1 or done2.any(), info
         else:
-            return [obs, market_obs], rewards, future_p, trade_masks, done1 or done2.any(), info
+            return [obs, market_obs, news_obs], rewards, future_p, trade_masks, done1 or done2.any(), info
 
     def reset(self):
         self.infos = []
-        obs, obs_normed, market_obs, market_obs_normed, future_ror, trade_masks, done = self.src.reset()
+        obs, obs_normed, market_obs, market_obs_normed, future_ror, trade_masks, news_obs, done = self.src.reset()
         self.sim.reset(obs.shape[0])
         self.ror = future_ror
         if self.is_norm:
-            return [obs_normed, market_obs_normed], trade_masks
+            return [obs_normed, market_obs_normed, news_obs], trade_masks
         else:
-            return [obs, market_obs], trade_masks
+            return [obs, market_obs, news_obs], trade_masks
 
     def set_eval(self):
         self.src.eval()

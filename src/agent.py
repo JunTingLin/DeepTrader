@@ -16,6 +16,13 @@ EPS = 1e-20
 class RLActor(nn.Module):
     def __init__(self, supports, args):
         super(RLActor, self).__init__()
+
+        # News embedding settings
+        news_embedding_bool = getattr(args, 'news_embedding_bool', False)
+        fusion_method = getattr(args, 'fusion_method', 'concat')
+        news_embedding_dim = getattr(args, 'news_embedding_dim', 768)
+        news_aggregation = getattr(args, 'news_aggregation', 'mean')
+
         self.asu = ASU(num_nodes=args.num_assets,
                        in_features=args.in_features[0],
                        hidden_dim=args.hidden_dim,
@@ -27,8 +34,15 @@ class RLActor(nn.Module):
                        spatial_bool=args.spatial_bool,
                        addaptiveadj=args.addaptiveadj,
                        num_assets=args.num_assets,
-                       transformer_asu_bool=args.transformer_asu_bool)
+                       transformer_asu_bool=args.transformer_asu_bool,
+                       news_embedding_bool=news_embedding_bool,
+                       fusion_method=fusion_method,
+                       news_embedding_dim=news_embedding_dim,
+                       news_aggregation=news_aggregation)
+
+        self.news_embedding_bool = news_embedding_bool
         print("msu_bool: ", args.msu_bool)
+        print("news_embedding_bool: ", news_embedding_bool)
         if args.msu_bool:
             self.msu = MSU(in_features=args.in_features[1],
                            window_len=args.window_len,
@@ -37,8 +51,8 @@ class RLActor(nn.Module):
                            temporal_attention_bool=args.temporal_attention_bool)
         self.args = args
 
-    def forward(self, x_a, x_m, masks=None, deterministic=False, logger=None, y=None):
-        scores = self.asu(x_a, masks)
+    def forward(self, x_a, x_m, masks=None, deterministic=False, logger=None, y=None, news_embeddings=None):
+        scores = self.asu(x_a, masks, news_embeddings=news_embeddings)
         if self.args.msu_bool:
             res = self.msu(x_m)
             # res: (batch_size, 2)
@@ -170,8 +184,14 @@ class RLAgent():
                 x_m = torch.from_numpy(states[1]).to(self.args.device)
             else:
                 x_m = None
+
+            # News embeddings (Path B)
+            news_embeddings = None
+            if self.actor.news_embedding_bool and len(states) > 2 and states[2] is not None:
+                news_embeddings = torch.from_numpy(states[2]).to(self.args.device)
+
             weights, rho, scores_p, log_p_rho, portfolio_info, param1, param2 \
-                = self.actor(x_a, x_m, masks, deterministic=False)
+                = self.actor(x_a, x_m, masks, deterministic=False, news_embeddings=news_embeddings)
 
             ror = torch.from_numpy(self.env.ror).to(self.args.device)
             # normed_ror = (ror - torch.mean(ror, dim=-1, keepdim=True)) / \
@@ -264,18 +284,23 @@ class RLAgent():
             else:
                 x_m = None
 
+            # News embeddings (Path B)
+            news_embeddings = None
+            if self.actor.news_embedding_bool and len(states) > 2 and states[2] is not None:
+                news_embeddings = torch.from_numpy(states[2]).to(self.args.device)
+
             weights, rho, _, _, portfolio_info, param1, param2 \
-                = self.actor(x_a, x_m, masks, deterministic=True)
+                = self.actor(x_a, x_m, masks, deterministic=True, news_embeddings=news_embeddings)
 
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
-            
+
             if self.args.msu_bool and param1 is not None and param2 is not None:
                 param1_record.append(np.mean(param1.detach().cpu().numpy()))
                 param2_record.append(np.mean(param2.detach().cpu().numpy()))
             else:
                 param1_record.append(None)
                 param2_record.append(None)
-                
+
             # Store portfolio info first (before step)
             portfolio_records.append(portfolio_info)
 
@@ -291,7 +316,6 @@ class RLAgent():
                 break
 
         return agent_wealth, rho_record, param1_record, param2_record, portfolio_records
-    
 
     def test(self, logger=None):
         self.__set_test()
@@ -319,18 +343,23 @@ class RLAgent():
             else:
                 x_m = None
 
+            # News embeddings (Path B)
+            news_embeddings = None
+            if self.actor.news_embedding_bool and len(states) > 2 and states[2] is not None:
+                news_embeddings = torch.from_numpy(states[2]).to(self.args.device)
+
             weights, rho, _, _, portfolio_info, param1, param2 \
-                = self.actor(x_a, x_m, masks, deterministic=True)
+                = self.actor(x_a, x_m, masks, deterministic=True, news_embeddings=news_embeddings)
 
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
-            
+
             if self.args.msu_bool and param1 is not None and param2 is not None:
                 param1_record.append(np.mean(param1.detach().cpu().numpy()))
                 param2_record.append(np.mean(param2.detach().cpu().numpy()))
             else:
                 param1_record.append(None)
                 param2_record.append(None)
-                
+
             # Store portfolio info first (before step)
             portfolio_records.append(portfolio_info)
 

@@ -22,7 +22,7 @@
     "theta": 0.15,
     "sigma": 0.5,
     "in_features": [
-        5,
+        6,
         4
     ],
     "num_assets": 29,
@@ -35,7 +35,7 @@
     "epochs": 1500,
     "start_checkpoint_epoch": 1200,
     "market": "TWII",
-    "data_prefix": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td/",
+    "data_prefix": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed/",
     "device": "cuda",
     "relation_file": "industry_classification.npy",
     "trade_len": 21,
@@ -50,5 +50,12 @@
     "allow_short": true,
     "msu_bool": false,
     "msu_distribution_type": "normal",
-    "pretrained_msu_path": null
+    "pretrained_msu_path": null,
+
+    "news_embedding_bool": true,
+    "fusion_method": "concat",
+    "sentiment_data_path": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed/",
+    "finbert_model": "yiyanghkust/finbert-tone-chinese",
+    "news_embedding_dim": 768,
+    "news_aggregation": "mean"
 }
