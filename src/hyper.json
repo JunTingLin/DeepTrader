@@ -55,7 +55,6 @@
     "news_embedding_bool": true,
     "fusion_method": "concat",
     "sentiment_data_path": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed/",
-    "finbert_model": "yiyanghkust/finbert-tone-chinese",
     "news_embedding_dim": 768,
     "news_aggregation": "mean"
 }
