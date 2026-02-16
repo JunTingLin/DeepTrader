@@ -20,8 +20,18 @@ DJIA_STOCKS = [
 ]
 
 if __name__ == '__main__':
-    # Choose feature mode: 'basic' for OHLCV (5 features) or 'full' for all features (34 features)
-    FEATURE_MODE = 'full'  # Change to 'basic' if you only want OHLCV features
+    # Choose feature mode:
+    # - 'basic': OHLCV (5 features)
+    # - 'basic_sentiment': OHLCV + Sentiment (6 features)
+    # - 'full': all features (34 features)
+    FEATURE_MODE = 'full'
+
+    # Trading dates from local CSV (ensures consistency with generate_sentiment.py)
+    TRADING_DATES_CSV = './market_data/^DJI.csv'
+
+    # Sentiment file (required for basic_sentiment mode)
+    # Run generate_sentiment.py first to create this file
+    PRECOMPUTED_SENTIMENT_FILE = './sentiment_scores.npy'
 
     # Process DJIA stocks
     unique_stock_ids, reshaped_data = process_stocks_data(
@@ -31,6 +41,7 @@ if __name__ == '__main__':
         feature_mode=FEATURE_MODE,     # Automatically determines feature count
         output_prefix='./',
         download_start_date='2010-01-01',  # Download more data for technical indicators
-        download_end_date='2025-12-31',    # Same as final end date
-        trading_date_reference='^DJI'      # Use DJIA index for US trading days
+        download_end_date='2026-01-01',    # yfinance end_date is exclusive
+        trading_dates_csv=TRADING_DATES_CSV,  # Use local CSV for trading dates
+        precomputed_sentiment_file=PRECOMPUTED_SENTIMENT_FILE if FEATURE_MODE == 'basic_sentiment' else None
     )

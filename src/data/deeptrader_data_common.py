@@ -4,6 +4,76 @@ import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 import talib
 import multiprocessing as mp
+import os
+import json
+from typing import Optional, Dict, Tuple
+
+# Global variable for FinBERT processor (loaded once per process)
+_sentiment_processor = None
+
+
+def get_sentiment_processor(model_name: str = "yiyanghkust/finbert-tone-chinese"):
+    """Get or initialize the FinBERT sentiment processor (singleton per process)."""
+    global _sentiment_processor
+    if _sentiment_processor is None:
+        from process_sentiment_common import FinBERTSentimentProcessor
+        _sentiment_processor = FinBERTSentimentProcessor(model_name=model_name)
+    return _sentiment_processor
+
+
+def load_sentiment_for_stock(
+    stock_id: str,
+    trading_dates: np.ndarray,
+    summaries_dir: str,
+    finbert_model: str = "yiyanghkust/finbert-tone-chinese"
+) -> np.ndarray:
+    """
+    Load and process sentiment scores for a single stock.
+
+    Args:
+        stock_id: Stock ticker (e.g., '1216' for Taiwan, 'AAPL' for US)
+        trading_dates: Array of trading dates
+        summaries_dir: Path to summaries directory (e.g., 'summaries_v2')
+        finbert_model: FinBERT model name
+
+    Returns:
+        sentiment_scores: numpy array of shape (num_days,) with values -1, 0, 1
+    """
+    processor = get_sentiment_processor(finbert_model)
+    num_days = len(trading_dates)
+    sentiment_scores = np.zeros(num_days, dtype=np.float32)
+
+    # Extract numeric stock ID for directory lookup (e.g., "1216.TW" -> "1216")
+    stock_id_clean = stock_id.split('.')[0]
+    stock_dir = os.path.join(summaries_dir, stock_id_clean)
+
+    if not os.path.exists(stock_dir):
+        print(f"  Warning: No sentiment directory for {stock_id}, using neutral (0)")
+        return sentiment_scores
+
+    for day_idx, date in enumerate(trading_dates):
+        date_str = pd.Timestamp(date).strftime('%Y-%m-%d')
+        json_file = os.path.join(stock_dir, f"{date_str}.json")
+
+        if os.path.exists(json_file):
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    summary = data.get('summary', '無')
+
+                    # Process every text through FinBERT
+                    # Handle empty text by using "無" as fallback
+                    if not summary or summary.strip() == "":
+                        summary = "無"
+                    score, _ = processor.process_single(summary)
+                    sentiment_scores[day_idx] = score
+            except Exception as e:
+                print(f"  Error reading {json_file}: {e}")
+                sentiment_scores[day_idx] = 0
+        else:
+            sentiment_scores[day_idx] = 0  # neutral for missing dates
+
+    return sentiment_scores
 
 
 def calculate_returns(df):
@@ -196,7 +266,7 @@ def clean_alpha_factor(alpha_series):
     return result
 
 def process_one_stock(args):
-    i, stock_id, df_stock, unique_dates, alphas, feature_mode, feature_names = args
+    i, stock_id, df_stock, unique_dates, alphas, feature_mode, feature_names, sentiment_scores = args
     
     # 1) Get data for this stock (FULL historical data for calculations)
     full_stock_data = df_stock[df_stock['Ticker'] == stock_id].copy()
@@ -266,6 +336,18 @@ def process_one_stock(args):
 
     if feature_mode == 'basic':
         used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+        # Fill the array with the aligned data
+        per_stock_array[:, :] = final_data[used_cols].values
+    elif feature_mode == 'basic_sentiment':
+        # OHLCV + Sentiment (6 features)
+        used_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+        # Fill OHLCV first (5 features)
+        per_stock_array[:, :5] = final_data[used_cols].values
+        # Add sentiment as 6th feature
+        if sentiment_scores is not None:
+            per_stock_array[:, 5] = sentiment_scores
+        else:
+            per_stock_array[:, 5] = 0  # neutral if no sentiment data
     else:
         # Full mode: OHLCV + Technical indicators + Alpha factors
         # IMPORTANT: Explicitly order OHLCV first to ensure consistency
@@ -278,9 +360,8 @@ def process_one_stock(args):
 
         # Combine in the correct order
         used_cols = ohlcv_names + tech_names + alpha_cols
-    
-    # Fill the array with the aligned data
-    per_stock_array[:, :] = final_data[used_cols].values
+        # Fill the array with the aligned data
+        per_stock_array[:, :] = final_data[used_cols].values
 
     return (i, per_stock_array)
 
@@ -288,7 +369,11 @@ def process_one_stock(args):
 def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-31',
                        feature_mode='full', output_prefix='./',
                        download_start_date='2000-01-01', download_end_date='2025-08-31',
-                       trading_date_reference='^TWII'):
+                       trading_date_reference='^TWII',
+                       trading_dates_csv: Optional[str] = None,
+                       sentiment_summaries_dir: Optional[str] = None,
+                       finbert_model: str = "yiyanghkust/finbert-tone-chinese",
+                       precomputed_sentiment_file: Optional[str] = None):
     """
     Process stock data and generate required outputs
 
@@ -296,30 +381,49 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
     stock_list: list of stock symbols
     start_date: start date for final data range (real trading days)
     end_date: end date for final data range (real trading days)
-    feature_mode: 'basic' for OHLCV only, 'full' for all features (auto-determined)
+    feature_mode: 'basic' for OHLCV only, 'basic_sentiment' for OHLCV+Sentiment (6 features),
+                  'full' for all features (auto-determined)
     output_prefix: prefix path for output files
     download_start_date: start date for yfinance download (to ensure enough data for indicators)
     download_end_date: end date for yfinance download
     trading_date_reference: reference ticker for real trading days (default: ^TWII)
+    trading_dates_csv: path to local CSV file for trading dates (e.g., ^TWII.csv). If provided, uses this instead of yfinance.
+    sentiment_summaries_dir: path to sentiment summaries directory (for basic_sentiment mode, if no precomputed file)
+    finbert_model: FinBERT model name for sentiment analysis
+                   - "yiyanghkust/finbert-tone-chinese" for Chinese/Taiwan
+                   - "ProsusAI/finbert" for English/US
+    precomputed_sentiment_file: path to pre-generated sentiment_scores.npy (recommended for basic_sentiment mode)
     """
     df_stock = pd.DataFrame()
 
-    # Download reference ticker to get real trading days
-    print(f"Downloading trading dates reference: {trading_date_reference}")
-    ref_data = yf.download(trading_date_reference, start=download_start_date, end=download_end_date, auto_adjust=False, progress=False)
-    if ref_data.empty:
-        raise ValueError(f"Cannot download reference ticker {trading_date_reference} for trading dates")
-    ref_data.reset_index(inplace=True)
-    ref_data.columns = ref_data.columns.droplevel(level=1)
-    all_trading_dates = set(ref_data['Date'].dt.date)
+    # Get real trading days from CSV or yfinance
+    if trading_dates_csv and os.path.exists(trading_dates_csv):
+        # Use local CSV file (recommended for consistency)
+        print(f"Loading trading dates from CSV: {trading_dates_csv}")
+        ref_df = pd.read_csv(trading_dates_csv, parse_dates=['Date'])
+        ref_df['Date'] = ref_df['Date'].dt.tz_localize(None)
+        ref_df = ref_df[(ref_df['Date'] >= start_date) & (ref_df['Date'] <= end_date)]
+        ref_df = ref_df.sort_values('Date')
+        unique_dates = ref_df['Date'].dt.to_pydatetime()
+        unique_dates = np.array(unique_dates)
+    else:
+        # Download from yfinance (fallback)
+        print(f"Downloading trading dates reference: {trading_date_reference}")
+        ref_data = yf.download(trading_date_reference, start=download_start_date, end=download_end_date, auto_adjust=False, progress=False)
+        if ref_data.empty:
+            raise ValueError(f"Cannot download reference ticker {trading_date_reference} for trading dates")
+        ref_data.reset_index(inplace=True)
+        ref_data.columns = ref_data.columns.droplevel(level=1)
+        all_trading_dates = set(ref_data['Date'].dt.date)
 
-    # Filter to the specified date range
-    start_dt = pd.to_datetime(start_date).date()
-    end_dt = pd.to_datetime(end_date).date()
-    filtered_dates = sorted([d for d in all_trading_dates if start_dt <= d <= end_dt])
-    unique_dates = np.array([pd.Timestamp(d) for d in filtered_dates])
-    print(f"Using {len(unique_dates)} real trading days from {trading_date_reference}")
-    print(f"Date range: {filtered_dates[0]} to {filtered_dates[-1]}")
+        # Filter to the specified date range
+        start_dt = pd.to_datetime(start_date).date()
+        end_dt = pd.to_datetime(end_date).date()
+        filtered_dates = sorted([d for d in all_trading_dates if start_dt <= d <= end_dt])
+        unique_dates = np.array([pd.Timestamp(d) for d in filtered_dates])
+
+    print(f"Using {len(unique_dates)} real trading days")
+    print(f"Date range: {unique_dates[0]} to {unique_dates[-1]}")
 
     # Download data for each stock
     for ticker in stock_list:
@@ -369,10 +473,15 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
     # Create feature names list based on mode
     if feature_mode == 'basic':
         feature_names = ['Open', 'High', 'Low', 'Close', 'Volume']
+    elif feature_mode == 'basic_sentiment':
+        # OHLCV + Sentiment (6 features)
+        feature_names = ['Open', 'High', 'Low', 'Close', 'Volume', 'Sentiment']
+        if precomputed_sentiment_file is None:
+            raise ValueError("precomputed_sentiment_file is required for basic_sentiment mode")
     else:  # 'full' mode
         # OHLCV + Technical indicators + Alpha factors
         ohlcv_names = ['Open', 'High', 'Low', 'Close', 'Volume']
-        tech_names = ['MA20', 'MA60', 'RSI', 'MACD_Signal', 'K', 'D', 
+        tech_names = ['MA20', 'MA60', 'RSI', 'MACD_Signal', 'K', 'D',
                       'BBands_Upper', 'BBands_Middle', 'BBands_Lower']
         feature_names = ohlcv_names + tech_names + alphas
     
@@ -389,11 +498,46 @@ def process_stocks_data(stock_list, start_date='2015-01-05', end_date='2025-03-3
     num_stocks = len(unique_stock_ids)
     num_days = len(unique_dates)
     num_features = len(feature_names)
-    
+
+    # Pre-compute sentiment scores for basic_sentiment mode
+    stock_sentiments = {}
+    if feature_mode == 'basic_sentiment':
+        print(f"\n=== SENTIMENT PROCESSING ===")
+
+        # Require precomputed sentiment file
+        if not precomputed_sentiment_file:
+            raise ValueError(
+                "precomputed_sentiment_file is required for basic_sentiment mode. "
+                "Run generate_sentiment.py first to create sentiment_scores.npy"
+            )
+
+        if not os.path.exists(precomputed_sentiment_file):
+            raise FileNotFoundError(
+                f"Sentiment file not found: {precomputed_sentiment_file}\n"
+                "Run generate_sentiment.py first to create this file."
+            )
+
+        # Load pre-generated sentiment scores
+        print(f"Loading precomputed sentiment from: {precomputed_sentiment_file}")
+        precomputed_scores = np.load(precomputed_sentiment_file)
+        print(f"  Shape: {precomputed_scores.shape}")
+
+        # Map to stock_sentiments dict (assumes same stock order as stock_list)
+        for i, stock_id in enumerate(unique_stock_ids):
+            if i < precomputed_scores.shape[0]:
+                stock_sentiments[stock_id] = precomputed_scores[i]
+            else:
+                print(f"  Warning: No precomputed sentiment for {stock_id}, using neutral (0)")
+                stock_sentiments[stock_id] = np.zeros(num_days, dtype=np.float32)
+
+        print(f"Sentiment processing complete for {len(stock_sentiments)} stocks")
+        print("=" * 30)
+
     # Prepare tasks for parallel processing
     tasks = []
     for i, stock_id in enumerate(unique_stock_ids):
-        tasks.append((i, stock_id, df_stock, unique_dates, alphas, feature_mode, feature_names))
+        sentiment_data = stock_sentiments.get(stock_id, None)
+        tasks.append((i, stock_id, df_stock, unique_dates, alphas, feature_mode, feature_names, sentiment_data))
     
     # Initialize output array
     reshaped_data = np.zeros((num_stocks, num_days, num_features))

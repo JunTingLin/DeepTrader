@@ -52,8 +52,19 @@ TWII_STOCKS = [
 # ]
 
 if __name__ == '__main__':
-    # Choose feature mode: 'basic' for OHLCV (5 features) or 'full' for all features (34 features)
-    FEATURE_MODE = 'basic'  # Change to 'basic' if you only want OHLCV features
+    # Choose feature mode:
+    # - 'basic': OHLCV (5 features)
+    # - 'basic_sentiment': OHLCV + Sentiment (6 features)
+    # - 'full': all features (34 features)
+    FEATURE_MODE = 'basic_sentiment'
+
+    # Trading dates from local CSV (ensures consistency with generate_sentiment.py)
+    TRADING_DATES_CSV = './market_data/^TWII.csv'
+
+    # Sentiment file (required for basic_sentiment mode)
+    # Run generate_sentiment.py first to create this file
+    PRECOMPUTED_SENTIMENT_FILE = './sentiment_scores.npy'
+
     # Process TWII stocks
     unique_stock_ids, reshaped_data = process_stocks_data(
         stock_list=TWII_STOCKS,
@@ -63,5 +74,6 @@ if __name__ == '__main__':
         output_prefix='./',
         download_start_date='2010-01-01',  # Download more data for technical indicators
         download_end_date='2026-01-01',    # Same as final end date
-        trading_date_reference='^TWII'     # Use TWII index for Taiwan trading days
+        trading_dates_csv=TRADING_DATES_CSV,  # Use local CSV for trading dates
+        precomputed_sentiment_file=PRECOMPUTED_SENTIMENT_FILE if FEATURE_MODE == 'basic_sentiment' else None
     )
