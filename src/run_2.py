@@ -84,8 +84,64 @@ def run(func_args):
     logger.addHandler(chlr)
     logger.addHandler(fhlr)
 
+    # Initialize news embeddings variable
+    news_embeddings = None
+    news_embedding_bool = getattr(func_args, 'news_embedding_bool', False)
+
     # Load data based on market
-    if func_args.market in ['DJIA', 'TWII', 'HSI', 'CSI100']:
+    if func_args.market == 'DJIA':
+        logger.info('Using DJIA data')
+        stocks_data = np.load(data_prefix + 'stocks_data.npy')
+        rate_of_return = np.load(data_prefix + 'ror.npy')
+        market_history = np.load(data_prefix + 'market_data.npy')
+        assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
+        A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
+        train_idx = func_args.train_idx
+        train_idx_end = func_args.train_idx_end
+        val_idx = func_args.val_idx
+        test_idx = func_args.test_idx
+        test_idx_end = func_args.test_idx_end
+        allow_short = getattr(func_args, 'allow_short', True)
+
+        # Load news embeddings (Path B) if enabled
+        if news_embedding_bool:
+            sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/DJIA/sentiment/')
+            news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+            if os.path.exists(news_embeddings_file):
+                news_embeddings = np.load(news_embeddings_file)
+                logger.info(f'Loaded news embeddings: {news_embeddings.shape}')
+            else:
+                logger.warning(f'News embeddings file not found: {news_embeddings_file}')
+                logger.warning('Disabling news_embedding_bool')
+                news_embedding_bool = False
+
+    elif func_args.market == 'TWII':
+        logger.info('Using TWII data')
+        stocks_data = np.load(data_prefix + 'stocks_data.npy')
+        rate_of_return = np.load(data_prefix + 'ror.npy')
+        market_history = np.load(data_prefix + 'market_data.npy')
+        assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
+        A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
+        train_idx = func_args.train_idx
+        train_idx_end = func_args.train_idx_end
+        val_idx = func_args.val_idx
+        test_idx = func_args.test_idx
+        test_idx_end = func_args.test_idx_end
+        allow_short = getattr(func_args, 'allow_short', True)
+
+        # Load news embeddings (Path B) if enabled
+        if news_embedding_bool:
+            sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/TWII/sentiment/')
+            news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+            if os.path.exists(news_embeddings_file):
+                news_embeddings = np.load(news_embeddings_file)
+                logger.info(f'Loaded news embeddings: {news_embeddings.shape}')
+            else:
+                logger.warning(f'News embeddings file not found: {news_embeddings_file}')
+                logger.warning('Disabling news_embedding_bool')
+                news_embedding_bool = False
+
+    elif func_args.market in ['HSI', 'CSI100']:
         logger.info(f'Using {func_args.market} data')
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load(data_prefix + 'ror.npy')
@@ -98,6 +154,9 @@ def run(func_args):
         test_idx = func_args.test_idx
         test_idx_end = func_args.test_idx_end
         allow_short = getattr(func_args, 'allow_short', True)
+        # News embeddings not supported for HSI/CSI100 yet
+        news_embedding_bool = False
+
     else:
         raise ValueError(f"Unknown market: {func_args.market}")
 
@@ -119,6 +178,12 @@ def run(func_args):
     logger.warning(f"Fine-tune LR decay: {finetune_lr_decay}x")
     logger.warning(f"Window shift per cycle: {func_args.trade_len} days")
     logger.warning(f"Initial indices: train=[{train_idx}, {train_idx_end}), val={val_idx}, test=[{test_idx}, {test_idx_end})")
+    if news_embedding_bool:
+        logger.warning(f"News embedding: ENABLED (shape={news_embeddings.shape})")
+        logger.warning(f"  Fusion method: {getattr(func_args, 'fusion_method', 'concat')}")
+        logger.warning(f"  Aggregation: {getattr(func_args, 'news_aggregation', 'mean')}")
+    else:
+        logger.warning("News embedding: DISABLED")
     logger.warning("=" * 70)
 
     env = PortfolioEnv(
@@ -137,7 +202,9 @@ def run(func_args):
         max_steps=func_args.max_steps,
         norm_type=func_args.norm_type,
         allow_short=allow_short,
-        logger=logger
+        logger=logger,
+        news_embeddings=news_embeddings,
+        news_embedding_bool=news_embedding_bool
     )
 
     supports = [A]

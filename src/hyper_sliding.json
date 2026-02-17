@@ -21,7 +21,7 @@
     "fee": 0.001,
     "theta": 0.15,
     "sigma": 0.5,
-    "in_features": [5, 4],
+    "in_features": [6, 4],
     "num_assets": 29,
     "G": 4,
     "num_rounds": 80000,
@@ -30,7 +30,7 @@
     "momentum": 0.8,
     "norm_type": "standard",
     "market": "TWII",
-    "data_prefix": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td/",
+    "data_prefix": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed/",
     "device": "cuda",
     "relation_file": "industry_classification.npy",
     "seed": -1,
@@ -52,6 +52,11 @@
 
     "sliding_mode": "fixed",
 
-    "finetune_lr_decay": 0.5
+    "finetune_lr_decay": 0.5,
 
+    "news_embedding_bool": true,
+    "fusion_method": "concat",
+    "sentiment_data_path": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed/",
+    "news_embedding_dim": 768,
+    "news_aggregation": "mean"
 }
