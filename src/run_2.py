@@ -160,6 +160,23 @@ def run(func_args):
     else:
         raise ValueError(f"Unknown market: {func_args.market}")
 
+    # Filter assets by indices if specified
+    asset_indices = getattr(func_args, 'asset_indices', None)
+    if asset_indices is not None:
+        asset_indices = np.array(asset_indices)
+        logger.info(f'Filtering assets by indices: {asset_indices}')
+        logger.info(f'Original data shape: stocks_data={stocks_data.shape}, ror={rate_of_return.shape}')
+
+        stocks_data = stocks_data[asset_indices]
+        rate_of_return = rate_of_return[asset_indices]
+        A = A[asset_indices][:, asset_indices]
+        if news_embeddings is not None:
+            news_embeddings = news_embeddings[asset_indices]
+
+        func_args.num_assets = len(asset_indices)
+        logger.info(f'Filtered data shape: stocks_data={stocks_data.shape}, ror={rate_of_return.shape}')
+        logger.info(f'Updated num_assets: {func_args.num_assets}')
+
     # Sliding window configuration
     sliding_mode = getattr(func_args, 'sliding_mode', 'expanding')  # 'expanding' or 'fixed'
     initial_epochs = getattr(func_args, 'initial_epochs', 200)

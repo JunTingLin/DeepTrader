@@ -23,6 +23,7 @@
     "sigma": 0.5,
     "in_features": [6, 4],
     "num_assets": 29,
+    "asset_indices": [3, 4, 6, 7, 9, 12, 14, 15, 20, 23],
     "G": 4,
     "num_rounds": 80000,
     "max_grad_norm": 100.0,
@@ -47,8 +48,8 @@
     "test_idx": 1944,
     "test_idx_end": 1965,
 
-    "initial_epochs": 200,
-    "finetune_epochs": 30,
+    "initial_epochs": 50,
+    "finetune_epochs": 10,
 
     "sliding_mode": "fixed",
 

@@ -201,6 +201,28 @@ def run(func_args):
         market_history = None
         allow_short = getattr(func_args, 'allow_short', False)
 
+    # Filter assets by indices if specified
+    asset_indices = getattr(func_args, 'asset_indices', None)
+    if asset_indices is not None:
+        asset_indices = np.array(asset_indices)
+        logger.info(f'Filtering assets by indices: {asset_indices}')
+        logger.info(f'Original data shape: stocks_data={stocks_data.shape}, ror={rate_of_return.shape}')
+
+        # Filter stocks_data: (num_assets, num_days, num_features) -> filtered
+        stocks_data = stocks_data[asset_indices]
+        # Filter rate_of_return: (num_assets, num_days) -> filtered
+        rate_of_return = rate_of_return[asset_indices]
+        # Filter correlation matrix A: (num_assets, num_assets) -> filtered
+        A = A[asset_indices][:, asset_indices]
+        # Filter news_embeddings if present: (num_assets, num_days, embedding_dim) -> filtered
+        if news_embeddings is not None:
+            news_embeddings = news_embeddings[asset_indices]
+
+        # Update num_assets in func_args
+        func_args.num_assets = len(asset_indices)
+        logger.info(f'Filtered data shape: stocks_data={stocks_data.shape}, ror={rate_of_return.shape}')
+        logger.info(f'Updated num_assets: {func_args.num_assets}')
+
     env = PortfolioEnv(
         assets_data=stocks_data,
         market_data=market_history,

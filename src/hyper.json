@@ -26,6 +26,7 @@
         4
     ],
     "num_assets": 29,
+    "asset_indices": [3, 4, 6, 7, 9, 12, 14, 15, 20, 23],
     "G": 4,
     "num_rounds": 80000,
     "max_grad_norm": 100.0,
@@ -52,7 +53,7 @@
     "msu_distribution_type": "normal",
     "pretrained_msu_path": null,
 
-    "news_embedding_bool": true,
+    "news_embedding_bool": false,
     "fusion_method": "concat",
     "sentiment_data_path": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed/",
     "news_embedding_dim": 768,

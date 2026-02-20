@@ -63,6 +63,21 @@ def validate(func_args):
         market_history = None
         allow_short = getattr(func_args, 'allow_short', False)
 
+    # Filter assets by indices if specified
+    asset_indices = getattr(func_args, 'asset_indices', None)
+    if asset_indices is not None:
+        asset_indices = np.array(asset_indices)
+        print(f'Filtering assets by indices: {asset_indices}')
+        print(f'Original data shape: stocks_data={stocks_data.shape}, ror={rate_of_return.shape}')
+
+        stocks_data = stocks_data[asset_indices]
+        rate_of_return = rate_of_return[asset_indices]
+        A = A[asset_indices][:, asset_indices]
+
+        func_args.num_assets = len(asset_indices)
+        print(f'Filtered data shape: stocks_data={stocks_data.shape}, ror={rate_of_return.shape}')
+        print(f'Updated num_assets: {func_args.num_assets}')
+
     env = PortfolioEnv(
         assets_data=stocks_data,
         market_data=market_history, 
