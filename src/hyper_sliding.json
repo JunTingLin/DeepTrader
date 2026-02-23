@@ -39,6 +39,8 @@
     "allow_short": true,
     "msu_bool": false,
     "msu_distribution_type": "normal",
+    "manual_rho": null,
+    "pretrained_msu_path": null,
 
     "trade_len": 21,
 
