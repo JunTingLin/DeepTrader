@@ -26,7 +26,7 @@
         4
     ],
     "num_assets": 29,
-    "asset_indices": [3, 4, 6, 7, 9, 12, 14, 15, 20, 23],
+    "asset_indices": null,
     "G": 4,
     "num_rounds": 80000,
     "max_grad_norm": 100.0,
@@ -47,14 +47,14 @@
     "test_idx_end": 2429,
     "seed": -1,
     "outputs_base_path": "./src/outputs",
-    "manual_rho": null,
+    "manual_rho": 0,
     "allow_short": true,
     "msu_bool": false,
     "msu_distribution_type": "normal",
     "pretrained_msu_path": null,
 
     "news_embedding_bool": false,
-    "fusion_method": "concat",
+    "fusion_method": "cross_attn",
     "sentiment_data_path": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed/",
     "news_embedding_dim": 768,
     "news_aggregation": "mean"

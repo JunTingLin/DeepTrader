@@ -317,7 +317,16 @@ def run(func_args):
 
             # Save best model for this cycle
             cr_value = float(metrics['CR'])
-            if cr_value > best_cycle_CR:
+            start_checkpoint_epoch = getattr(func_args, 'start_checkpoint_epoch', 0)
+
+            # For cycle 0, only save checkpoint after start_checkpoint_epoch to avoid early unstable models
+            if cycle == 0:
+                can_save = (epoch >= start_checkpoint_epoch) and (cr_value > best_cycle_CR)
+            else:
+                # For fine-tune cycles (only ~10 epochs), no start epoch restriction
+                can_save = cr_value > best_cycle_CR
+
+            if can_save:
                 best_cycle_CR = cr_value
                 best_cycle_epoch = epoch
 
