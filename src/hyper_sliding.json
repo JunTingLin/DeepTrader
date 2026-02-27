@@ -21,7 +21,7 @@
     "fee": 0.001,
     "theta": 0.15,
     "sigma": 0.5,
-    "in_features": [6, 4],
+    "in_features": [5, 4],
     "num_assets": 29,
     "asset_indices": null,
     "G": 4,
@@ -55,10 +55,11 @@
     "start_checkpoint_epoch": 1200,
 
     "sliding_mode": "fixed",
+    "pretrained_cycle0_path": "./src/outputs/0223/185007",
 
     "finetune_lr_decay": 0.5,
 
-    "news_embedding_bool": true,
+    "news_embedding_bool": false,
     "fusion_method": "cross_attn",
     "sentiment_data_path": "src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed/",
     "news_embedding_dim": 768,

@@ -228,6 +228,36 @@ def run(func_args):
     actor = RLActor(supports, func_args).to(func_args.device)
     agent = RLAgent(env, actor, func_args)
 
+    # Check for pre-trained Cycle 0 model
+    pretrained_cycle0_path = getattr(func_args, 'pretrained_cycle0_path', None)
+    pretrained_model_file = None
+
+    if pretrained_cycle0_path:
+        import glob
+        # Find the model file
+        if os.path.isfile(pretrained_cycle0_path):
+            pretrained_model_file = pretrained_cycle0_path
+        else:
+            model_dir = os.path.join(pretrained_cycle0_path, 'model_file')
+            if os.path.isdir(model_dir):
+                pkl_files = glob.glob(os.path.join(model_dir, 'best_cr-*.pkl'))
+                pth_files = glob.glob(os.path.join(model_dir, 'best_cr*.pth'))
+                if pkl_files:
+                    pkl_files.sort(key=lambda x: int(x.split('-')[-1].replace('.pkl', '')))
+                    pretrained_model_file = pkl_files[-1]
+                elif pth_files:
+                    pretrained_model_file = pth_files[0]
+
+        if pretrained_model_file and os.path.exists(pretrained_model_file):
+            logger.warning("=" * 70)
+            logger.warning("PRE-TRAINED CYCLE 0 MODEL DETECTED")
+            logger.warning(f"  Path: {pretrained_model_file}")
+            logger.warning("  Cycle 0 training will be SKIPPED")
+            logger.warning("=" * 70)
+        else:
+            logger.warning(f"WARNING: pretrained_cycle0_path specified but model not found")
+            pretrained_model_file = None
+
     # Sliding window training loop
     cycle = 0
     best_global_CR = -float('inf')
@@ -240,8 +270,14 @@ def run(func_args):
     best_optimizer_state = None
 
     while True:
+        # Check if using pretrained model for Cycle 0
+        use_pretrained = (cycle == 0 and pretrained_model_file is not None)
+
         # Determine epochs for this cycle
-        if cycle == 0:
+        if use_pretrained:
+            epochs_this_cycle = 0  # Skip training
+            current_lr = base_lr
+        elif cycle == 0:
             epochs_this_cycle = initial_epochs
             current_lr = base_lr
         else:
@@ -250,8 +286,12 @@ def run(func_args):
 
         logger.warning("=" * 70)
         logger.warning(f"CYCLE {cycle} STARTING")
-        logger.warning(f"  Mode: {'From scratch' if cycle == 0 else 'Fine-tuning'}")
-        logger.warning(f"  Epochs: {epochs_this_cycle}")
+        if use_pretrained:
+            logger.warning(f"  Mode: Using pre-trained model (SKIPPING TRAINING)")
+            logger.warning(f"  Pre-trained: {pretrained_model_file}")
+        else:
+            logger.warning(f"  Mode: {'From scratch' if cycle == 0 else 'Fine-tuning'}")
+            logger.warning(f"  Epochs: {epochs_this_cycle}")
         logger.warning(f"  Learning rate: {current_lr}")
         logger.warning(f"  train_idx: [{env.src.train_idx}, {env.src.train_idx_end})")
         logger.warning(f"  val_idx: {env.src.val_idx}")
@@ -266,7 +306,60 @@ def run(func_args):
         best_cycle_CR = -float('inf')
         best_cycle_epoch = -1
 
-        # Train for epochs_this_cycle epochs in this cycle
+        # Handle pre-trained model for Cycle 0
+        if use_pretrained:
+            # Load pre-trained model (use weights_only=False for compatibility with old .pkl files)
+            loaded = torch.load(pretrained_model_file, weights_only=False, map_location=func_args.device)
+            # Handle both state_dict and full model formats
+            if hasattr(loaded, 'state_dict'):
+                actor.load_state_dict(loaded.state_dict())
+            else:
+                actor.load_state_dict(loaded)
+
+            # Run validation to get metrics
+            agent_wealth_val, rho_record, param1_record, param2_record, portfolio_records = agent.evaluation()
+            metrics_val = calculate_metrics(agent_wealth_val, func_args.trade_mode)
+            best_cycle_CR = float(metrics_val['CR'])
+            best_cycle_epoch = -1  # Indicates pre-trained
+
+            logger.warning(f"Cycle 0 (pretrained) Validation: CR={best_cycle_CR:.3f}, ARR={100*float(metrics_val['ARR']):.2f}%")
+
+            # Save model and results
+            torch.save(actor.state_dict(), os.path.join(model_save_dir, 'best_cr_cycle0.pth'))
+            torch.save(agent.optimizer.state_dict(), os.path.join(model_save_dir, 'best_optimizer_cycle0.pth'))
+            best_optimizer_state = copy.deepcopy(agent.optimizer.state_dict())
+            np.save(os.path.join(npy_save_dir, 'agent_wealth_val_cycle0.npy'), agent_wealth_val)
+
+            # Save validation results JSON
+            distribution_type = getattr(func_args, 'msu_distribution_type', 'normal').lower()
+            param1_name = 'alpha_record' if distribution_type == 'beta' else 'mu_record'
+            param2_name = 'beta_record' if distribution_type == 'beta' else 'sigma_record'
+
+            val_results = {
+                'cycle': 0, 'epoch': -1, 'source': 'pretrained',
+                'pretrained_path': pretrained_model_file,
+                'agent_wealth': agent_wealth_val.tolist(),
+                'rho_record': [convert_to_native_type(r) for r in rho_record],
+                param1_name: [convert_to_native_type(r) if r is not None else None for r in param1_record],
+                param2_name: [convert_to_native_type(r) if r is not None else None for r in param2_record],
+                'distribution_type': distribution_type,
+                'performance_metrics': {
+                    'ARR': convert_to_native_type(metrics_val['ARR']),
+                    'MDD': convert_to_native_type(metrics_val['MDD']),
+                    'AVOL': convert_to_native_type(metrics_val['AVOL']),
+                    'ASR': convert_to_native_type(metrics_val['ASR']),
+                    'DDR': convert_to_native_type(metrics_val['DDR']),
+                    'CR': convert_to_native_type(metrics_val['CR'])
+                },
+                'window_info': {
+                    'train_idx': env.src.train_idx, 'train_idx_end': env.src.train_idx_end,
+                    'val_idx': env.src.val_idx, 'test_idx': env.src.test_idx, 'test_idx_end': env.src.test_idx_end
+                }
+            }
+            with open(os.path.join(json_save_dir, 'val_results_cycle0.json'), 'w', encoding='utf-8') as f:
+                json.dump(val_results, f, indent=2, ensure_ascii=False)
+
+        # Train for epochs_this_cycle epochs in this cycle (skipped if epochs_this_cycle == 0)
         mini_batch_num = int(np.ceil(len(env.src.order_set) / func_args.batch_size))
 
         for epoch in range(epochs_this_cycle):
@@ -610,6 +703,8 @@ if __name__ == '__main__':
     parser.add_argument('--finetune_lr_decay', type=float, help='LR decay factor for fine-tuning (default: 0.5)')
     parser.add_argument('--sliding_mode', type=str, choices=['expanding', 'fixed'],
                         help='Sliding window mode: expanding (train grows) or fixed (window shifts)')
+    parser.add_argument('--pretrained_cycle0_path', type=str,
+                        help='Path to pre-trained experiment folder (e.g., ./src/outputs/0223/185007) to skip Cycle 0 training')
     parser.add_argument('--no_spatial', dest='spatial_bool', action='store_false', default=None)
     parser.add_argument('--no_msu', dest='msu_bool', action='store_false', default=None)
     parser.add_argument('--relation_file', type=str)
