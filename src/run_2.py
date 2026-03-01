@@ -305,6 +305,7 @@ def run(func_args):
 
         best_cycle_CR = -float('inf')
         best_cycle_epoch = -1
+        best_cycle_metrics = None  # Store all validation metrics for the best model
 
         # Handle pre-trained model for Cycle 0
         if use_pretrained:
@@ -321,6 +322,7 @@ def run(func_args):
             metrics_val = calculate_metrics(agent_wealth_val, func_args.trade_mode)
             best_cycle_CR = float(metrics_val['CR'])
             best_cycle_epoch = -1  # Indicates pre-trained
+            best_cycle_metrics = copy.deepcopy(metrics_val)  # Store all metrics
 
             logger.warning(f"Cycle 0 (pretrained) Validation: CR={best_cycle_CR:.3f}, ARR={100*float(metrics_val['ARR']):.2f}%")
 
@@ -422,6 +424,7 @@ def run(func_args):
             if can_save:
                 best_cycle_CR = cr_value
                 best_cycle_epoch = epoch
+                best_cycle_metrics = copy.deepcopy(metrics)  # Store all validation metrics
 
                 # Save model
                 torch.save(actor.state_dict(), os.path.join(model_save_dir, f'best_cr_cycle{cycle}.pth'))
@@ -561,10 +564,20 @@ def run(func_args):
 
         all_cycle_results.append({
             'cycle': cycle,
-            'val_CR': convert_to_native_type(best_cycle_CR),
+            # Validation metrics (from best model in this cycle)
+            'val_CR': convert_to_native_type(best_cycle_metrics['CR']) if best_cycle_metrics else convert_to_native_type(best_cycle_CR),
+            'val_ARR': convert_to_native_type(best_cycle_metrics['ARR']) if best_cycle_metrics else None,
+            'val_MDD': convert_to_native_type(best_cycle_metrics['MDD']) if best_cycle_metrics else None,
+            'val_ASR': convert_to_native_type(best_cycle_metrics['ASR']) if best_cycle_metrics else None,
+            'val_AVOL': convert_to_native_type(best_cycle_metrics['AVOL']) if best_cycle_metrics else None,
+            'val_DDR': convert_to_native_type(best_cycle_metrics['DDR']) if best_cycle_metrics else None,
+            # Test metrics
             'test_CR': convert_to_native_type(metrics_test['CR']),
             'test_ARR': convert_to_native_type(metrics_test['ARR']),
             'test_MDD': convert_to_native_type(metrics_test['MDD']),
+            'test_ASR': convert_to_native_type(metrics_test['ASR']),
+            'test_AVOL': convert_to_native_type(metrics_test['AVOL']),
+            'test_DDR': convert_to_native_type(metrics_test['DDR']),
             'test_wealth': convert_to_native_type(agent_wealth_test[-1, -1])
         })
 
@@ -654,6 +667,50 @@ def run(func_args):
 
     logger.warning("=" * 70)
 
+    # Compute averages and standard deviations for validation and test metrics
+    def compute_avg_std(values):
+        """Compute average and std, handling infinity and None values."""
+        # Filter out None and infinity values for avg/std computation
+        finite_values = [v for v in values if v is not None and np.isfinite(v)]
+        if len(finite_values) == 0:
+            return None, None
+        avg = float(np.mean(finite_values))
+        std = float(np.std(finite_values)) if len(finite_values) > 1 else 0.0
+        return avg, std
+
+    val_metrics_keys = ['CR', 'ARR', 'MDD', 'ASR', 'AVOL', 'DDR']
+    test_metrics_keys = ['CR', 'ARR', 'MDD', 'ASR', 'AVOL', 'DDR']
+
+    val_metrics_avg = {}
+    val_metrics_std = {}
+    test_metrics_avg = {}
+    test_metrics_std = {}
+
+    for key in val_metrics_keys:
+        values = [r.get(f'val_{key}') for r in all_cycle_results]
+        avg, std = compute_avg_std(values)
+        val_metrics_avg[key] = avg
+        val_metrics_std[key] = std
+
+    for key in test_metrics_keys:
+        values = [r.get(f'test_{key}') for r in all_cycle_results]
+        avg, std = compute_avg_std(values)
+        test_metrics_avg[key] = avg
+        test_metrics_std[key] = std
+
+    # Log the averages
+    logger.warning("")
+    logger.warning("Validation Metrics (across all cycles):")
+    logger.warning(f"  CR:   avg={val_metrics_avg['CR']:.3f}, std={val_metrics_std['CR']:.3f}" if val_metrics_avg['CR'] else "  CR:   N/A")
+    logger.warning(f"  ARR:  avg={100*val_metrics_avg['ARR']:.2f}%, std={100*val_metrics_std['ARR']:.2f}%" if val_metrics_avg['ARR'] else "  ARR:  N/A")
+    logger.warning(f"  ASR:  avg={val_metrics_avg['ASR']:.3f}, std={val_metrics_std['ASR']:.3f}" if val_metrics_avg['ASR'] else "  ASR:  N/A")
+    logger.warning("")
+    logger.warning("Test Metrics (across all cycles):")
+    logger.warning(f"  CR:   avg={test_metrics_avg['CR']:.3f}, std={test_metrics_std['CR']:.3f}" if test_metrics_avg['CR'] else "  CR:   N/A (may contain infinity)")
+    logger.warning(f"  ARR:  avg={100*test_metrics_avg['ARR']:.2f}%, std={100*test_metrics_std['ARR']:.2f}%" if test_metrics_avg['ARR'] else "  ARR:  N/A")
+    logger.warning(f"  MDD:  avg={100*test_metrics_avg['MDD']:.2f}%, std={100*test_metrics_std['MDD']:.2f}%" if test_metrics_avg['MDD'] else "  MDD:  N/A")
+    logger.warning("=" * 70)
+
     # Save overall summary
     summary = {
         'total_cycles': cycle + 1,
@@ -666,6 +723,7 @@ def run(func_args):
         'cumulative_test_wealth': convert_to_native_type(cumulative_wealth),
         'cumulative_return': convert_to_native_type(cumulative_wealth - 1),
         'cumulative_wealth_trajectory': [convert_to_native_type(w) for w in cumulative_wealth_list],
+        # Cumulative metrics (chaining all test cycles together)
         'cumulative_metrics': {
             'ARR': convert_to_native_type(cumulative_metrics['ARR']) if cumulative_metrics['ARR'] is not None else None,
             'ASR': convert_to_native_type(cumulative_metrics['ASR']) if cumulative_metrics['ASR'] is not None else None,
@@ -674,6 +732,12 @@ def run(func_args):
             'AVOL': convert_to_native_type(cumulative_metrics['AVOL']) if cumulative_metrics.get('AVOL') is not None else None,
             'DDR': convert_to_native_type(cumulative_metrics['DDR']) if cumulative_metrics.get('DDR') is not None else None
         },
+        # Validation metrics average and std across all cycles
+        'val_metrics_avg': val_metrics_avg,
+        'val_metrics_std': val_metrics_std,
+        # Test metrics average and std across all cycles (may contain infinity in individual cycles)
+        'test_metrics_avg': test_metrics_avg,
+        'test_metrics_std': test_metrics_std,
         'cycle_results': all_cycle_results,
         'config': {
             'market': func_args.market,
