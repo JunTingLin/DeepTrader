@@ -5,7 +5,7 @@ Usage:
     python src/data/calculate_indices.py <trading_dates.npy> [--train-end DATE] [--val-end DATE] [--test-end DATE]
 
 Example:
-    python src/data/calculate_indices.py src/data/TWII/feature5-sc29-2016-2025-ror-open-td/trading_dates.npy --train-end 2020-12-31 --val-end 2023-12-31 --test-end 2025-12-31
+    python src/data/calculate_indices.py src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed-finlab/trading_dates.npy --train-end 2020-12-31 --val-end 2023-12-31 --test-end 2025-12-31
 """
 
 import argparse

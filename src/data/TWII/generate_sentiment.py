@@ -17,6 +17,12 @@ import sys
 import argparse
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
+import finlab
+from finlab import data
+
+# Load environment variables
+load_dotenv()
 
 # Add parent directories to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -25,13 +31,13 @@ from process_sentiment_common import generate_sentiment_data
 
 # Default paths
 DEFAULT_SUMMARIES_DIR = './summaries_v2'
-DEFAULT_TWII_CSV = './market_data/^TWII.csv'
 
 # Default model for Taiwan market (Chinese)
 DEFAULT_MODEL = 'yiyanghkust/finbert-tone-chinese'
 
 # TWII stock IDs (must match folder names in summaries_v2)
 # Order must match the order in stocks_data.npy
+# Removed 3711 (日月光投控) due to missing data before 2018-04-30
 TWII_STOCK_IDS = [
     "1216",  # 統一
     "1301",  # 台塑
@@ -52,39 +58,42 @@ TWII_STOCK_IDS = [
     "2884",  # 玉山金
     "2885",  # 元大金
     "2886",  # 兆豐金
-    "2887",  # 台新金
+    "2887",  # 台新新光金
     "2891",  # 中信金
     "2892",  # 第一金
     "2912",  # 統一超
     "3008",  # 大立光
     "3045",  # 台灣大
-    "3711",  # 日月光投控
     "4904",  # 遠傳
     "5880",  # 合庫金
     "6505",  # 台塑化
 ]
 
 
-def get_trading_dates_from_csv(csv_path: str, start_date: str, end_date: str) -> np.ndarray:
+def get_trading_dates_from_finlab(start_date: str, end_date: str) -> np.ndarray:
     """
-    Get real trading dates from local CSV file (same as deeptrader_market.py).
+    Get real trading dates from FinLab (same as deeptrader_data_tw_finlab.py).
+    Uses 0050 ETF as reference because it rarely suspends trading.
 
     Args:
-        csv_path: Path to ^TWII.csv file
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
 
     Returns:
         Array of trading dates
     """
-    print(f"Loading trading dates from: {csv_path}")
+    print(f"Loading trading dates from FinLab (using 0050 as reference)...")
 
-    ref_df = pd.read_csv(csv_path, parse_dates=['Date'])
-    ref_df['Date'] = ref_df['Date'].dt.tz_localize(None)
-    ref_df = ref_df[(ref_df['Date'] >= start_date) & (ref_df['Date'] <= end_date)]
-    ref_df = ref_df.sort_values('Date')
+    # Initialize FinLab
+    FINLAB_API_KEY = os.getenv('FINLAB_API_KEY')
+    if not FINLAB_API_KEY:
+        raise ValueError("FINLAB_API_KEY not found in .env file")
+    finlab.login(FINLAB_API_KEY)
 
-    trading_dates = ref_df['Date'].dt.to_pydatetime()
+    # Get 0050 data to extract trading dates
+    df_close = data.get('etl:adj_close')
+    stock_dates = df_close['0050'][start_date:end_date]
+    trading_dates = stock_dates.index.to_pydatetime()
     trading_dates = np.array(trading_dates)
 
     return trading_dates
@@ -94,8 +103,6 @@ def main():
     parser = argparse.ArgumentParser(description='Generate sentiment data for TWII stocks')
     parser.add_argument('--summaries-dir', default=DEFAULT_SUMMARIES_DIR,
                         help=f'Path to summaries directory (default: {DEFAULT_SUMMARIES_DIR})')
-    parser.add_argument('--twii-csv', default=DEFAULT_TWII_CSV,
-                        help=f'Path to ^TWII.csv for trading dates (default: {DEFAULT_TWII_CSV})')
     parser.add_argument('--start-date', default='2016-01-01',
                         help='Start date for trading days (default: 2016-01-01)')
     parser.add_argument('--end-date', default='2025-12-31',
@@ -114,10 +121,6 @@ def main():
     if not os.path.isabs(summaries_dir):
         summaries_dir = os.path.join(script_dir, summaries_dir)
 
-    twii_csv = args.twii_csv
-    if not os.path.isabs(twii_csv):
-        twii_csv = os.path.join(script_dir, twii_csv)
-
     # Output to current directory (same level as this script)
     output_dir = script_dir
 
@@ -126,14 +129,8 @@ def main():
         print(f"Error: Summaries directory not found: {summaries_dir}")
         sys.exit(1)
 
-    # Verify TWII CSV exists
-    if not os.path.exists(twii_csv):
-        print(f"Error: TWII CSV file not found: {twii_csv}")
-        sys.exit(1)
-
-    # Get trading dates from local CSV file (same source as deeptrader_market.py)
-    trading_dates = get_trading_dates_from_csv(
-        csv_path=twii_csv,
+    # Get trading dates from FinLab (same source as deeptrader_data_tw_finlab.py)
+    trading_dates = get_trading_dates_from_finlab(
         start_date=args.start_date,
         end_date=args.end_date
     )
