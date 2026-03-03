@@ -111,7 +111,9 @@ MARKET_CONFIGS = {
         'val_end': 1944,
         'test_end': 2429,
         'experiment_ids': [
-            '0215/014900',
+            '0214/190224',
+            '0223/185303',
+            '0224/132048'
         ],
         'plot_ylim': None,
         'json_files': {

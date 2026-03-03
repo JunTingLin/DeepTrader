@@ -121,6 +121,7 @@ outputs_temp
 outputs_*
 
 plot_outputs
+plot_outputs_*
 checkpoints
 
 TWStock
