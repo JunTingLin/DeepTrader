@@ -22,7 +22,7 @@
     "theta": 0.15,
     "sigma": 0.5,
     "in_features": [
-        6,
+        5,
         4
     ],
     "num_assets": 28,
@@ -47,9 +47,9 @@
     "test_idx_end": 2438,
     "seed": -1,
     "outputs_base_path": "./src/outputs",
-    "manual_rho": 0,
+    "manual_rho": null,
     "allow_short": true,
-    "msu_bool": false,
+    "msu_bool": true,
     "msu_distribution_type": "normal",
     "pretrained_msu_path": null,
 

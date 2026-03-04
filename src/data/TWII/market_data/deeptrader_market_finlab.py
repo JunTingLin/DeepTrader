@@ -105,12 +105,27 @@ reshaped_data = selected_data.to_numpy()
 if len(reshaped_data.shape) == 2:
     reshaped_data = reshaped_data.reshape(num_days, num_MSU_features)
 
-# Save market data
-output_file = 'market_data.npy'
+# Get script directory for output paths
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Save market data as npy
+output_file = os.path.join(script_dir, 'market_data.npy')
 np.save(output_file, reshaped_data)
 
+# Save market data as CSV (for plot system compatibility)
+csv_df = pd.DataFrame({
+    'Date': close_price.index.strftime('%Y-%m-%d'),
+    'Open': open_price.values,
+    'High': high_price.values,
+    'Low': low_price.values,
+    'Close': close_price.values
+})
+csv_output_file = os.path.join(script_dir, '0050_finlab_adj.csv')
+csv_df.to_csv(csv_output_file, index=False)
+
 print(f"\n=== MARKET DATA PROCESSING COMPLETE ===")
-print(f"Shape: {reshaped_data.shape}")
+print(f"NPY Shape: {reshaped_data.shape}")
 print(f"Saved to: {output_file}")
+print(f"Saved to: {csv_output_file} (for plot system)")
 print(f"Using adjusted (restored) prices from FinLab API")
 print("=" * 40)

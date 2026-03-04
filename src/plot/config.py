@@ -102,18 +102,16 @@ MARKET_CONFIGS = {
         'name': 'Taiwan',
         'start_date': "2016-01-01",
         'end_date': "2025-12-31",
-        'market_file': "./src/data/TWII/market_data/0050.TW.csv",  # 0050 ETF
+        'market_file': "./src/data/TWII/market_data/0050_finlab_adj.csv",  # 0050 ETF (FinLab adjusted price)
         'stock_symbols': TWII_STOCKS,
         'benchmark_column': '0050',
         'benchmark_label': '0050',
         'title': 'DeepTrader vs. 0050',
-        'train_end': 1216,
-        'val_end': 1944,
-        'test_end': 2429,
+        'train_end': 1224,
+        'val_end': 1953,
+        'test_end': 2438,
         'experiment_ids': [
-            '0214/190224',
-            '0223/185303',
-            '0224/132048'
+            '0304/120132',
         ],
         'plot_ylim': None,
         'json_files': {
@@ -184,9 +182,9 @@ elif CURRENT_MARKET == 'US':
     STOCK_PRICE_INDEX = 3     # Close price index (OHLCV: 0,1,2,3,4)
     MARKET_PRICE_INDEX = 3
 else:  # TW
-    STOCK_DATA_PATH = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td/stocks_data.npy'
-    MARKET_DATA_PATH = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td/market_data.npy'
-    GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td'
+    STOCK_DATA_PATH = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed-finlab/stocks_data.npy'
+    MARKET_DATA_PATH = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed-finlab/market_data.npy'
+    GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed-finlab'
     STOCK_PRICE_INDEX = 3     # Close price index (OHLCV: 0,1,2,3,4)
     MARKET_PRICE_INDEX = 3
 
