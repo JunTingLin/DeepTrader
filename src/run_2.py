@@ -184,6 +184,10 @@ def run(func_args):
     finetune_lr_decay = getattr(func_args, 'finetune_lr_decay', 0.5)
     base_lr = func_args.lr
 
+    # Save original boundaries for sliding window termination check
+    data_length = stocks_data.shape[1]
+    max_test_idx_end = min(test_idx_end, data_length)  # The furthest test_idx_end can go
+
     logger.warning("=" * 70)
     logger.warning("SLIDING WINDOW TRAINING MODE")
     logger.warning("=" * 70)
@@ -587,14 +591,16 @@ def run(func_args):
             torch.save(actor.state_dict(), os.path.join(model_save_dir, 'best_global.pth'))
 
         # Check if we can continue to next cycle
-        if env.src.test_idx_end + func_args.trade_len < stocks_data.shape[1]:
+        # Changed: check if test_idx can still slide within the test region
+        next_test_idx = env.src.test_idx + func_args.trade_len
+        if next_test_idx + func_args.trade_len <= max_test_idx_end:
             # Roll update based on sliding mode
             if sliding_mode == 'expanding':
                 # Expanding window: only shift end indices, keep train_idx at 0
                 env.src.train_idx_end += func_args.trade_len
                 env.src.val_idx += func_args.trade_len
                 env.src.test_idx += func_args.trade_len
-                env.src.test_idx_end += func_args.trade_len
+                env.src.test_idx_end = min(env.src.test_idx_end + func_args.trade_len, max_test_idx_end)
                 # Update order_set for new training range
                 env.src.train_set_len = env.src.val_idx - env.src.train_idx
                 lower_bound = max(env.src.train_idx, 5 * (env.src.window_len + 1) - 1)
@@ -603,6 +609,9 @@ def run(func_args):
             else:
                 # Fixed window: use default roll_update
                 env.roll_update()
+                # Ensure test_idx_end doesn't exceed the boundary
+                if env.src.test_idx_end > max_test_idx_end:
+                    env.src.test_idx_end = max_test_idx_end
 
             # Continue with the same actor (fine-tuning)
             # Load the best model and optimizer state from this cycle
