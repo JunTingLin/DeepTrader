@@ -36,34 +36,52 @@ DEFAULT_SUMMARIES_DIR = './summaries_v2'
 DEFAULT_MODEL = 'yiyanghkust/finbert-tone-chinese'
 
 # TWII stock IDs (must match folder names in summaries_v2)
-# Order must match the order in stocks_data.npy
-# Removed 3711 (日月光投控) due to missing data before 2018-04-30
+# Order must match the order in stocks_data.npy (deeptrader_data_tw_finlab.py)
 TWII_STOCK_IDS = [
     "1216",  # 統一
     "1301",  # 台塑
     "1303",  # 南亞
     "2002",  # 中鋼
+    "2059",  # 川湖
+    "2207",  # 和泰車
+    "2301",  # 光寶科
     "2303",  # 聯電
     "2308",  # 台達電
     "2317",  # 鴻海
+    "2327",  # 國巨
     "2330",  # 台積電
+    "2345",  # 智邦
     "2357",  # 華碩
+    "2360",  # 致茂
+    "2379",  # 瑞昱
     "2382",  # 廣達
+    "2383",  # 台光電
     "2395",  # 研華
+    "2408",  # 南亞科
     "2412",  # 中華電
     "2454",  # 聯發科
+    "2603",  # 長榮
+    "2615",  # 萬海
     "2880",  # 華南金
     "2881",  # 富邦金
     "2882",  # 國泰金
+    "2883",  # 凱基金
     "2884",  # 玉山金
     "2885",  # 元大金
     "2886",  # 兆豐金
     "2887",  # 台新新光金
+    "2890",  # 永豐金
     "2891",  # 中信金
     "2892",  # 第一金
     "2912",  # 統一超
     "3008",  # 大立光
+    "3017",  # 奇鋐
+    "3034",  # 聯詠
     "3045",  # 台灣大
+    "3231",  # 緯創
+    "3653",  # 健策
+    "3661",  # 世芯-KY
+    "3665",  # 貿聯-KY
     "4904",  # 遠傳
     "5880",  # 合庫金
     "6505",  # 台塑化
@@ -103,8 +121,8 @@ def main():
     parser = argparse.ArgumentParser(description='Generate sentiment data for TWII stocks')
     parser.add_argument('--summaries-dir', default=DEFAULT_SUMMARIES_DIR,
                         help=f'Path to summaries directory (default: {DEFAULT_SUMMARIES_DIR})')
-    parser.add_argument('--start-date', default='2016-01-01',
-                        help='Start date for trading days (default: 2016-01-01)')
+    parser.add_argument('--start-date', default='2013-01-01',
+                        help='Start date for trading days (default: 2013-01-01)')
     parser.add_argument('--end-date', default='2025-12-31',
                         help='End date for trading days (default: 2025-12-31)')
     parser.add_argument('--model', default=DEFAULT_MODEL,

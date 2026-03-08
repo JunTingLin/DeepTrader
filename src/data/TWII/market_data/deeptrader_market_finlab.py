@@ -27,7 +27,7 @@ if not FINLAB_API_KEY:
 finlab.login(FINLAB_API_KEY)
 
 # Define date range constants
-START_DATE = '2016-01-01'
+START_DATE = '2013-01-01'
 END_DATE = '2025-12-31'
 
 print(f"=== DeepTrader Market Data Processing (FinLab) ===")

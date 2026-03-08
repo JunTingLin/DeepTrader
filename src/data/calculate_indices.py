@@ -2,10 +2,10 @@
 Calculate train/val/test indices for hyper.json based on real trading dates.
 
 Usage:
-    python src/data/calculate_indices.py <trading_dates.npy> [--train-end DATE] [--val-end DATE] [--test-end DATE]
+    python src/data/calculate_indices.py <trading_dates.npy> [--train-start DATE] [--train-end DATE] [--val-end DATE] [--test-end DATE]
 
 Example:
-    python src/data/calculate_indices.py src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed-finlab/trading_dates.npy --train-end 2020-12-31 --val-end 2023-12-31 --test-end 2025-12-31
+    python src/data/calculate_indices.py src/data/TWII/feature5-sc47-2013-2025-finlab/trading_dates.npy --train-start 2016-01-01 --train-end 2020-12-31 --val-end 2023-12-31 --test-end 2025-12-31
 """
 
 import argparse
@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 
-def calculate_indices(trading_dates_file, train_end, val_end, test_end):
+def calculate_indices(trading_dates_file, train_start, train_end, val_end, test_end):
     """Calculate indices for hyper.json"""
     trading_dates = np.load(trading_dates_file, allow_pickle=True)
     trading_dates = pd.DatetimeIndex(trading_dates)
@@ -22,8 +22,12 @@ def calculate_indices(trading_dates_file, train_end, val_end, test_end):
     print(f"Date range: {trading_dates[0].date()} to {trading_dates[-1].date()}")
     print()
 
+    # Use provided train_start or default to first date
+    if train_start is None:
+        train_start = trading_dates[0].strftime('%Y-%m-%d')
+
     intervals = {
-        "Training": (trading_dates[0].strftime('%Y-%m-%d'), train_end),
+        "Training": (train_start, train_end),
         "Validation": (train_end, val_end),
         "Test": (val_end, test_end),
     }
@@ -63,6 +67,7 @@ def calculate_indices(trading_dates_file, train_end, val_end, test_end):
 
     # Output configuration format
     if 'Training' in results and 'Validation' in results and 'Test' in results:
+        train_idx = results['Training']['start_idx']
         train_idx_end = results['Training']['end_idx'] + 1  # exclusive end
         val_idx = train_idx_end
         test_idx = results['Validation']['end_idx'] + 1  # exclusive end
@@ -71,7 +76,7 @@ def calculate_indices(trading_dates_file, train_end, val_end, test_end):
         print("=" * 50)
         print("For hyper.json:")
         print("=" * 50)
-        print(f'"train_idx": 0,')
+        print(f'"train_idx": {train_idx},')
         print(f'"train_idx_end": {train_idx_end},')
         print(f'"val_idx": {val_idx},')
         print(f'"test_idx": {test_idx},')
@@ -81,6 +86,7 @@ def calculate_indices(trading_dates_file, train_end, val_end, test_end):
         print("=" * 50)
         print("For src/plot/config.py (MARKET_CONFIGS):")
         print("=" * 50)
+        print(f"'train_start': {train_idx},")
         print(f"'train_end': {train_idx_end},")
         print(f"'val_end': {test_idx},")
         print(f"'test_end': {test_idx_end},")
@@ -91,14 +97,16 @@ def calculate_indices(trading_dates_file, train_end, val_end, test_end):
 def main():
     parser = argparse.ArgumentParser(description='Calculate train/val/test indices for hyper.json')
     parser.add_argument('trading_dates_file', help='Path to trading_dates.npy file')
-    parser.add_argument('--train-end', default='2020-12-31', help='Training end date (default: 2020-12-31, 5 years)')
-    parser.add_argument('--val-end', default='2023-12-31', help='Validation end date (default: 2023-12-31, 3 years)')
-    parser.add_argument('--test-end', default='2025-12-31', help='Test end date (default: 2025-12-31, 2 years)')
+    parser.add_argument('--train-start', default=None, help='Training start date (default: first date in file)')
+    parser.add_argument('--train-end', default='2020-12-31', help='Training end date (default: 2020-12-31)')
+    parser.add_argument('--val-end', default='2023-12-31', help='Validation end date (default: 2023-12-31)')
+    parser.add_argument('--test-end', default='2025-12-31', help='Test end date (default: 2025-12-31)')
 
     args = parser.parse_args()
 
     calculate_indices(
         args.trading_dates_file,
+        args.train_start,
         args.train_end,
         args.val_end,
         args.test_end

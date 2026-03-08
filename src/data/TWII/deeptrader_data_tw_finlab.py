@@ -139,12 +139,12 @@ def load_precomputed_sentiment(sentiment_file, num_stocks, num_days):
 
 if __name__ == '__main__':
     # Configuration
-    START_DATE = '2016-01-01'
+    START_DATE = '2013-01-01'
     END_DATE = '2025-12-31'
 
     # Feature mode: 'basic' for OHLCV, 'basic_sentiment' for OHLCV + Sentiment
     # FEATURE_MODE = 'basic_sentiment'
-    FEATURE_MODE = 'basic'
+    FEATURE_MODE = 'basic_sentiment'
 
     # Sentiment file (required for basic_sentiment mode)
     PRECOMPUTED_SENTIMENT_FILE = './sentiment_scores.npy'
