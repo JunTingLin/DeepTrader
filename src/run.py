@@ -302,6 +302,13 @@ def run(func_args):
                            metrics['AVOL'], metrics['MDD'] * 100, metrics['CR'], metrics['DDR'],
                            np.mean(rho_record)))
 
+            # Save periodic checkpoint every N epochs (for later analysis)
+            checkpoint_interval = getattr(func_args, 'checkpoint_interval', 100)
+            if checkpoint_interval > 0 and epoch > 0 and epoch % checkpoint_interval == 0:
+                periodic_checkpoint_path = os.path.join(model_save_dir, f'epoch-{epoch}.pkl')
+                torch.save(actor, periodic_checkpoint_path)
+                logger.info(f'Saved periodic checkpoint: epoch-{epoch}.pkl')
+
             if epoch >= start_checkpoint_epoch and metrics['CR'] > max_cr:
                 print('New Best CR Policy!!!!')
                 max_cr = metrics['CR']
