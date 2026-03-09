@@ -297,6 +297,11 @@ def compute_correlation_metrics(experiment_id, outputs_base_path, period='test')
 
     stocks_data = np.load(STOCK_DATA_PATH)
 
+    # Filter by asset_indices if specified (to match experiment's stock filtering)
+    asset_indices = config.get('asset_indices', None)
+    if asset_indices is not None:
+        stocks_data = stocks_data[asset_indices]
+
     # Get date range for the period
     if period == 'val':
         date_start_idx = config['train_end']
@@ -667,6 +672,11 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
         return {}
 
     stocks_data = np.load(STOCK_DATA_PATH)
+
+    # Filter by asset_indices if specified (to match experiment's stock filtering)
+    asset_indices = config.get('asset_indices', None)
+    if asset_indices is not None:
+        stocks_data = stocks_data[asset_indices]
 
     # Get date range for the period
     if period == 'val':

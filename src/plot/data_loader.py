@@ -64,11 +64,13 @@ def get_business_day_segments(trading_dates_file=None):
     total_days = len(full_days)
     print(f"Total trading days: {total_days} (from {trading_dates_file})")
 
-    train_days = full_days[0:config['train_end']]
+    # Support train_start for data that starts before training period (e.g., 2013-2025 data with 2016 training start)
+    train_start = config.get('train_start', 0)
+    train_days = full_days[train_start:config['train_end']]
     val_days = full_days[config['train_end']:config['val_end']]
     test_days = full_days[config['val_end']:config['test_end']]
 
-    print(f"Training days: {len(train_days)}")
+    print(f"Training days: {len(train_days)} (from index {train_start})")
     print(f"Validation days: {len(val_days)}")
     print(f"Test days: {len(test_days)}")
 

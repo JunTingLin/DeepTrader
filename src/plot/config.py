@@ -66,6 +66,59 @@ TWII_STOCKS = [
 #     "3661.TW", "3711.TW", "4904.TW", "4938.TW", "5871.TW", "5876.TW", "5880.TW", "6446.TW", "6505.TW"
 # ]
 
+TWII_STOCKS = [
+    "1216",  # 統一
+    "1301",  # 台塑
+    "1303",  # 南亞
+    "2002",  # 中鋼
+    "2059",  # 川湖
+    "2207",  # 和泰車
+    "2301",  # 光寶科
+    "2303",  # 聯電
+    "2308",  # 台達電
+    "2317",  # 鴻海
+    "2327",  # 國巨
+    "2330",  # 台積電
+    "2345",  # 智邦
+    "2357",  # 華碩
+    "2360",  # 致茂
+    "2379",  # 瑞昱
+    "2382",  # 廣達
+    "2383",  # 台光電
+    "2395",  # 研華
+    "2408",  # 南亞科
+    "2412",  # 中華電
+    "2454",  # 聯發科
+    "2603",  # 長榮
+    "2615",  # 萬海
+    "2880",  # 華南金
+    "2881",  # 富邦金
+    "2882",  # 國泰金
+    "2883",  # 凱基金
+    "2884",  # 玉山金
+    "2885",  # 元大金
+    "2886",  # 兆豐金
+    "2887",  # 台新新光金
+    "2890",  # 永豐金
+    "2891",  # 中信金
+    "2892",  # 第一金
+    "2912",  # 統一超
+    "3008",  # 大立光
+    "3017",  # 奇鋐
+    "3034",  # 聯詠
+    "3045",  # 台灣大
+    "3231",  # 緯創
+    "3653",  # 健策
+    "3661",  # 世芯-KY
+    "3665",  # 貿聯-KY
+    # "3711",  # 日月光投控
+    "4904",  # 遠傳
+    "5880",  # 合庫金
+    "6505",  # 台塑化
+    # "6669",  # 緯穎
+    # "6919",  # 康霈
+]
+
 FAKE_STOCKS = [
     "Stock A", "Stock B"
 ]
@@ -107,11 +160,13 @@ MARKET_CONFIGS = {
         'benchmark_column': '0050',
         'benchmark_label': '0050',
         'title': 'DeepTrader vs. 0050',
-        'train_end': 1224,
-        'val_end': 1953,
-        'test_end': 2438,
+        'train_start': 738,     # 2016-01-04 (npy data starts from 2013, training starts at index 738)
+        'train_end': 1962,      # 2021-01-04 (end of training)
+        'val_end': 2691,        # 2024-01-02 (end of val = start of test)
+        'test_end': 3176,       # 2025-12-31 (end of test)
+        'asset_indices': None,  # None = use all stocks, or list like [1, 2, 3, ...] to filter
         'experiment_ids': [
-            '0304/120132',
+            '0307/212527',
         ],
         'plot_ylim': None,
         'json_files': {
@@ -182,9 +237,9 @@ elif CURRENT_MARKET == 'US':
     STOCK_PRICE_INDEX = 3     # Close price index (OHLCV: 0,1,2,3,4)
     MARKET_PRICE_INDEX = 3
 else:  # TW
-    STOCK_DATA_PATH = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed-finlab/stocks_data.npy'
-    MARKET_DATA_PATH = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed-finlab/market_data.npy'
-    GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-sc29-2016-2025-ror-open-td-score-embed-finlab'
+    STOCK_DATA_PATH = 'src/data/TWII/feature5-sc47-2013-2025-finlab/stocks_data.npy'
+    MARKET_DATA_PATH = 'src/data/TWII/feature5-sc47-2013-2025-finlab/market_data.npy'
+    GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-sc47-2013-2025-finlab'
     STOCK_PRICE_INDEX = 3     # Close price index (OHLCV: 0,1,2,3,4)
     MARKET_PRICE_INDEX = 3
 

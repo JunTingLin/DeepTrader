@@ -16,6 +16,17 @@ from config import (
 )
 
 
+def load_trading_dates():
+    """Load trading dates from trading_dates.npy file."""
+    trading_dates_file = os.path.join(GROUND_TRUTH_PREFIX, 'trading_dates.npy')
+    if os.path.exists(trading_dates_file):
+        return pd.DatetimeIndex(np.load(trading_dates_file, allow_pickle=True))
+    else:
+        # Fallback to bdate_range if trading_dates.npy not found
+        print(f"Warning: trading_dates.npy not found at {trading_dates_file}, using pd.bdate_range")
+        return pd.bdate_range(start=START_DATE, end=END_DATE)
+
+
 def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, period='test', save_plots=True):
     """
     Plot stock price trends with long/short position markers for each stock.
@@ -42,10 +53,16 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
     if not os.path.exists(STOCK_DATA_PATH):
         print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
         return
-    
+
     stocks_data = np.load(STOCK_DATA_PATH)
+
+    # Filter by asset_indices if specified
+    asset_indices = config.get('asset_indices', None)
+    if asset_indices is not None:
+        stocks_data = stocks_data[asset_indices]
+
     print(f"Loaded stock data with shape: {stocks_data.shape}")
-    
+
     # Get date range for the period
     if period == 'val':
         date_start_idx = config['train_end']
@@ -59,7 +76,7 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
     os.makedirs(output_dir, exist_ok=True)
     
     # Generate business day range for the entire dataset
-    full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
+    full_dates = load_trading_dates()
     period_dates = full_dates[date_start_idx:date_end_idx]
     
     # Process each stock
@@ -204,6 +221,12 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
         return
 
     stocks_data = np.load(STOCK_DATA_PATH)
+
+    # Filter by asset_indices if specified
+    asset_indices = config.get('asset_indices', None)
+    if asset_indices is not None:
+        stocks_data = stocks_data[asset_indices]
+
     print(f"Loaded stock data with shape: {stocks_data.shape}")
 
     # Load market data for MSU metrics calculation
@@ -220,7 +243,7 @@ def plot_step_analysis(experiment_id, outputs_base_path, stock_symbols, sample_d
         date_start_idx = config.get('test_idx', config.get('val_end', 0))
     
     # Generate business day range for the entire dataset
-    full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
+    full_dates = load_trading_dates()
     
     # Create output directory
     output_dir = f'src/plot/plot_outputs/{experiment_id}/step_analysis'
@@ -509,7 +532,7 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
         date_start_idx = config['val_end'] 
     
     # Generate business day range for the entire dataset
-    full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
+    full_dates = load_trading_dates()
     
     # Create output directory
     output_dir = f'src/plot/plot_outputs/{experiment_id}/msu_step_analysis'
@@ -629,7 +652,7 @@ def plot_step_score_scatter(experiment_id, outputs_base_path, stock_symbols, sam
         date_start_idx = config['test_idx']
 
     # Generate business day range for the entire dataset
-    full_dates = pd.bdate_range(start=START_DATE, end=END_DATE)
+    full_dates = load_trading_dates()
 
     # Create output directory
     output_dir = f'src/plot/plot_outputs/{experiment_id}/score_scatter_plots'
@@ -875,15 +898,20 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
     if not os.path.exists(STOCK_DATA_PATH):
         print(f"Warning: Stock data not found at {STOCK_DATA_PATH}")
         return
-    
+
     stocks_data = np.load(STOCK_DATA_PATH)
-    
+
+    # Filter by asset_indices if specified
+    asset_indices = config.get('asset_indices', None)
+    if asset_indices is not None:
+        stocks_data = stocks_data[asset_indices]
+
     # Get date range for the period
     if period == 'val':
         date_start_idx = config['train_end']
     else:  # test
         date_start_idx = config['val_end']
-    
+
     # Collect all data points across all steps
     all_scores = []
     all_returns = []
