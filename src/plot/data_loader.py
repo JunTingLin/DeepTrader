@@ -89,16 +89,16 @@ def get_market_data(full_days, file_path=None):
         # Load market data from npy file
         market_data = np.load(MARKET_DATA_PATH, allow_pickle=True)
         # market_data shape: (time_points, num_features)
-        # Extract the price feature
+        # Extract the price feature based on MARKET_PRICE_INDEX
         market_prices = market_data[:, MARKET_PRICE_INDEX]
 
-        # Create DataFrame with Open column (for compatibility)
         full_days = pd.DatetimeIndex(full_days).tz_localize(None)
         df = pd.DataFrame({
-            'Open': market_prices
+            'Price': market_prices,  # Price column for baseline calculation
+            'Open': market_prices,   # Keep Open for intra mode compatibility
+            'Close': market_prices
         }, index=full_days[:len(market_prices)])
 
-        # Ensure we have the full range
         df = df.reindex(full_days)
         df.replace(0, np.nan, inplace=True)
         df.ffill(inplace=True)
@@ -117,16 +117,27 @@ def get_market_data(full_days, file_path=None):
     df.replace(0, np.nan, inplace=True)
     df.ffill(inplace=True)
     df.bfill(inplace=True)
+
+    # Add "Price" column based on MARKET_PRICE_INDEX (0=Open, 3=Close)
+    if MARKET_PRICE_INDEX == 0:
+        df['Price'] = df['Open']
+    elif MARKET_PRICE_INDEX == 3:
+        df['Price'] = df['Close']
+    else:
+        df['Price'] = df['Open']  # Default to Open
+
     return df
 
 def compute_cumulative_wealth(df_market, wealth_mode=WEALTH_MODE):
     """
-    Compute daily cumulative wealth using a Buy & Hold strategy from market Open prices (inter mode) or intraday returns (intra mode).
+    Compute daily cumulative wealth using a Buy & Hold strategy.
+    Uses the "Price" column which is set based on MARKET_PRICE_INDEX (0=Open, 3=Close).
     Rebase the series so that it starts at 1.
     """
     if wealth_mode == 'inter':
-        market_open = df_market["Open"].copy()
-        daily_return = market_open.pct_change().fillna(0.0)
+        # Use "Price" column (set by MARKET_PRICE_INDEX: 0=Open, 3=Close)
+        market_price = df_market["Price"].copy()
+        daily_return = market_price.pct_change().fillna(0.0)
     elif wealth_mode == 'intra':
         daily_return = ((df_market["Close"] - df_market["Open"]) / df_market["Open"]).fillna(0.0)
     else:
