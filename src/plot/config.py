@@ -25,6 +25,39 @@ DJIA_STOCKS = [
     "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "V", "VZ", "WBA"
 ]
 
+# 2024-11-02 updated DJIA stocks list
+DJIA_STOCKS = [
+    "UNH",   # UnitedHealth Group
+    "GS",    # Goldman Sachs
+    "MSFT",  # Microsoft
+    "HD",    # The Home Depot
+    "CAT",   # Caterpillar
+    "AMGN",  # Amgen
+    "MCD",   # McDonald's
+    "CRM",   # Salesforce.com
+    "V",     # Visa
+    "AXP",   # American Express
+    "TRV",   # Travelers
+    "AAPL",  # Apple
+    "JPM",   # JPMorgan Chase
+    "IBM",   # IBM
+    "HON",   # Honeywell International
+    "AMZN",  # Amazon
+    "PG",    # Procter & Gamble
+    "JNJ",   # Johnson & Johnson
+    "BA",    # Boeing
+    "CVX",   # Chevron
+    "MMM",   # 3M
+    "MRK",   # Merck Sharp & Dohme
+    "DIS",   # Walt Disney
+    "WMT",   # Walmart Inc
+    "NKE",   # Nike
+    "KO",    # Coca-Cola
+    "CSCO",  # Cisco Systems
+    "VZ",    # Verizon
+    "INTC",  # Intel
+]
+
 # 2016-01-01~2025-12-31 intersect TWII stocks list
 TWII_STOCKS = [
     "1216.TW",  # 統一
@@ -133,17 +166,12 @@ MARKET_CONFIGS = {
         'benchmark_column': 'DIA',
         'benchmark_label': 'DIA',
         'title': 'DeepTrader vs. DIA',
-        'train_end': 1258,
-        'val_end': 2013,
-        'test_end': 2516,
+        'train_start': 756,
+        'train_end': 2015,
+        'val_end': 2768,
+        'test_end': 3270,
         'experiment_ids': [
-            # '1231/013419',
-            # '0101/023300',
-            # '0101/133244'
-            'random/01',
-            'random/24',
-            'random/42',
-            # 'asu_supervised_20260102_212119'
+
         ],
         'plot_ylim': None,
         'json_files': {
@@ -166,7 +194,7 @@ MARKET_CONFIGS = {
         'test_end': 3176,       # 2025-12-31 (end of test)
         'asset_indices': None,  # None = use all stocks, or list like [1, 2, 3, ...] to filter
         'experiment_ids': [
-            '0307/212527',
+            # '0307/212527',
         ],
         'plot_ylim': None,
         'json_files': {
@@ -187,8 +215,6 @@ MARKET_CONFIGS = {
         'val_end': 2087,
         'test_end': 2673,
         'experiment_ids': [
-            '1114/035244',
-            # '1119/162715'
         ],
         'plot_ylim': None,
         'json_files': {
@@ -231,11 +257,11 @@ if CURRENT_MARKET == 'FAKE':
     STOCK_PRICE_INDEX = 0     # Stock price index in fake data (only 1 feature)
     MARKET_PRICE_INDEX = 0    # Market price index in fake data (only 1 feature)
 elif CURRENT_MARKET == 'US':
-    STOCK_DATA_PATH = 'src/data/DJIA/stocks_data.npy'
-    MARKET_DATA_PATH = 'src/data/DJIA/market_data.npy'
-    GROUND_TRUTH_PREFIX = 'src/data/DJIA'
-    STOCK_PRICE_INDEX = 3     # Close price index (OHLCV: 0,1,2,3,4)
-    MARKET_PRICE_INDEX = 3
+    STOCK_DATA_PATH = 'src/data/DJIA/feature5-sc29-2013-2025/stocks_data.npy'
+    MARKET_DATA_PATH = 'src/data/DJIA/feature5-sc29-2013-2025/market_data.npy'
+    GROUND_TRUTH_PREFIX = 'src/data/DJIA/feature5-sc29-2013-2025'
+    STOCK_PRICE_INDEX = 0     # Close price index (OHLCV: 0,1,2,3,4)
+    MARKET_PRICE_INDEX = 0    # Open price index for baseline (OHLC: 0,1,2,3)
 else:  # TW
     STOCK_DATA_PATH = 'src/data/TWII/feature5-sc47-2013-2025-finlab/stocks_data.npy'
     MARKET_DATA_PATH = 'src/data/TWII/feature5-sc47-2013-2025-finlab/market_data.npy'
