@@ -22,6 +22,7 @@ class RLActor(nn.Module):
         fusion_method = getattr(args, 'fusion_method', 'concat')
         news_embedding_dim = getattr(args, 'news_embedding_dim', 768)
         news_aggregation = getattr(args, 'news_aggregation', 'mean')
+        news_dropout = getattr(args, 'news_dropout', None)
 
         self.asu = ASU(num_nodes=args.num_assets,
                        in_features=args.in_features[0],
@@ -38,7 +39,8 @@ class RLActor(nn.Module):
                        news_embedding_bool=news_embedding_bool,
                        fusion_method=fusion_method,
                        news_embedding_dim=news_embedding_dim,
-                       news_aggregation=news_aggregation)
+                       news_aggregation=news_aggregation,
+                       news_dropout=news_dropout)
 
         self.news_embedding_bool = news_embedding_bool
         print("msu_bool: ", args.msu_bool)

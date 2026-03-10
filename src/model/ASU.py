@@ -273,7 +273,8 @@ class ASU(nn.Module):
                  spatial_bool=True, addaptiveadj=True, aptinit=None,
                  transformer_asu_bool=True, num_assets=30,
                  news_embedding_bool=False, fusion_method='concat',
-                 news_embedding_dim=768, news_aggregation='mean'):
+                 news_embedding_dim=768, news_aggregation='mean',
+                 news_dropout=None):
         super(ASU, self).__init__()
         self.sagcn = SAGCN(num_nodes, in_features, hidden_dim, window_len, dropout, kernel_size, layers,
                            supports, spatial_bool, addaptiveadj, aptinit, transformer_asu_bool, num_assets)
@@ -290,15 +291,17 @@ class ASU(nn.Module):
         # News embedding fusion (Path B)
         self.news_embedding_bool = news_embedding_bool
         if news_embedding_bool:
+            # Use news_dropout if specified, otherwise use global dropout
+            effective_news_dropout = news_dropout if news_dropout is not None else dropout
             self.news_integration = NewsIntegrationModule(
                 embedding_dim=news_embedding_dim,
                 hidden_dim=hidden_dim,
                 window_len=window_len,
                 fusion_method=fusion_method,
-                dropout=dropout,
+                dropout=effective_news_dropout,
                 aggregation=news_aggregation
             )
-            print(f"ASU: News embedding fusion enabled (method={fusion_method})")
+            print(f"ASU: News embedding fusion enabled (method={fusion_method}, dropout={effective_news_dropout})")
 
     def forward(self, inputs, mask, news_embeddings: Optional[torch.Tensor] = None):
         """
