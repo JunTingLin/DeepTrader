@@ -148,7 +148,11 @@ def run(func_args):
         # Load news embeddings (Path B) if enabled
         if news_embedding_bool:
             sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/DJIA/sentiment/')
-            news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+            news_embedding_dim = getattr(func_args, 'news_embedding_dim', 768)
+            if news_embedding_dim != 768:
+                news_embeddings_file = os.path.join(sentiment_data_path, f'cls_embeddings_dim{news_embedding_dim}.npy')
+            else:
+                news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
             if os.path.exists(news_embeddings_file):
                 news_embeddings = np.load(news_embeddings_file)
                 logger.info(f'Loaded news embeddings: {news_embeddings.shape}')
@@ -174,7 +178,12 @@ def run(func_args):
         news_embedding_bool = getattr(func_args, 'news_embedding_bool', False)
         if news_embedding_bool:
             sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/TWII/sentiment/')
-            news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+            news_embedding_dim = getattr(func_args, 'news_embedding_dim', 768)
+            # Use reduced dimension file if not 768
+            if news_embedding_dim != 768:
+                news_embeddings_file = os.path.join(sentiment_data_path, f'cls_embeddings_dim{news_embedding_dim}.npy')
+            else:
+                news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
             if os.path.exists(news_embeddings_file):
                 news_embeddings = np.load(news_embeddings_file)
                 logger.info(f'Loaded news embeddings: {news_embeddings.shape}')
