@@ -11,37 +11,38 @@ from deeptrader_data_common import process_stocks_data
 #     "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "VZ", "WBA"
 # ]
 
-# 2024-11-02 updated DJIA stocks list
+# 2026-03-10 updated DJIA 30 stocks list
 DJIA_STOCKS = [
-    "UNH",   # UnitedHealth Group
-    "GS",    # Goldman Sachs
-    "MSFT",  # Microsoft
-    "HD",    # The Home Depot
-    "CAT",   # Caterpillar
-    "AMGN",  # Amgen
-    "MCD",   # McDonald's
-    "CRM",   # Salesforce.com
-    "V",     # Visa
-    "AXP",   # American Express
-    "TRV",   # Travelers
     "AAPL",  # Apple
-    "JPM",   # JPMorgan Chase
-    "IBM",   # IBM
-    "HON",   # Honeywell International
+    "AXP",   # American Express
+    "AMGN",  # Amgen
     "AMZN",  # Amazon
-    "PG",    # Procter & Gamble
-    "JNJ",   # Johnson & Johnson
     "BA",    # Boeing
+    "CAT",   # Caterpillar
+    "CRM",   # Salesforce.com
+    "CSCO",  # Cisco Systems
     "CVX",   # Chevron
+    "DIS",   # Walt Disney
+    "GS",    # Goldman Sachs
+    "HD",    # The Home Depot
+    "HON",   # Honeywell International
+    "IBM",   # IBM
+    "JNJ",   # Johnson & Johnson
+    "JPM",   # JPMorgan Chase
+    "KO",    # Coca-Cola
+    "MCD",   # McDonald's
     "MMM",   # 3M
     "MRK",   # Merck Sharp & Dohme
-    "DIS",   # Walt Disney
-    "WMT",   # Walmart Inc
+    "MSFT",  # Microsoft
     "NKE",   # Nike
-    "KO",    # Coca-Cola
-    "CSCO",  # Cisco Systems
+    "NVDA",  # NVIDIA
+    "SHW",   # Sherwin-Williams
+    "PG",    # Procter & Gamble
+    "TRV",   # Travelers
+    "UNH",   # UnitedHealth Group
+    "V",     # Visa
     "VZ",    # Verizon
-    "INTC",  # Intel
+    "WMT",   # Walmart Inc
 ]
 
 if __name__ == '__main__':
