@@ -3,6 +3,7 @@ import json
 import os
 import copy
 import time
+import re
 from datetime import datetime
 import logging
 from tqdm import *
@@ -269,13 +270,29 @@ def run(func_args):
         )
 
     supports = [A]
-    actor = RLActor(supports, func_args).to(func_args.device)
 
-    # Load pretrained MSU encoder if specified (Stage 1 → Stage 2 transfer learning)
-    if hasattr(func_args, 'pretrained_msu_path') and func_args.pretrained_msu_path is not None:
-        load_pretrained_msu_encoder(actor, func_args.pretrained_msu_path, logger)
+    # Resume from checkpoint or create new actor
+    resume_epoch = 0
+    if hasattr(func_args, 'resume') and func_args.resume is not None:
+        logger.warning('=' * 80)
+        logger.warning(f'RESUMING from checkpoint: {func_args.resume}')
+        actor = torch.load(func_args.resume, map_location=func_args.device, weights_only=False)
+
+        # Auto-detect epoch from filename
+        match = re.search(r'(\d+)', os.path.basename(func_args.resume))
+        if match:
+            resume_epoch = int(match.group(1))
+
+        logger.warning(f'Resuming from epoch {resume_epoch}')
+        logger.warning('=' * 80)
     else:
-        logger.warning('Training MSU from scratch (no pretrained encoder specified)')
+        actor = RLActor(supports, func_args).to(func_args.device)
+
+        # Load pretrained MSU encoder if specified (Stage 1 → Stage 2 transfer learning)
+        if hasattr(func_args, 'pretrained_msu_path') and func_args.pretrained_msu_path is not None:
+            load_pretrained_msu_encoder(actor, func_args.pretrained_msu_path, logger)
+        else:
+            logger.warning('Training MSU from scratch (no pretrained encoder specified)')
 
     agent = RLAgent(env, actor, func_args)
 
@@ -283,7 +300,7 @@ def run(func_args):
     try:
         max_cr = -999
         start_checkpoint_epoch = func_args.start_checkpoint_epoch
-        for epoch in range(func_args.epochs):
+        for epoch in range(resume_epoch, func_args.epochs):
             epoch_return = 0
             epoch_loss = 0
             epoch_loss_asu = 0
@@ -409,6 +426,8 @@ if __name__ == '__main__':
     parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
     parser.add_argument('--pretrained_msu_path', type=str, default=None,
                         help='Path to pretrained MSU encoder checkpoint from Stage 1 (e.g., checkpoints/msu_stage1_masked/.../best_model.pth)')
+    parser.add_argument('--resume', type=str, default=None,
+                        help='Path to checkpoint to resume training (e.g., ./src/outputs/0313/015755/model_file/epoch-1400.pkl)')
 
     opts = parser.parse_args()
 
