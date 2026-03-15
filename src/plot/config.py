@@ -25,37 +25,38 @@ DJIA_STOCKS = [
     "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "V", "VZ", "WBA"
 ]
 
-# 2024-11-02 updated DJIA stocks list
+# 2026-03-10 updated DJIA 30 stocks list
 DJIA_STOCKS = [
-    "UNH",   # UnitedHealth Group
-    "GS",    # Goldman Sachs
-    "MSFT",  # Microsoft
-    "HD",    # The Home Depot
-    "CAT",   # Caterpillar
-    "AMGN",  # Amgen
-    "MCD",   # McDonald's
-    "CRM",   # Salesforce.com
-    "V",     # Visa
-    "AXP",   # American Express
-    "TRV",   # Travelers
     "AAPL",  # Apple
-    "JPM",   # JPMorgan Chase
-    "IBM",   # IBM
-    "HON",   # Honeywell International
+    "AXP",   # American Express
+    "AMGN",  # Amgen
     "AMZN",  # Amazon
-    "PG",    # Procter & Gamble
-    "JNJ",   # Johnson & Johnson
     "BA",    # Boeing
+    "CAT",   # Caterpillar
+    "CRM",   # Salesforce.com
+    "CSCO",  # Cisco Systems
     "CVX",   # Chevron
+    "DIS",   # Walt Disney
+    "GS",    # Goldman Sachs
+    "HD",    # The Home Depot
+    "HON",   # Honeywell International
+    "IBM",   # IBM
+    "JNJ",   # Johnson & Johnson
+    "JPM",   # JPMorgan Chase
+    "KO",    # Coca-Cola
+    "MCD",   # McDonald's
     "MMM",   # 3M
     "MRK",   # Merck Sharp & Dohme
-    "DIS",   # Walt Disney
-    "WMT",   # Walmart Inc
+    "MSFT",  # Microsoft
     "NKE",   # Nike
-    "KO",    # Coca-Cola
-    "CSCO",  # Cisco Systems
+    "NVDA",  # NVIDIA
+    "SHW",   # Sherwin-Williams
+    "PG",    # Procter & Gamble
+    "TRV",   # Travelers
+    "UNH",   # UnitedHealth Group
+    "V",     # Visa
     "VZ",    # Verizon
-    "INTC",  # Intel
+    "WMT",   # Walmart Inc
 ]
 
 # 2016-01-01~2025-12-31 intersect TWII stocks list
@@ -181,18 +182,18 @@ MARKET_CONFIGS = {
     },
     'TW': {
         'name': 'Taiwan',
-        'start_date': "2016-01-01",
-        'end_date': "2025-12-31",
+        'start_date': "2014-01-01",
+        'end_date': "2023-12-31",
         'market_file': "./src/data/TWII/market_data/0050_finlab_adj.csv",  # 0050 ETF (FinLab adjusted price)
         'stock_symbols': TWII_STOCKS,
         'benchmark_column': '0050',
         'benchmark_label': '0050',
         'title': 'DeepTrader vs. 0050',
-        'train_start': 738,     # 2016-01-04 (npy data starts from 2013, training starts at index 738)
-        'train_end': 1962,      # 2021-01-04 (end of training)
-        'val_end': 2691,        # 2024-01-02 (end of val = start of test)
-        'test_end': 3176,       # 2025-12-31 (end of test)
-        'asset_indices': None,  # None = use all stocks, or list like [1, 2, 3, ...] to filter
+        'train_start': 246,
+        'train_end': 1475,
+        'val_end': 2206,
+        'test_end': 2691,
+        'asset_indices': None,
         'experiment_ids': [
             # '0307/212527',
         ],
@@ -260,14 +261,14 @@ elif CURRENT_MARKET == 'US':
     STOCK_DATA_PATH = 'src/data/DJIA/feature5-sc29-2013-2025/stocks_data.npy'
     MARKET_DATA_PATH = 'src/data/DJIA/feature5-sc29-2013-2025/market_data.npy'
     GROUND_TRUTH_PREFIX = 'src/data/DJIA/feature5-sc29-2013-2025'
-    STOCK_PRICE_INDEX = 0     # Close price index (OHLCV: 0,1,2,3,4)
-    MARKET_PRICE_INDEX = 0    # Open price index for baseline (OHLC: 0,1,2,3)
+    STOCK_PRICE_INDEX = 3     # Close price index (OHLCV: 0,1,2,3,4)
+    MARKET_PRICE_INDEX = 3    # Open price index for baseline (OHLC: 0,1,2,3)
 else:  # TW
     STOCK_DATA_PATH = 'src/data/TWII/feature5-sc47-2013-2025-finlab/stocks_data.npy'
     MARKET_DATA_PATH = 'src/data/TWII/feature5-sc47-2013-2025-finlab/market_data.npy'
     GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-sc47-2013-2025-finlab'
-    STOCK_PRICE_INDEX = 3     # Close price index (OHLCV: 0,1,2,3,4)
-    MARKET_PRICE_INDEX = 3
+    STOCK_PRICE_INDEX = 0     # Close price index (OHLCV: 0,1,2,3,4)
+    MARKET_PRICE_INDEX = 0
 
 # -------------------------------
 # Plotting Style Configuration
