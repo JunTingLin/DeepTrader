@@ -1,12 +1,14 @@
 """
 DeepTrader Taiwan Stock Data Processing using FinLab API
 Uses adjusted (restored) prices to account for dividends and stock splits
+Supports 'basic', 'basic_sentiment', and 'full' feature modes
 """
 
 import pandas as pd
 import numpy as np
 from dotenv import load_dotenv
 import os
+import talib
 import finlab
 from finlab import data
 
@@ -19,6 +21,210 @@ if not FINLAB_API_KEY:
     raise ValueError("FINLAB_API_KEY not found in .env file")
 
 finlab.login(FINLAB_API_KEY)
+
+
+# ============================================================
+# Technical Indicator and Alpha Factor Functions
+# (Same as deeptrader_data_common.py for consistency)
+# ============================================================
+
+def calculate_returns(df):
+    df['Returns'] = df['close'].pct_change()
+    return df
+
+
+def calculate_alpha001(df):
+    rank_close = df['close'].rank(pct=True)
+    rank_volume = df['volume'].rank(pct=True)
+    alpha001 = rank_close.rolling(window=5).apply(
+        lambda x: np.corrcoef(x, rank_volume.loc[x.index])[0, 1], raw=False
+    ).rank(pct=True)
+    return alpha001
+
+
+def calculate_alpha002(df):
+    volume_safe = pd.Series(df['volume']).replace(0, 1)
+    open_safe = pd.Series(df['open']).replace(0, 1)
+    log_volume = np.log(volume_safe)
+    delta_log_volume = log_volume.diff(2)
+    price_change = (df['close'] - df['open']) / open_safe
+    alpha002 = -1 * df['close'].rolling(window=6).apply(
+        lambda x: np.corrcoef(delta_log_volume.loc[x.index], price_change.loc[x.index])[0, 1], raw=False
+    ).rank(pct=True)
+    return alpha002
+
+
+def calculate_alpha003(df):
+    alpha003 = -1 * df['open'].rolling(window=10).apply(
+        lambda x: np.corrcoef(x.rank(), df['volume'].loc[x.index].rank())[0, 1], raw=False
+    ).rank(pct=True)
+    return alpha003
+
+
+def calculate_alpha004(df):
+    alpha004 = -1 * df['low'].rank(pct=True).rolling(window=9).apply(
+        lambda x: x.rank().iloc[-1], raw=False
+    )
+    return alpha004
+
+
+def calculate_alpha006(df):
+    alpha006 = -1 * df['open'].rolling(window=10).apply(
+        lambda x: np.corrcoef(x, df['volume'].loc[x.index])[0, 1], raw=False
+    )
+    return alpha006
+
+
+def calculate_alpha012(df):
+    delta_volume = df['volume'].diff(1)
+    delta_close = df['close'].diff(1)
+    alpha012 = np.sign(delta_volume) * (-1 * delta_close)
+    return alpha012
+
+
+def calculate_alpha019(df):
+    delayed_close = df['close'].shift(7)
+    delta_close = df['close'].diff(7)
+    rank_sum_returns = df['Returns'].rolling(window=250).sum().rank(pct=True)
+    alpha019 = (-1 * np.sign((df['close'] - delayed_close) + delta_close)) * (1 + rank_sum_returns)
+    return alpha019
+
+
+def calculate_alpha033(df):
+    close_safe = pd.Series(df['close']).replace(0, 1)
+    alpha033 = (-1 * (1 - (df['open'] / close_safe)).rank(pct=True))
+    return alpha033
+
+
+def calculate_alpha038(df):
+    open_safe = pd.Series(df['open']).replace(0, 1)
+    alpha038 = (-1 * df['close'].rolling(window=10).apply(
+        lambda x: x.rank().iloc[-1], raw=False
+    ).rank(pct=True)) * (df['close'] / open_safe).rank(pct=True)
+    return alpha038
+
+
+def calculate_alpha040(df):
+    alpha040 = (-1 * df['high'].rolling(window=10).apply(
+        lambda x: x.std()
+    ).rank(pct=True)) * df['high'].rolling(window=10).apply(
+        lambda x: np.corrcoef(x, df['volume'].loc[x.index])[0, 1], raw=False
+    )
+    return alpha040
+
+
+def calculate_alpha044(df):
+    alpha044 = -1 * df['high'].rolling(window=5).apply(
+        lambda x: np.corrcoef(x, df['volume'].loc[x.index].rank())[0, 1], raw=False
+    )
+    return alpha044
+
+
+def calculate_alpha045(df):
+    alpha045 = (-1 * (df['close'].rolling(window=20).mean().shift(5).rank(pct=True) *
+                      df['close'].rolling(window=2).apply(
+                          lambda x: np.corrcoef(x, df['volume'].loc[x.index])[0, 1], raw=False
+                      )).rank(pct=True) *
+                df['close'].rolling(window=5).sum().rolling(window=20).apply(
+                    lambda x: np.corrcoef(x, df['close'].loc[x.index])[0, 1], raw=False
+                ).rank(pct=True))
+    return alpha045
+
+
+def calculate_alpha046(df):
+    delta_close_10 = df['close'].diff(10)
+    delta_close_20 = df['close'].diff(20)
+    term = ((delta_close_20 - delta_close_10) / 10) - ((delta_close_10 - df['close']) / 10)
+    alpha046 = np.where(0.25 < term, -1, np.where(term < 0, 1, -1 * (df['close'] - df['close'].shift(1))))
+    return alpha046
+
+
+def calculate_alpha051(df):
+    delta_close_10 = df['close'].diff(10)
+    delta_close_20 = df['close'].diff(20)
+    alpha051 = np.where(
+        ((delta_close_20 - delta_close_10) / 10) - ((delta_close_10 - df['close']) / 10) < -0.05,
+        1, -1 * (df['close'] - df['close'].shift(1))
+    )
+    return alpha051
+
+
+def calculate_alpha052(df):
+    ts_min_low_5 = df['low'].rolling(window=5).min()
+    delayed_ts_min_low_5 = ts_min_low_5.shift(5)
+    rank_sum_returns_240_20 = ((df['Returns'].rolling(window=240).sum() -
+                                df['Returns'].rolling(window=20).sum()) / 220).rank(pct=True)
+    alpha052 = ((-1 * ts_min_low_5 + delayed_ts_min_low_5) * rank_sum_returns_240_20) * \
+               df['volume'].rolling(window=5).apply(lambda x: x.rank().iloc[-1], raw=False)
+    return alpha052
+
+
+def calculate_alpha053(df):
+    denom = pd.Series(df['close'] - df['low']).replace(0, 1)
+    alpha053 = -1 * (((df['close'] - df['low']) - (df['high'] - df['close'])) / denom).diff(9)
+    return alpha053
+
+
+def calculate_alpha054(df):
+    denom = pd.Series(df['low'] - df['high']).replace(0, 1)
+    alpha054 = (-1 * ((df['low'] - df['close']) * df['open']**5)) / (denom * df['close']**5)
+    return alpha054
+
+
+def calculate_alpha056(df):
+    denom = pd.Series(df['Returns'].rolling(window=2).sum().rolling(window=3).sum()).replace(0, 1)
+    rank_sum_returns_10 = (df['Returns'].rolling(window=10).sum() / denom).rank(pct=True)
+    alpha056 = -rank_sum_returns_10 * (df['Returns'] * df['volume'])
+    return alpha056
+
+
+def calculate_alpha060(df):
+    alpha060 = -1 * (2 * ((df['high'] - df['close']).rolling(window=10).apply(
+        lambda x: (x - x.min()) / (x.max() - x.min()) if (x.max() - x.min()) != 0 else 0, raw=False
+    ).rank(pct=True) - (df['close'].rolling(window=10).apply(np.argmax, raw=False).rank(pct=True))))
+    return alpha060
+
+
+def calculate_alpha068(df):
+    rank_corr_high_adv15_8 = df['high'].rolling(window=8).apply(
+        lambda x: np.corrcoef(x.rank(), df['volume'].rolling(window=15).mean().loc[x.index])[0, 1], raw=False
+    ).rank(pct=True)
+    delta_weighted_close = (df['close'] * 0.518371 + df['low'] * (1 - 0.518371)).diff(1)
+    alpha068 = (rank_corr_high_adv15_8 < delta_weighted_close) * -1
+    return alpha068
+
+
+def calculate_alpha085(df):
+    rank_corr = ((df['high'] * 0.876703 + df['close'] * (1 - 0.876703)).rolling(window=9).apply(
+        lambda x: np.corrcoef(x, df['volume'].rolling(window=30).mean().loc[x.index])[0, 1], raw=False
+    ).rank(pct=True))
+    rank_corr2 = df['high'].rolling(window=10).apply(
+        lambda _: np.corrcoef((df['high'] + df['low']) / 2, df['volume'])[0, 1], raw=False
+    ).rank(pct=True)
+    alpha085 = rank_corr ** rank_corr2
+    return alpha085
+
+
+def fill_technical_indicators(df, indicators):
+    """Fill NaN/Inf values in technical indicators"""
+    for col in indicators:
+        if col in df.columns:
+            df[col] = df[col].replace([np.inf, -np.inf], np.nan)
+            df[col] = df[col].bfill().ffill().fillna(0)
+    return df
+
+
+def clean_alpha_factor(alpha_series):
+    """Clean alpha factor by replacing Inf/NaN"""
+    # Handle both pandas Series and numpy array
+    if isinstance(alpha_series, np.ndarray):
+        result = pd.Series(alpha_series)
+    else:
+        result = alpha_series.copy()
+
+    result = result.replace([np.inf, -np.inf], np.nan)
+    result = result.bfill().ffill().fillna(0)
+    return result
 
 # 2016-01-01~2025-12-31 intersect TWII stocks list
 # Removed 3711 (日月光投控) due to missing data before 2018-04-30
@@ -142,12 +348,23 @@ if __name__ == '__main__':
     START_DATE = '2013-01-01'
     END_DATE = '2025-12-31'
 
-    # Feature mode: 'basic' for OHLCV, 'basic_sentiment' for OHLCV + Sentiment
-    # FEATURE_MODE = 'basic_sentiment'
-    FEATURE_MODE = 'basic_sentiment'
+    # For full mode, we need more historical data for indicator calculations
+    DOWNLOAD_START_DATE = '2010-01-01'
+
+    # Feature mode:
+    # - 'basic': OHLCV (5 features)
+    # - 'basic_sentiment': OHLCV + Sentiment (6 features)
+    # - 'full': OHLCV + Technical + Alpha (34 features)
+    # - 'full_sentiment': OHLCV + Technical + Alpha + Sentiment (35 features)
+    FEATURE_MODE = 'full_sentiment'
 
     # Sentiment file (required for basic_sentiment mode)
     PRECOMPUTED_SENTIMENT_FILE = './sentiment_scores.npy'
+
+    # Alpha factors list
+    ALPHAS = ['Alpha001', 'Alpha002', 'Alpha003', 'Alpha004', 'Alpha006', 'Alpha012', 'Alpha019',
+              'Alpha033', 'Alpha038', 'Alpha040', 'Alpha044', 'Alpha045', 'Alpha046', 'Alpha051',
+              'Alpha052', 'Alpha053', 'Alpha054', 'Alpha056', 'Alpha068', 'Alpha085']
 
     print(f"=== DeepTrader Taiwan Stock Data Processing (FinLab) ===")
     print(f"Date range: {START_DATE} to {END_DATE}")
@@ -171,23 +388,54 @@ if __name__ == '__main__':
     num_stocks = len(TWII_STOCKS)
     num_days = len(unique_dates)
 
-    # Initialize output array for OHLCV
+    # Determine number of features based on mode
+    tech_names = ['MA20', 'MA60', 'RSI', 'MACD_Signal', 'K', 'D',
+                  'BBands_Upper', 'BBands_Middle', 'BBands_Lower']
+
+    if FEATURE_MODE == 'basic':
+        num_features = 5  # OHLCV
+        feature_names = ['open', 'high', 'low', 'close', 'volume']
+    elif FEATURE_MODE == 'basic_sentiment':
+        num_features = 6  # OHLCV + Sentiment
+        feature_names = ['open', 'high', 'low', 'close', 'volume', 'Sentiment']
+    elif FEATURE_MODE == 'full':
+        num_features = 5 + len(tech_names) + len(ALPHAS)  # 5 + 9 + 20 = 34
+        feature_names = ['open', 'high', 'low', 'close', 'volume'] + tech_names + ALPHAS
+    elif FEATURE_MODE == 'full_sentiment':
+        num_features = 5 + len(tech_names) + len(ALPHAS) + 1  # 5 + 9 + 20 + 1 = 35
+        feature_names = ['open', 'high', 'low', 'close', 'volume'] + tech_names + ALPHAS + ['Sentiment']
+    else:
+        raise ValueError(f"Unknown FEATURE_MODE: {FEATURE_MODE}")
+
+    print(f"\n=== FEATURE CONFIGURATION ===")
+    print(f"Mode: {FEATURE_MODE}")
+    print(f"Total features: {num_features}")
+    print(f"Feature names (in order):")
+    for idx, name in enumerate(feature_names, 1):
+        print(f"  {idx:2d}. {name}")
+    print("=" * 30)
+
+    # Initialize output array
     print(f"\nProcessing {num_stocks} stocks...")
-    reshaped_data_ohlcv = np.zeros((num_stocks, num_days, 5))
+    reshaped_data = np.zeros((num_stocks, num_days, num_features))
 
     # Process each stock sequentially
     for i, stock_id in enumerate(TWII_STOCKS):
         print(f"Processing stock {i+1}/{num_stocks}: {stock_id}")
 
         try:
-            # Get adjusted (restored) prices from FinLab
-            open_price = data.get('etl:adj_open')[stock_id][START_DATE:END_DATE]
-            high_price = data.get('etl:adj_high')[stock_id][START_DATE:END_DATE]
-            low_price = data.get('etl:adj_low')[stock_id][START_DATE:END_DATE]
-            close_price = data.get('etl:adj_close')[stock_id][START_DATE:END_DATE]
-            volume = data.get('price:成交股數')[stock_id][START_DATE:END_DATE]
+            # Always use DOWNLOAD_START_DATE to ensure consistent data across all modes
+            # This ensures OHLCV values are identical regardless of feature mode
+            download_start = DOWNLOAD_START_DATE
 
-            # Create DataFrame
+            # Get adjusted (restored) prices from FinLab
+            open_price = data.get('etl:adj_open')[stock_id][download_start:END_DATE]
+            high_price = data.get('etl:adj_high')[stock_id][download_start:END_DATE]
+            low_price = data.get('etl:adj_low')[stock_id][download_start:END_DATE]
+            close_price = data.get('etl:adj_close')[stock_id][download_start:END_DATE]
+            volume = data.get('price:成交股數')[stock_id][download_start:END_DATE]
+
+            # Create DataFrame with full historical data
             stock_data = pd.DataFrame({
                 'Date': close_price.index,
                 'open': open_price.values,
@@ -196,42 +444,81 @@ if __name__ == '__main__':
                 'close': close_price.values,
                 'volume': volume.values
             })
-
-            # Reset index
             stock_data = stock_data.reset_index(drop=True)
 
+            # Clean OHLCV data
+            for col in ['open', 'high', 'low', 'close', 'volume']:
+                stock_data[col] = stock_data[col].replace(0, np.nan)
+                stock_data[col] = stock_data[col].ffill().bfill().fillna(0)
+                stock_data[col] = stock_data[col].replace([np.inf, -np.inf], 0)
+
+            # Calculate technical indicators and alphas for full/full_sentiment mode
+            if FEATURE_MODE in ['full', 'full_sentiment']:
+                # Calculate returns
+                stock_data = calculate_returns(stock_data)
+
+                # Calculate technical indicators using talib
+                stock_data['MA20'] = talib.SMA(stock_data['close'], timeperiod=20)
+                stock_data['MA60'] = talib.SMA(stock_data['close'], timeperiod=60)
+                stock_data['RSI'] = talib.RSI(stock_data['close'], timeperiod=14)
+                macd, signal, hist = talib.MACD(stock_data['close'], fastperiod=12, slowperiod=26, signalperiod=9)
+                stock_data['MACD_Signal'] = signal
+                k, d = talib.STOCH(stock_data['high'], stock_data['low'], stock_data['close'])
+                stock_data['K'] = k
+                stock_data['D'] = d
+                upper, middle, lower = talib.BBANDS(stock_data['close'], timeperiod=20, nbdevup=2, nbdevdn=2)
+                stock_data['BBands_Upper'] = upper
+                stock_data['BBands_Middle'] = middle
+                stock_data['BBands_Lower'] = lower
+
+                # Fill technical indicators
+                tech_cols = ['MA20', 'MA60', 'RSI', 'MACD_Signal', 'K', 'D',
+                             'BBands_Upper', 'BBands_Middle', 'BBands_Lower']
+                stock_data = fill_technical_indicators(stock_data, tech_cols)
+
+                # Calculate alpha factors
+                for alpha in ALPHAS:
+                    calc_func = globals()[f'calculate_{alpha.lower()}']
+                    stock_data[alpha] = clean_alpha_factor(calc_func(stock_data))
+
         except Exception as e:
-            print(f"  Error downloading {stock_id}: {e}")
-            # Fill with zeros if download fails
+            print(f"  Error processing {stock_id}: {e}")
             continue
 
-        # Fill data for each date
-        used_cols = ['open', 'high', 'low', 'close', 'volume']
+        # Fill data for each date (align with unique_dates)
+        if FEATURE_MODE in ['full', 'full_sentiment']:
+            # For full modes, use OHLCV + technical + alpha (sentiment added later)
+            used_cols = ['open', 'high', 'low', 'close', 'volume'] + \
+                        ['MA20', 'MA60', 'RSI', 'MACD_Signal', 'K', 'D',
+                         'BBands_Upper', 'BBands_Middle', 'BBands_Lower'] + ALPHAS
+        else:
+            used_cols = ['open', 'high', 'low', 'close', 'volume']
+
         for j, date in enumerate(unique_dates):
             day_data = stock_data[stock_data['Date'] == pd.Timestamp(date)]
             if not day_data.empty:
-                reshaped_data_ohlcv[i, j, :] = day_data[used_cols].values[0]
+                reshaped_data[i, j, :len(used_cols)] = day_data[used_cols].values[0]
 
     print("\n=== Stock data processing complete ===")
-    print(f"OHLCV data shape: {reshaped_data_ohlcv.shape}")
+    print(f"Data shape: {reshaped_data.shape}")
 
     # Check for NaN values before filling
-    nan_count_before = np.isnan(reshaped_data_ohlcv).sum()
+    nan_count_before = np.isnan(reshaped_data).sum()
     if nan_count_before > 0:
         print(f"Found {nan_count_before} NaN values before filling")
         for stock_idx in range(num_stocks):
-            stock_nan = np.isnan(reshaped_data_ohlcv[stock_idx]).sum()
+            stock_nan = np.isnan(reshaped_data[stock_idx]).sum()
             if stock_nan > 0:
                 print(f"  Stock {stock_idx} ({TWII_STOCKS[stock_idx]}): {stock_nan} NaN values")
 
         # Fill NaN values using forward fill + backward fill
         print("\nFilling NaN values with forward fill + backward fill...")
-        df_temp = pd.DataFrame(reshaped_data_ohlcv.reshape(-1, 5))
+        df_temp = pd.DataFrame(reshaped_data.reshape(-1, num_features))
         df_temp = df_temp.ffill().bfill()
-        reshaped_data_ohlcv = df_temp.values.reshape(num_stocks, num_days, 5)
+        reshaped_data = df_temp.values.reshape(num_stocks, num_days, num_features)
 
         # Check NaN after filling
-        nan_count_after = np.isnan(reshaped_data_ohlcv).sum()
+        nan_count_after = np.isnan(reshaped_data).sum()
         if nan_count_after == 0:
             print(f"✓ All NaN values filled successfully (0 NaN remaining)")
         else:
@@ -239,7 +526,7 @@ if __name__ == '__main__':
     else:
         print(f"✓ No NaN values found")
 
-    # Combine with sentiment scores if needed
+    # Add sentiment scores for sentiment modes
     if FEATURE_MODE == 'basic_sentiment':
         print("\n=== Adding sentiment scores ===")
         sentiment_scores = load_precomputed_sentiment(
@@ -247,14 +534,22 @@ if __name__ == '__main__':
             num_stocks,
             num_days
         )
-
-        # Combine OHLCV + Sentiment
-        reshaped_data = np.concatenate([reshaped_data_ohlcv, sentiment_scores], axis=2)
-        num_features = 6
+        # Add sentiment as 6th feature (index 5)
+        reshaped_data[:, :, 5:6] = sentiment_scores
         print(f"Final data shape: {reshaped_data.shape} (OHLCV + Sentiment)")
+    elif FEATURE_MODE == 'full_sentiment':
+        print("\n=== Adding sentiment scores ===")
+        sentiment_scores = load_precomputed_sentiment(
+            PRECOMPUTED_SENTIMENT_FILE,
+            num_stocks,
+            num_days
+        )
+        # Add sentiment as 35th feature (index 34)
+        reshaped_data[:, :, 34:35] = sentiment_scores
+        print(f"Final data shape: {reshaped_data.shape} (OHLCV + Technical + Alpha + Sentiment)")
+    elif FEATURE_MODE == 'full':
+        print(f"Final data shape: {reshaped_data.shape} (OHLCV + Technical + Alpha)")
     else:
-        reshaped_data = reshaped_data_ohlcv
-        num_features = 5
         print(f"Final data shape: {reshaped_data.shape} (OHLCV only)")
 
     # Save stocks data (in current directory, same as original)
@@ -295,5 +590,11 @@ if __name__ == '__main__':
     print(f"Number of stocks: {num_stocks}")
     print(f"Number of trading days: {num_days}")
     print(f"Number of features: {num_features}")
+    print(f"Feature mode: {FEATURE_MODE}")
     print(f"Using adjusted (restored) prices from FinLab API")
+    if FEATURE_MODE in ['full', 'full_sentiment']:
+        print(f"Technical indicators: MA20, MA60, RSI, MACD_Signal, K, D, BBands")
+        print(f"Alpha factors: {len(ALPHAS)} factors")
+    if FEATURE_MODE in ['basic_sentiment', 'full_sentiment']:
+        print(f"Sentiment: loaded from {PRECOMPUTED_SENTIMENT_FILE}")
     print("=" * 60)
