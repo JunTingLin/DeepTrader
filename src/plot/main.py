@@ -40,85 +40,85 @@ def main():
     print("\nTesting Data (first 5 rows):")
     print(df_test.head())
     
-    # Plot cumulative wealth with background shading (Training vs Validation vs Testing)
-    plot_results(df_val, df_test, train_days, val_days, test_days)
-    plot_yearly_results(df_val, df_test, val_days, test_days)
-    
-    # Plot market profit heatmaps
-    print("\n=== Market Profit Heatmaps ===")
-    print("Plotting market monthly return heatmaps...")
-    plot_market_profit_heatmap(df_val, 'val', save_plot=True)
-    plot_market_profit_heatmap(df_test, 'test', save_plot=True)
+    # # Plot cumulative wealth with background shading (Training vs Validation vs Testing)
+    # plot_results(df_val, df_test, train_days, val_days, test_days)
+    # plot_yearly_results(df_val, df_test, val_days, test_days)
 
-    # Plot portfolio visualizations for each experiment
-    print("\n=== Portfolio Visualizations ===")
-    for exp_id in EXPERIMENT_IDS:
-        print(f"\nVisualizing portfolio for {exp_id}...")
-        
-        # Plot and save portfolio heatmaps
-        plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True, show_ranks=True, show_scores=True)
-        plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True, show_ranks=True, show_scores=True)
+    # # Plot market profit heatmaps
+    # print("\n=== Market Profit Heatmaps ===")
+    # print("Plotting market monthly return heatmaps...")
+    # plot_market_profit_heatmap(df_val, 'val', save_plot=True)
+    # plot_market_profit_heatmap(df_test, 'test', save_plot=True)
 
-        # Plot and save future return heatmaps (for overlay comparison)
-        plot_future_return_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True)
-        plot_future_return_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True)
-        
-        # Plot and save profit heatmaps
-        print(f"Plotting profit heatmaps for {exp_id}...")
-        plot_profit_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
-        plot_profit_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
+    # # Plot portfolio visualizations for each experiment
+    # print("\n=== Portfolio Visualizations ===")
+    # for exp_id in EXPERIMENT_IDS:
+    #     print(f"\nVisualizing portfolio for {exp_id}...")
 
-        # Plot and save precision analysis heatmaps
-        print(f"Plotting precision analysis heatmaps for {exp_id}...")
-        plot_precision_analysis_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
-        plot_precision_analysis_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
+    #     # Plot and save portfolio heatmaps
+    #     plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True, show_ranks=True, show_scores=True)
+    #     plot_portfolio_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True, show_ranks=True, show_scores=True)
 
-        # Plot and save rho with market trend
-        print(f"Plotting rho with market trend for {exp_id}...")
-        plot_rho_with_market_trend(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
-        plot_rho_with_market_trend(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
+    #     # Plot and save future return heatmaps (for overlay comparison)
+    #     plot_future_return_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True)
+    #     plot_future_return_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True)
 
-        # Plot and save individual stock returns heatmaps
-        print(f"Plotting individual stock returns heatmaps for {exp_id}...")
-        plot_individual_stock_returns_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True)
-        plot_individual_stock_returns_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True)
+    #     # Plot and save profit heatmaps
+    #     print(f"Plotting profit heatmaps for {exp_id}...")
+    #     plot_profit_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
+    #     plot_profit_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
 
-        # Plot and save selection quality heatmaps
-        print(f"Plotting selection quality heatmaps for {exp_id}...")
-        plot_selection_quality_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
-        plot_selection_quality_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
+    #     # Plot and save precision analysis heatmaps
+    #     print(f"Plotting precision analysis heatmaps for {exp_id}...")
+    #     plot_precision_analysis_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
+    #     plot_precision_analysis_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
 
-        # Plot and save stock price trends with trading positions
-        # print(f"Generating stock price trend plots for {exp_id}...")
-        # print(f"This will create {len(symbols) * 2} PNG files (val + test for each stock)")
-        # plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'val', save_plots=True)
-        # plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'test', save_plots=True)
+    #     # Plot and save rho with market trend
+    #     print(f"Plotting rho with market trend for {exp_id}...")
+    #     plot_rho_with_market_trend(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
+    #     plot_rho_with_market_trend(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
 
-        # Plot score vs return scatter plots for all trading steps
-        print(f"Generating score vs return scatter plots for {exp_id}...")
-        print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test scatter plots")
-        plot_step_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
-        plot_step_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
-        
-        # Plot combined scatter plots (all steps in one chart)
-        print(f"Generating combined scatter plots for {exp_id}...")
-        plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
-        plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
-        
-        # Plot and save step analysis with all stocks per step
-        # print(f"Generating step analysis plots for {exp_id}...")
-        # print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
-        # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
-        # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
-        
-        # Plot and save MSU step analysis with DJIA trends and rho values
-        # print(f"Generating MSU step analysis plots for {exp_id}...")
-        # print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test MSU analysis files")
-        # plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plots=True)
-        # plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plots=True)
+    #     # Plot and save individual stock returns heatmaps
+    #     print(f"Plotting individual stock returns heatmaps for {exp_id}...")
+    #     plot_individual_stock_returns_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plot=True)
+    #     plot_individual_stock_returns_heatmap(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plot=True)
 
-        # Force garbage collection to free memory
-        gc.collect()
+    #     # Plot and save selection quality heatmaps
+    #     print(f"Plotting selection quality heatmaps for {exp_id}...")
+    #     plot_selection_quality_heatmap(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plot=True)
+    #     plot_selection_quality_heatmap(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plot=True)
+
+    #     # Plot and save stock price trends with trading positions
+    #     # print(f"Generating stock price trend plots for {exp_id}...")
+    #     # print(f"This will create {len(symbols) * 2} PNG files (val + test for each stock)")
+    #     # plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'val', save_plots=True)
+    #     # plot_stock_price_trends(exp_id, OUTPUTS_BASE_PATH, symbols, 'test', save_plots=True)
+
+    #     # Plot score vs return scatter plots for all trading steps
+    #     print(f"Generating score vs return scatter plots for {exp_id}...")
+    #     print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test scatter plots")
+    #     plot_step_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
+    #     plot_step_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
+
+    #     # Plot combined scatter plots (all steps in one chart)
+    #     print(f"Generating combined scatter plots for {exp_id}...")
+    #     plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val')
+    #     plot_all_steps_score_scatter(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test')
+
+    #     # Plot and save step analysis with all stocks per step
+    #     # print(f"Generating step analysis plots for {exp_id}...")
+    #     # print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test step analysis files")
+    #     # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_val.index, 'val', save_plots=True)
+    #     # plot_step_analysis(exp_id, OUTPUTS_BASE_PATH, symbols, df_test.index, 'test', save_plots=True)
+
+    #     # Plot and save MSU step analysis with DJIA trends and rho values
+    #     # print(f"Generating MSU step analysis plots for {exp_id}...")
+    #     # print(f"This will create {len(df_val.index)} val + {len(df_test.index)} test MSU analysis files")
+    #     # plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_val.index, 'val', save_plots=True)
+    #     # plot_msu_step_analysis(exp_id, OUTPUTS_BASE_PATH, df_test.index, 'test', save_plots=True)
+
+    #     # Force garbage collection to free memory
+    #     gc.collect()
     
     # Compute periodic returns and win rates for validation period
     period_codes = ['ME', 'QE', '6ME', 'YE']
@@ -185,40 +185,40 @@ def main():
             print(f"    Mean Step Spearman: {test_corr['mean_step_spearman']:7.4f}")
             print(f"    Valid Steps: {test_corr['valid_steps']}/{test_corr['total_steps']}")
 
-    # Compute prediction precision and recall metrics
+    # Compute directional accuracy and top-k hit rate metrics
     print("\n" + "="*60)
-    print("=== Precision and Recall (Long should rise, Short should fall) ===")
+    print("=== Directional Accuracy & Top-K Hit Rate ===")
     print("="*60)
 
     for exp_id in EXPERIMENT_IDS:
         print(f"\nExperiment: {exp_id}")
         print("-"*50)
 
-        # Precision & Recall Analysis (Mean Step only)
+        # Directional Accuracy & Top-K Hit Rate Analysis (Mean Step only)
         val_acc = compute_prediction_accuracy(exp_id, OUTPUTS_BASE_PATH, 'val')
         if val_acc and val_acc.get('total_predicted', 0) > 0:
             val_step_k = int(val_acc.get('avg_long_positions_per_step', 4))  # K per step
-            print(f"\n[Precision & Recall Analysis - Mean Step]")
+            print(f"\n[Directional Accuracy & Top-K Hit Rate - Mean Step]")
 
             print(f"  Validation Period:")
-            print(f"    Long Precision@{val_step_k}:   {val_acc['mean_step_long_precision']:.2%} (of {val_step_k} stocks predicted long, % that went up)")
-            print(f"    Short Precision@{val_step_k}:  {val_acc['mean_step_short_precision']:.2%} (of {val_step_k} stocks predicted short, % that went down)")
-            print(f"    Overall Precision@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_precision']:.2%} (of all {int(val_acc.get('avg_positions_per_step', 8))} predictions, % correct direction)")
-            print(f"    Long Recall@{val_step_k}:      {val_acc['mean_step_long_recall']:.2%} (of top {val_step_k} actual gainers, % we caught by going long)")
-            print(f"    Short Recall@{val_step_k}:     {val_acc['mean_step_short_recall']:.2%} (of bottom {val_step_k} actual losers, % we caught by going short)")
-            print(f"    Overall Recall@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_recall']:.2%} (of top/bottom performers, % we caught)")
+            print(f"    Long Dir. Acc.@{val_step_k}:   {val_acc['mean_step_long_precision']:.2%} (of {val_step_k} stocks predicted long, % that went up)")
+            print(f"    Short Dir. Acc.@{val_step_k}:  {val_acc['mean_step_short_precision']:.2%} (of {val_step_k} stocks predicted short, % that went down)")
+            print(f"    Overall Dir. Acc.@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_precision']:.2%} (of all {int(val_acc.get('avg_positions_per_step', 8))} predictions, % correct direction)")
+            print(f"    Long Hit Rate@{val_step_k}:    {val_acc['mean_step_long_recall']:.2%} (of top {val_step_k} actual gainers, % we caught by going long)")
+            print(f"    Short Hit Rate@{val_step_k}:   {val_acc['mean_step_short_recall']:.2%} (of bottom {val_step_k} actual losers, % we caught by going short)")
+            print(f"    Overall Hit Rate@{int(val_acc.get('avg_positions_per_step', 8))}: {val_acc['mean_step_overall_recall']:.2%} (of top/bottom performers, % we caught)")
 
         # Testing period
         test_acc = compute_prediction_accuracy(exp_id, OUTPUTS_BASE_PATH, 'test')
         if test_acc and test_acc.get('total_predicted', 0) > 0:
             test_step_k = int(test_acc.get('avg_long_positions_per_step', 4))  # K per step
             print(f"  Testing Period:")
-            print(f"    Long Precision@{test_step_k}:   {test_acc['mean_step_long_precision']:.2%} (of {test_step_k} stocks predicted long, % that went up)")
-            print(f"    Short Precision@{test_step_k}:  {test_acc['mean_step_short_precision']:.2%} (of {test_step_k} stocks predicted short, % that went down)")
-            print(f"    Overall Precision@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_precision']:.2%} (of all {int(test_acc.get('avg_positions_per_step', 8))} predictions, % correct direction)")
-            print(f"    Long Recall@{test_step_k}:      {test_acc['mean_step_long_recall']:.2%} (of top {test_step_k} actual gainers, % we caught by going long)")
-            print(f"    Short Recall@{test_step_k}:     {test_acc['mean_step_short_recall']:.2%} (of bottom {test_step_k} actual losers, % we caught by going short)")
-            print(f"    Overall Recall@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_recall']:.2%} (of top/bottom performers, % we caught)")
+            print(f"    Long Dir. Acc.@{test_step_k}:   {test_acc['mean_step_long_precision']:.2%} (of {test_step_k} stocks predicted long, % that went up)")
+            print(f"    Short Dir. Acc.@{test_step_k}:  {test_acc['mean_step_short_precision']:.2%} (of {test_step_k} stocks predicted short, % that went down)")
+            print(f"    Overall Dir. Acc.@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_precision']:.2%} (of all {int(test_acc.get('avg_positions_per_step', 8))} predictions, % correct direction)")
+            print(f"    Long Hit Rate@{test_step_k}:    {test_acc['mean_step_long_recall']:.2%} (of top {test_step_k} actual gainers, % we caught by going long)")
+            print(f"    Short Hit Rate@{test_step_k}:   {test_acc['mean_step_short_recall']:.2%} (of bottom {test_step_k} actual losers, % we caught by going short)")
+            print(f"    Overall Hit Rate@{int(test_acc.get('avg_positions_per_step', 8))}: {test_acc['mean_step_overall_recall']:.2%} (of top/bottom performers, % we caught)")
 
         # MSU Market Direction Analysis
         print(f"\n[MSU Market Direction Analysis for {exp_id}]")
