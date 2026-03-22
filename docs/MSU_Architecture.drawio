@@ -1,0 +1,202 @@
+<mxfile host="65bd71144e">
+    <diagram id="kzatFNGZYXb6qC--QcXQ" name="第1頁">
+        <mxGraphModel dx="1279" dy="572" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="600" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="&lt;b&gt;NewsTrader-MSU: Sentiment-Driven Market State Unit&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="20" width="460" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="preprocess_section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;strokeWidth=1;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="60" width="289" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="preprocess_title" value="&lt;b&gt;Offline Preprocessing&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot;&gt; (per trading day)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#666666;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="65" width="180" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="raw_news" value="&lt;b&gt;Raw News&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;n articles/day&lt;/font&gt;" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#d5e8d4;strokeColor=#82b366;size=0.12;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="95" width="70" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow_pre1" value="" style="endArrow=classic;html=1;strokeWidth=1.5;strokeColor=#666666;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="130" y="120" as="sourcePoint"/>
+                        <mxPoint x="155" y="120" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="qwen" value="&lt;b&gt;Qwen2.5&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot;&gt;14B-Instruct&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="95" width="65" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow_pre2" value="" style="endArrow=classic;html=1;strokeWidth=1.5;strokeColor=#666666;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="225" y="120" as="sourcePoint"/>
+                        <mxPoint x="250" y="120" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="summary_file" value="&lt;b&gt;Summary&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8px&quot;&gt;1 per day&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#d5e8d4;strokeColor=#82b366;size=12;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="95" width="65" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="online_section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f2ff;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="180" width="880" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="online_title" value="&lt;b&gt;FinBERT-MSU Pipeline&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot;&gt; (inference only, no training)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="185" width="250" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="input_window" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="220" width="150" height="125" as="geometry"/>
+                </mxCell>
+                <mxCell id="input_title" value="&lt;b&gt;Input Window&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="225" width="100" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="s_t4" value="&lt;font style=&quot;font-size:9px&quot;&gt;S&lt;sub&gt;t-4&lt;/sub&gt;&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#d5e8d4;strokeColor=#82b366;size=8;" parent="1" vertex="1">
+                    <mxGeometry x="65" y="250" width="35" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="s_t3" value="&lt;font style=&quot;font-size:9px&quot;&gt;S&lt;sub&gt;t-3&lt;/sub&gt;&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#d5e8d4;strokeColor=#82b366;size=8;" parent="1" vertex="1">
+                    <mxGeometry x="65" y="283" width="35" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="s_t2" value="&lt;font style=&quot;font-size:9px&quot;&gt;S&lt;sub&gt;t-2&lt;/sub&gt;&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#d5e8d4;strokeColor=#82b366;size=8;" parent="1" vertex="1">
+                    <mxGeometry x="105" y="250" width="35" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="s_t1" value="&lt;font style=&quot;font-size:9px&quot;&gt;S&lt;sub&gt;t-1&lt;/sub&gt;&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#d5e8d4;strokeColor=#82b366;size=8;" parent="1" vertex="1">
+                    <mxGeometry x="105" y="283" width="35" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="s_t" value="&lt;font style=&quot;font-size:9px&quot;&gt;&lt;b&gt;S&lt;sub&gt;t&lt;/sub&gt;&lt;/b&gt;&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#d5e8d4;strokeColor=#82b366;size=8;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="265" width="40" height="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="window_label" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#666666&quot;&gt;W = 5 days&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="318" width="70" height="15" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow1" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#333333;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" edge="1" target="finbert_box" source="input_window">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="210" y="280" as="sourcePoint"/>
+                        <mxPoint x="250" y="280" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="finbert_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="220" width="156" height="125" as="geometry"/>
+                </mxCell>
+                <mxCell id="finbert_title" value="&lt;b&gt;FinBERT&lt;/b&gt;&lt;font style=&quot;font-size:9px&quot;&gt; (Frozen 🔒)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="266" y="228" width="110" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="finbert_model" value="&lt;font style=&quot;font-size:8px&quot; color=&quot;#666666&quot;&gt;yiyanghkust/&lt;br&gt;finbert-tone-chinese&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="261" y="248" width="120" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="softmax" value="&lt;font style=&quot;font-size:9px&quot;&gt;&lt;b&gt;Softmax&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="291" y="280" width="60" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p_pos" value="&lt;font style=&quot;font-size:9px&quot;&gt;&lt;b&gt;P(pos)&lt;/b&gt; ✓&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="256" y="308" width="55" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="p_neu" value="&lt;font style=&quot;font-size:8px&quot;&gt;P(neu)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="316" y="308" width="40" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="p_neg" value="&lt;font style=&quot;font-size:8px&quot;&gt;P(neg)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="361" y="308" width="40" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow2" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#333333;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="405" y="280" as="sourcePoint"/>
+                        <mxPoint x="445" y="280" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="prob_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="445" y="220" width="130" height="125" as="geometry"/>
+                </mxCell>
+                <mxCell id="prob_title" value="&lt;b&gt;Daily P(pos)&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="470" y="225" width="80" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="p_t4" value="&lt;font style=&quot;font-size:9px&quot;&gt;p&lt;sub&gt;t-4&lt;/sub&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="455" y="250" width="35" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p_t3" value="&lt;font style=&quot;font-size:9px&quot;&gt;p&lt;sub&gt;t-3&lt;/sub&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="495" y="250" width="35" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p_t2" value="&lt;font style=&quot;font-size:9px&quot;&gt;p&lt;sub&gt;t-2&lt;/sub&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="535" y="250" width="35" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p_t1" value="&lt;font style=&quot;font-size:9px&quot;&gt;p&lt;sub&gt;t-1&lt;/sub&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1;" parent="1" vertex="1">
+                    <mxGeometry x="455" y="278" width="35" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="p_t" value="&lt;font style=&quot;font-size:9px&quot;&gt;&lt;b&gt;p&lt;sub&gt;t&lt;/sub&gt;&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="495" y="278" width="35" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="prob_formula" value="&lt;font style=&quot;font-size:9px&quot;&gt;p&lt;sub&gt;i&lt;/sub&gt; = P(positive | S&lt;sub&gt;i&lt;/sub&gt;)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="455" y="310" width="110" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow3" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#333333;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" edge="1" target="agg_box" source="prob_box">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="580" y="280" as="sourcePoint"/>
+                        <mxPoint x="620" y="280" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="agg_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="220" width="130" height="125" as="geometry"/>
+                </mxCell>
+                <mxCell id="agg_title" value="&lt;b&gt;Temporal&lt;br&gt;Aggregation&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="645" y="228" width="80" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="agg_formula" value="&lt;font style=&quot;font-size:12px&quot;&gt;ρ&lt;sub&gt;t&lt;/sub&gt; = &lt;sup&gt;1&lt;/sup&gt;/&lt;sub&gt;W&lt;/sub&gt; Σ p&lt;sub&gt;i&lt;/sub&gt;&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="630" y="265" width="110" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="agg_detail" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#666666&quot;&gt;Rolling Mean&lt;br&gt;W = 5 days&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="645" y="295" width="80" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow4" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#d79b00;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" edge="1" target="output_box" source="agg_box">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="755" y="280" as="sourcePoint"/>
+                        <mxPoint x="795" y="280" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="output_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="795" y="220" width="110" height="125" as="geometry"/>
+                </mxCell>
+                <mxCell id="output_title" value="&lt;b&gt;Output&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="228" width="60" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="rho_symbol" value="&lt;font style=&quot;font-size:18px&quot;&gt;&lt;b&gt;ρ&lt;sub&gt;t&lt;/sub&gt;&lt;/b&gt;&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="815" y="250" width="70" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="rho_range" value="&lt;font style=&quot;font-size:9px&quot;&gt;ρ&lt;sub&gt;t&lt;/sub&gt; ∈ [0, 1]&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="815" y="280" width="70" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="rho_meaning" value="&lt;font style=&quot;font-size:8px&quot;&gt;ρ→1: Long&lt;br&gt;ρ→0: Hedge&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="815" y="300" width="70" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="compare_section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;strokeWidth=1;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="380" width="880" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="compare_title" value="&lt;b&gt;vs. Traditional MSU&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#666666;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="385" width="120" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="trad_msu" value="&lt;font style=&quot;font-size:9px&quot;&gt;&lt;b&gt;Traditional:&lt;/b&gt; Price (13 weeks) → LSTM → (μ, σ) → ρ ~ N(μ, σ) &lt;font color=&quot;#b85450&quot;&gt;[requires training]&lt;/font&gt;&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="408" width="400" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="finbert_msu" value="&lt;font style=&quot;font-size:9px&quot;&gt;&lt;b&gt;FinBERT-MSU:&lt;/b&gt; News (5 days) → FinBERT → P(pos) → ρ &lt;font color=&quot;#82b366&quot;&gt;[no training]&lt;/font&gt;&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="55" y="428" width="380" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="adv1" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#82b366&quot;&gt;✓ No training&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="400" width="80" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="adv2" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#82b366&quot;&gt;✓ Interpretable&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="420" width="90" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="adv3" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#82b366&quot;&gt;✓ Sentiment-driven&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="400" width="110" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="adv4" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#82b366&quot;&gt;✓ Pre-trained LM&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="420" width="100" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="adv5" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#82b366&quot;&gt;✓ News-aware&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="720" y="400" width="90" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="adv6" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#82b366&quot;&gt;✓ Market index&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="720" y="420" width="90" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="market_label2" value="&lt;font style=&quot;font-size:8px&quot; color=&quot;#666666&quot;&gt;Market: 0050 ETF (Taiwan)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="400" width="110" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="mode_label" value="&lt;font style=&quot;font-size:8px&quot; color=&quot;#666666&quot;&gt;Mode: positive_prob&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="420" width="100" height="18" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
