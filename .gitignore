@@ -131,3 +131,5 @@ reverse_market_data.py
 verify_reversal.py
 
 summaries*
+
+docs/*.md
