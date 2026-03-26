@@ -126,11 +126,10 @@ class RLActor(nn.Module):
             rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
             rho_log_p = None
 
-        # Override rho if manual_rho or ground_truth_rho is set
-        if hasattr(self.args, 'manual_rho') and self.args.manual_rho is not None:
-            rho = torch.ones((weights.shape[0])).to(self.args.device) * self.args.manual_rho
-        elif hasattr(self.args, 'ground_truth_rho_values') and self.args.ground_truth_rho_values is not None:
-            # Use ground truth rho values (loaded from JSON file)
+        # Override rho: ground_truth_rho_values (from --ground_truth_rho) takes highest priority
+        # Then check for command-line --manual_rho override
+        if hasattr(self.args, 'ground_truth_rho_values') and self.args.ground_truth_rho_values is not None:
+            # Use ground truth rho values (loaded from JSON file via --ground_truth_rho)
             # ground_truth_rho_values should be a list/array with one value per step
             step_idx = getattr(self.args, '_current_step_idx', 0)
             if step_idx < len(self.args.ground_truth_rho_values):
@@ -138,6 +137,9 @@ class RLActor(nn.Module):
             else:
                 # If we run out of ground truth values, use default 0.5
                 rho = torch.ones((weights.shape[0])).to(self.args.device) * 0.5
+        elif hasattr(self.args, '_cli_manual_rho') and self.args._cli_manual_rho is not None:
+            # Use command-line specified manual_rho (marked with _cli prefix to distinguish from hyper.json)
+            rho = torch.ones((weights.shape[0])).to(self.args.device) * self.args._cli_manual_rho
 
         portfolio_info = {
             'long_indices': w_idx.detach().cpu().numpy(),

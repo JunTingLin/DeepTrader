@@ -271,6 +271,12 @@ if __name__ == '__main__':
     args.prefix = PREFIX
     args.update(opts)
 
+    # Mark command-line manual_rho separately (to distinguish from hyper.json manual_rho)
+    if hasattr(opts, 'manual_rho') and opts.manual_rho is not None:
+        args._cli_manual_rho = opts.manual_rho
+    else:
+        args._cli_manual_rho = None
+
     # Load ground truth rho values if specified
     if hasattr(opts, 'ground_truth_rho') and opts.ground_truth_rho is not None:
         try:
