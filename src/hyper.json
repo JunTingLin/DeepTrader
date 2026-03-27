@@ -22,8 +22,8 @@
     "theta": 0.15,
     "sigma": 0.5,
     "in_features": [
-        34,
-        25
+        5,
+        4
     ],
     "num_assets": 22,
     "asset_indices": [
@@ -39,7 +39,7 @@
     "start_checkpoint_epoch": 1200,
     "checkpoint_interval": 100,
     "market": "TWII",
-    "data_prefix": "src/data/TWII/feature34-sc47-2013-2025-finlab/",
+    "data_prefix": "src/data/TWII/feature5-sc47-2013-2025-finlab/",
     "device": "cuda",
     "relation_file": "industry_classification.npy",
     "trade_len": 21,
@@ -56,12 +56,14 @@
     "msu_distribution_type": "normal",
     "pretrained_msu_path": null,
     "resume": null,
+    "freeze_asu": true,
+    "pretrained_asu_path": "src/outputs/0308/210009",
 
     "news_embedding_bool": false,
-    "fusion_method": "concat",
-    "sentiment_data_path": "src/data/TWII/feature34-sc47-2013-2025-finlab/",
-    "news_embedding_dim": 8,
-    "news_aggregation": "last",
-    "news_dropout": 0.5,
-    "news_embedding_zeroed": true
+    "fusion_method": "cross_attn",
+    "sentiment_data_path": "src/data/TWII/feature5-sc47-2013-2025-finlab/",
+    "news_embedding_dim": 768,
+    "news_aggregation": "mean",
+    "news_dropout": null,
+    "news_embedding_zeroed": false
 }

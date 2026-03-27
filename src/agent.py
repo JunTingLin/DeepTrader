@@ -153,15 +153,27 @@ class RLActor(nn.Module):
 
 
 class RLAgent():
-    def __init__(self, env, actor, args, logger=None):
+    def __init__(self, env, actor, args, logger=None, freeze_asu=False):
         self.actor = actor
         self.env = env
         self.args = args
         self.logger = logger
-
+        self.freeze_asu = freeze_asu
 
         self.total_steps = 0
-        self.optimizer = torch.optim.Adam(self.actor.parameters(),
+
+        # Choose which parameters to optimize
+        if freeze_asu:
+            # MSU-only training: only optimize MSU parameters
+            if not hasattr(self.actor, 'msu'):
+                raise ValueError('freeze_asu=True but actor has no MSU module')
+            params_to_optimize = self.actor.msu.parameters()
+            print(f'[RLAgent] freeze_asu=True: Only optimizing MSU parameters')
+        else:
+            # Normal training: optimize all parameters
+            params_to_optimize = self.actor.parameters()
+
+        self.optimizer = torch.optim.Adam(params_to_optimize,
                                           lr=args.lr,
                                           weight_decay=args.weight_decay)
 
@@ -233,16 +245,26 @@ class RLAgent():
 
                 gradient_asu = torch.stack(steps_asu_grad, dim=1)
 
-                # Calculate ASU loss (always present)
-                loss_asu = - gradient_asu
-                loss_asu_val = loss_asu.mean().item()
-
-                if self.args.msu_bool:
+                # Calculate ASU loss (skip if ASU is frozen)
+                if self.freeze_asu:
+                    # MSU-only training: only compute MSU loss
+                    loss_asu_val = 0.0
+                    gradient_rho = (rewards_mdd * steps_log_p_rho)
+                    loss_msu = - (self.args.gamma * gradient_rho)
+                    loss_msu_val = loss_msu.mean().item()
+                    loss = loss_msu
+                elif self.args.msu_bool:
+                    # Joint training: compute both ASU and MSU loss
+                    loss_asu = - gradient_asu
+                    loss_asu_val = loss_asu.mean().item()
                     gradient_rho = (rewards_mdd * steps_log_p_rho)
                     loss_msu = - (self.args.gamma * gradient_rho)
                     loss_msu_val = loss_msu.mean().item()
                     loss = loss_msu + loss_asu
                 else:
+                    # ASU-only training: only compute ASU loss
+                    loss_asu = - gradient_asu
+                    loss_asu_val = loss_asu.mean().item()
                     loss_msu_val = 0.0
                     loss = loss_asu
 

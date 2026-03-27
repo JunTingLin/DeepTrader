@@ -75,6 +75,69 @@ def load_pretrained_msu_encoder(actor, checkpoint_path, logger):
     logger.warning('='*80)
 
 
+def load_and_freeze_asu(actor, checkpoint_path, logger):
+    """
+    Load pretrained ASU model and freeze its parameters.
+
+    This enables MSU-only RL training:
+    - ASU is frozen (no gradient updates)
+    - Only MSU parameters are trained
+    - Stock selection remains fixed, only rho allocation is learned
+
+    Args:
+        actor: RLActor instance containing the ASU module
+        checkpoint_path: Path to pretrained ASU model (e.g., best_cr-xxx.pkl)
+        logger: Logger instance for logging
+    """
+    import glob
+
+    logger.warning('='*80)
+    logger.warning('Loading and Freezing ASU (MSU-only RL Training Mode)')
+    logger.warning('='*80)
+
+    # Handle directory path - find the best model file
+    if os.path.isdir(checkpoint_path):
+        model_dir = os.path.join(checkpoint_path, 'model_file')
+        if os.path.isdir(model_dir):
+            # Find the best_cr-*.pkl file with highest epoch
+            pkl_files = sorted(glob.glob(os.path.join(model_dir, 'best_cr-*.pkl')))
+            if pkl_files:
+                checkpoint_path = pkl_files[-1]  # Get the latest best model
+                logger.warning(f'Found best model: {checkpoint_path}')
+            else:
+                raise FileNotFoundError(f'No best_cr-*.pkl files found in {model_dir}')
+        else:
+            raise FileNotFoundError(f'model_file directory not found in {checkpoint_path}')
+
+    logger.warning(f'Loading pretrained ASU from: {checkpoint_path}')
+
+    # Load the pretrained model
+    pretrained_actor = torch.load(checkpoint_path, map_location=actor.args.device, weights_only=False)
+
+    # Copy ASU weights from pretrained model to current actor
+    actor.asu.load_state_dict(pretrained_actor.asu.state_dict())
+    logger.warning('✅ Successfully loaded pretrained ASU weights')
+
+    # Freeze ASU parameters
+    frozen_params = 0
+    for param in actor.asu.parameters():
+        param.requires_grad = False
+        frozen_params += param.numel()
+
+    logger.warning(f'✅ Frozen {frozen_params:,} ASU parameters')
+
+    # Count trainable parameters (should only be MSU)
+    trainable_params = sum(p.numel() for p in actor.parameters() if p.requires_grad)
+    total_params = sum(p.numel() for p in actor.parameters())
+
+    logger.warning(f'   Total parameters:     {total_params:,}')
+    logger.warning(f'   Trainable parameters: {trainable_params:,} (MSU only)')
+    logger.warning(f'   Frozen parameters:    {total_params - trainable_params:,} (ASU)')
+    logger.warning('='*80)
+    logger.warning('ASU frozen. Only MSU will be trained via RL.')
+    logger.warning('='*80)
+
+
 def run(func_args):
     if func_args.seed != -1:
         setup_seed(func_args.seed)
@@ -294,7 +357,17 @@ def run(func_args):
         else:
             logger.warning('Training MSU from scratch (no pretrained encoder specified)')
 
-    agent = RLAgent(env, actor, func_args)
+    # Load and freeze ASU if specified (MSU-only RL training mode)
+    freeze_asu = getattr(func_args, 'freeze_asu', False)
+    if freeze_asu:
+        pretrained_asu_path = getattr(func_args, 'pretrained_asu_path', None)
+        if pretrained_asu_path is None:
+            raise ValueError('--freeze_asu requires --pretrained_asu_path to be specified')
+        if not func_args.msu_bool:
+            raise ValueError('--freeze_asu requires --msu_bool to be True (MSU must be enabled)')
+        load_and_freeze_asu(actor, pretrained_asu_path, logger)
+
+    agent = RLAgent(env, actor, func_args, freeze_asu=freeze_asu)
 
     mini_batch_num = int(np.ceil(len(env.src.order_set) / func_args.batch_size))
     try:
@@ -428,6 +501,10 @@ if __name__ == '__main__':
                         help='Path to pretrained MSU encoder checkpoint from Stage 1 (e.g., checkpoints/msu_stage1_masked/.../best_model.pth)')
     parser.add_argument('--resume', type=str, default=None,
                         help='Path to checkpoint to resume training (e.g., ./src/outputs/0313/015755/model_file/epoch-1400.pkl)')
+    parser.add_argument('--freeze_asu', type=lambda x: x.lower() == 'true', default=None,
+                        help='Freeze ASU parameters and only train MSU (requires --pretrained_asu_path). Use --freeze_asu true or set in JSON.')
+    parser.add_argument('--pretrained_asu_path', type=str, default=None,
+                        help='Path to pretrained ASU model for freeze_asu mode (e.g., src/outputs/0308/210009/model_file/best_cr-xxx.pkl)')
 
     opts = parser.parse_args()
 

@@ -133,3 +133,5 @@ verify_reversal.py
 summaries*
 
 docs/*.md
+
+*.out
