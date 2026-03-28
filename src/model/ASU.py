@@ -276,6 +276,8 @@ class ASU(nn.Module):
                  news_embedding_dim=768, news_aggregation='mean',
                  news_dropout=None):
         super(ASU, self).__init__()
+        # Flag to keep ASU in eval mode when frozen (for freeze_asu feature)
+        self._frozen_eval_mode = False
         self.sagcn = SAGCN(num_nodes, in_features, hidden_dim, window_len, dropout, kernel_size, layers,
                            supports, spatial_bool, addaptiveadj, aptinit, transformer_asu_bool, num_assets)
         self.linear1 = nn.Linear(hidden_dim, 1)
@@ -302,6 +304,27 @@ class ASU(nn.Module):
                 aggregation=news_aggregation
             )
             print(f"ASU: News embedding fusion enabled (method={fusion_method}, dropout={effective_news_dropout})")
+
+    def train(self, mode: bool = True):
+        """
+        Override train method to respect frozen eval mode.
+        When _frozen_eval_mode is True, always stay in eval mode
+        regardless of the mode argument.
+        """
+        # Use getattr to handle models saved before _frozen_eval_mode was added
+        if getattr(self, '_frozen_eval_mode', False):
+            # Always use eval mode when frozen
+            return super().train(False)
+        return super().train(mode)
+
+    def freeze_eval_mode(self):
+        """
+        Freeze this module in eval mode. Once called, train() will always
+        keep the module in eval mode. This is useful for freeze_asu feature
+        to prevent BatchNorm running statistics from updating.
+        """
+        self._frozen_eval_mode = True
+        self.eval()
 
     def forward(self, inputs, mask, news_embeddings: Optional[torch.Tensor] = None):
         """

@@ -124,7 +124,12 @@ def load_and_freeze_asu(actor, checkpoint_path, logger):
         param.requires_grad = False
         frozen_params += param.numel()
 
+    # Lock ASU in eval mode to prevent BatchNorm from updating running statistics
+    # This uses the ASU class's built-in freeze_eval_mode() method which is pickleable
+    actor.asu.freeze_eval_mode()
+
     logger.warning(f'✅ Frozen {frozen_params:,} ASU parameters')
+    logger.warning(f'✅ ASU locked in eval mode (BatchNorm stats frozen)')
 
     # Count trainable parameters (should only be MSU)
     trainable_params = sum(p.numel() for p in actor.parameters() if p.requires_grad)
