@@ -140,6 +140,9 @@ class RLActor(nn.Module):
         elif hasattr(self.args, '_cli_manual_rho') and self.args._cli_manual_rho is not None:
             # Use command-line specified manual_rho (marked with _cli prefix to distinguish from hyper.json)
             rho = torch.ones((weights.shape[0])).to(self.args.device) * self.args._cli_manual_rho
+        elif hasattr(self.args, 'manual_rho') and self.args.manual_rho is not None:
+            # Use manual_rho from hyper.json
+            rho = torch.ones((weights.shape[0])).to(self.args.device) * self.args.manual_rho
 
         portfolio_info = {
             'long_indices': w_idx.detach().cpu().numpy(),
