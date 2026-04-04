@@ -22,7 +22,7 @@
     "theta": 0.15,
     "sigma": 0.5,
     "in_features": [
-        5,
+        6,
         4
     ],
     "num_assets": 22,
@@ -48,7 +48,7 @@
     "val_idx": 1962,
     "test_idx": 2691,
     "test_idx_end": 3176,
-    "seed": -1,
+    "seed": 123,
     "outputs_base_path": "./src/outputs",
     "manual_rho": 0,
     "allow_short": true,
@@ -56,14 +56,14 @@
     "msu_distribution_type": "normal",
     "pretrained_msu_path": null,
     "resume": null,
-    "freeze_asu": true,
-    "pretrained_asu_path": "src/outputs/0308/210009",
+    "freeze_asu": false,
+    "pretrained_asu_path": null,
 
-    "news_embedding_bool": false,
-    "fusion_method": "cross_attn",
+    "news_embedding_bool": true,
+    "fusion_method": "gate",
     "sentiment_data_path": "src/data/TWII/feature5-sc47-2013-2025-finlab/",
     "news_embedding_dim": 768,
-    "news_aggregation": "mean",
-    "news_dropout": null,
-    "news_embedding_zeroed": false
+    "news_aggregation": "last",
+    "news_dropout": 0.5,
+    "news_embedding_zeroed": true
 }

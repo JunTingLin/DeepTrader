@@ -103,16 +103,21 @@ class FusionConcat(nn.Module):
             nn.LayerNorm(hidden_dim),
         )
 
-    def forward(self, asu_out: torch.Tensor, news_out: torch.Tensor) -> torch.Tensor:
+    def forward(self, asu_out: torch.Tensor, news_out: torch.Tensor, return_gate: bool = False):
         """
         Args:
             asu_out: (batch, num_stocks, hidden_dim)
             news_out: (batch, num_stocks, hidden_dim)
+            return_gate: ignored for concat fusion (no gate)
         Returns:
-            (batch, num_stocks, hidden_dim)
+            if return_gate: (fused, None)
+            else: fused only
         """
         combined = torch.cat([asu_out, news_out], dim=-1)  # (batch, num_stocks, hidden_dim*2)
-        return self.fusion(combined)
+        fused = self.fusion(combined)
+        if return_gate:
+            return fused, None
+        return fused
 
 
 class FusionAdd(nn.Module):
@@ -131,17 +136,21 @@ class FusionAdd(nn.Module):
         self.norm = nn.LayerNorm(hidden_dim)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, asu_out: torch.Tensor, news_out: torch.Tensor) -> torch.Tensor:
+    def forward(self, asu_out: torch.Tensor, news_out: torch.Tensor, return_gate: bool = False):
         """
         Args:
             asu_out: (batch, num_stocks, hidden_dim)
             news_out: (batch, num_stocks, hidden_dim)
+            return_gate: ignored for add fusion (no gate)
         Returns:
-            (batch, num_stocks, hidden_dim)
+            if return_gate: (fused, None)
+            else: fused only
         """
         fused = asu_out + news_out
         fused = self.norm(fused)
         fused = self.dropout(fused)
+        if return_gate:
+            return fused, None
         return fused
 
 
@@ -151,6 +160,10 @@ class FusionGate(nn.Module):
 
     gate = sigmoid(W * [asu, news])
     output = gate * asu + (1 - gate) * news
+
+    Gate interpretation:
+    - gate > 0.5 → more weight on ASU (price/volume features)
+    - gate < 0.5 → more weight on News features
     """
 
     def __init__(self, hidden_dim: int = 128, dropout: float = 0.1):
@@ -168,19 +181,28 @@ class FusionGate(nn.Module):
 
         self.norm = nn.LayerNorm(hidden_dim)
 
-    def forward(self, asu_out: torch.Tensor, news_out: torch.Tensor) -> torch.Tensor:
+    def forward(self, asu_out: torch.Tensor, news_out: torch.Tensor, return_gate: bool = False):
         """
         Args:
             asu_out: (batch, num_stocks, hidden_dim)
             news_out: (batch, num_stocks, hidden_dim)
+            return_gate: if True, also return gate values averaged over hidden_dim
         Returns:
-            (batch, num_stocks, hidden_dim)
+            if return_gate:
+                (fused, gate_values) where gate_values is (batch, num_stocks)
+            else:
+                fused only
         """
         combined = torch.cat([asu_out, news_out], dim=-1)  # (batch, num_stocks, hidden_dim*2)
         gate = self.gate_net(combined)  # (batch, num_stocks, hidden_dim)
 
         fused = gate * asu_out + (1 - gate) * news_out
         fused = self.norm(fused)
+
+        if return_gate:
+            # Average over hidden_dim to get (batch, num_stocks)
+            gate_values = gate.mean(dim=-1)
+            return fused, gate_values
         return fused
 
 
@@ -225,13 +247,15 @@ class FusionCrossAttention(nn.Module):
             nn.Dropout(dropout)
         )
 
-    def forward(self, asu_out: torch.Tensor, news_out: torch.Tensor) -> torch.Tensor:
+    def forward(self, asu_out: torch.Tensor, news_out: torch.Tensor, return_gate: bool = False):
         """
         Args:
             asu_out: (batch, num_stocks, hidden_dim) - K, V
             news_out: (batch, num_stocks, hidden_dim) - Q
+            return_gate: ignored for cross_attn fusion (no gate)
         Returns:
-            (batch, num_stocks, hidden_dim)
+            if return_gate: (fused, None)
+            else: fused only
         """
         batch, num_stocks, _ = news_out.shape
 
@@ -262,6 +286,8 @@ class FusionCrossAttention(nn.Module):
         # FFN with residual
         x = self.norm2(x + self.ffn(x))
 
+        if return_gate:
+            return x, None
         return x
 
 
@@ -341,23 +367,31 @@ class NewsIntegrationModule(nn.Module):
     def forward(
         self,
         asu_out: torch.Tensor,
-        news_embeddings: torch.Tensor
-    ) -> torch.Tensor:
+        news_embeddings: torch.Tensor,
+        return_gate: bool = False
+    ):
         """
         Args:
             asu_out: (batch, num_stocks, hidden_dim) - Output from ASU's SAGCN
             news_embeddings: (batch, num_stocks, window_len, embedding_dim) - CLS embeddings
+            return_gate: if True and fusion_method='gate', also return gate values
 
         Returns:
-            (batch, num_stocks, hidden_dim) - Fused representation
+            if return_gate:
+                (fused, gate_values) where gate_values is (batch, num_stocks) or None
+            else:
+                fused only
         """
         # Encode news embeddings
         news_encoded = self.news_encoder(news_embeddings)  # (batch, num_stocks, hidden_dim)
 
         # Fuse with ASU output
-        fused = self.fusion(asu_out, news_encoded)  # (batch, num_stocks, hidden_dim)
-
-        return fused
+        if return_gate:
+            fused, gate_values = self.fusion(asu_out, news_encoded, return_gate=True)
+            return fused, gate_values
+        else:
+            fused = self.fusion(asu_out, news_encoded)
+            return fused
 
 
 if __name__ == "__main__":

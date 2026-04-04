@@ -402,7 +402,7 @@ def run(func_args):
             writer.add_scalar('Train/Rho', avg_rho, global_step=epoch)
             writer.add_scalar('Train/MDD', avg_mdd, global_step=epoch)
 
-            agent_wealth, rho_record, param1_record, param2_record, portfolio_records = agent.evaluation()
+            agent_wealth, rho_record, param1_record, param2_record, portfolio_records, gate_record = agent.evaluation()
             logger.warning('agent_wealth: %s' % agent_wealth)
             logger.warning('agent_wealth shape: %s', agent_wealth.shape)
             metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
@@ -412,6 +412,13 @@ def run(func_args):
             writer.add_scalar('Val/ASR', metrics['ASR'], global_step=epoch)
             writer.add_scalar('Val/SoR', metrics['DDR'], global_step=epoch)
             writer.add_scalar('Val/CR', metrics['CR'], global_step=epoch)
+
+            # Log gate statistics if available
+            if gate_record and gate_record[0] is not None:
+                gate_array = np.array([g for g in gate_record if g is not None])
+                writer.add_scalar('Val/Gate_Mean', gate_array.mean(), global_step=epoch)
+                writer.add_scalar('Val/Gate_Std', gate_array.std(), global_step=epoch)
+
             writer.flush() # flush the writer
 
             # Log validation metrics every epoch
@@ -441,12 +448,27 @@ def run(func_args):
                 else:  # normal
                     param1_name, param2_name = 'mu_record', 'sigma_record'
 
+                # Process gate_record
+                gate_record_json = None
+                gate_summary = None
+                if gate_record and gate_record[0] is not None:
+                    gate_record_json = [g.tolist() if g is not None else None for g in gate_record]
+                    gate_array = np.array([g for g in gate_record if g is not None])
+                    gate_summary = {
+                        'overall_mean': float(gate_array.mean()),
+                        'per_stock_mean': gate_array.mean(axis=0).tolist(),
+                        'per_step_mean': gate_array.mean(axis=1).tolist(),
+                        'shape': list(gate_array.shape)
+                    }
+
                 val_results = {
                     'agent_wealth': agent_wealth.tolist(),
                     'rho_record': [convert_to_native_type(r) for r in rho_record],
                     param1_name: [convert_to_native_type(r) if r is not None else None for r in param1_record],
                     param2_name: [convert_to_native_type(r) if r is not None else None for r in param2_record],
                     'distribution_type': distribution_type,
+                    'gate_record': gate_record_json,
+                    'gate_summary': gate_summary,
                     'portfolio_records': convert_portfolio_records_to_json(
                         portfolio_records, 
                         start_idx=val_idx, 

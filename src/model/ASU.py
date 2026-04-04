@@ -326,21 +326,31 @@ class ASU(nn.Module):
         self._frozen_eval_mode = True
         self.eval()
 
-    def forward(self, inputs, mask, news_embeddings: Optional[torch.Tensor] = None):
+    def forward(self, inputs, mask, news_embeddings: Optional[torch.Tensor] = None, return_gate: bool = False):
         """
         inputs: [batch, num_stock, window_len, num_features]
         mask: [batch, num_stock]
         news_embeddings: [batch, num_stock, window_len, embedding_dim] (optional)
-        outputs: [batch, scores]
+        return_gate: if True, also return gate values (for gate fusion only)
+        outputs:
+            if return_gate: (score, gate_values) where gate_values is (batch, num_stocks) or None
+            else: score only
         """
 
         x = self.bn1(self.sagcn(inputs))  # [batch, num_stock, hidden_dim]
 
         # Fuse with news embeddings if enabled
+        gate_values = None
         if self.news_embedding_bool and news_embeddings is not None:
-            x = self.news_integration(x, news_embeddings)  # [batch, num_stock, hidden_dim]
+            if return_gate:
+                x, gate_values = self.news_integration(x, news_embeddings, return_gate=True)
+            else:
+                x = self.news_integration(x, news_embeddings)
 
         x = self.linear1(x).squeeze(-1)
         score = 1 / ((-x).exp() + 1)
         score[mask] = -math.inf
+
+        if return_gate:
+            return score, gate_values
         return score

@@ -174,7 +174,7 @@ def test(func_args):
     agent = RLAgent(env, actor, func_args)
 
     try:
-        agent_wealth, rho_record, param1_record, param2_record, portfolio_records = agent.test()
+        agent_wealth, rho_record, param1_record, param2_record, portfolio_records, gate_record = agent.test()
         npy_save_dir = os.path.join(PREFIX, 'npy_file')
         np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
 
@@ -187,12 +187,30 @@ def test(func_args):
         else:  # normal
             param1_name, param2_name = 'mu_record', 'sigma_record'
 
+        # Process gate_record: (num_steps, num_stocks) or None for each step
+        gate_record_json = None
+        if gate_record and gate_record[0] is not None:
+            # Convert list of arrays to 2D list: (num_steps, num_stocks)
+            gate_record_json = [g.tolist() if g is not None else None for g in gate_record]
+            # Also compute summary statistics
+            gate_array = np.array([g for g in gate_record if g is not None])
+            gate_summary = {
+                'overall_mean': float(gate_array.mean()),
+                'per_stock_mean': gate_array.mean(axis=0).tolist(),
+                'per_step_mean': gate_array.mean(axis=1).tolist(),
+                'shape': list(gate_array.shape)
+            }
+        else:
+            gate_summary = None
+
         test_results = {
             'agent_wealth': agent_wealth.tolist(),
             'rho_record': [convert_to_native_type(r) for r in rho_record],
             param1_name: [convert_to_native_type(r) if r is not None else None for r in param1_record],
             param2_name: [convert_to_native_type(r) if r is not None else None for r in param2_record],
             'distribution_type': distribution_type,
+            'gate_record': gate_record_json,
+            'gate_summary': gate_summary,
             'portfolio_records': convert_portfolio_records_to_json(
                 portfolio_records,
                 start_idx=test_idx,
@@ -226,6 +244,12 @@ def test(func_args):
         print(f"Total steps: {test_results['summary']['total_steps']}")
         print(f"Final wealth: {test_results['summary']['final_wealth']:.4f}")
         print(f"Total return: {test_results['summary']['total_return']:.2%}")
+
+        # Print gate statistics if available
+        if gate_summary is not None:
+            print(f"\nGate Statistics (fusion_method=gate):")
+            print(f"  Overall mean: {gate_summary['overall_mean']:.4f}")
+            print(f"  (>0.5 = more ASU/price-volume, <0.5 = more News)")
 
     
     except KeyboardInterrupt:

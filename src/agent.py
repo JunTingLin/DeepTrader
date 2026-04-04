@@ -53,14 +53,22 @@ class RLActor(nn.Module):
                            temporal_attention_bool=args.temporal_attention_bool)
         self.args = args
 
-    def forward(self, x_a, x_m, masks=None, deterministic=False, logger=None, y=None, news_embeddings=None):
-        scores = self.asu(x_a, masks, news_embeddings=news_embeddings)
+    def forward(self, x_a, x_m, masks=None, deterministic=False, logger=None, y=None, news_embeddings=None, return_gate=False):
+        if return_gate:
+            scores, gate_values = self.asu(x_a, masks, news_embeddings=news_embeddings, return_gate=True)
+        else:
+            scores = self.asu(x_a, masks, news_embeddings=news_embeddings)
+            gate_values = None
+
         if self.args.msu_bool:
             res = self.msu(x_m)
             # res: (batch_size, 2)
         else:
             res = None
-        return self.__generator(scores, res, deterministic)
+        result = self.__generator(scores, res, deterministic)
+        if return_gate:
+            return result + (gate_values,)
+        return result
 
     def __generator(self, scores, res, deterministic=None):
         weights = np.zeros((scores.shape[0], 2 * scores.shape[1]))
@@ -299,7 +307,8 @@ class RLAgent():
         param1_record = []
         param2_record = []
         portfolio_records = []
-        
+        gate_record = []  # (num_steps, num_stocks)
+
         while True:
             steps += 1
 
@@ -318,8 +327,8 @@ class RLAgent():
             if self.actor.news_embedding_bool and len(states) > 2 and states[2] is not None:
                 news_embeddings = torch.from_numpy(states[2]).to(self.args.device)
 
-            weights, rho, _, _, portfolio_info, param1, param2 \
-                = self.actor(x_a, x_m, masks, deterministic=True, news_embeddings=news_embeddings)
+            weights, rho, _, _, portfolio_info, param1, param2, gate_values \
+                = self.actor(x_a, x_m, masks, deterministic=True, news_embeddings=news_embeddings, return_gate=True)
 
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
 
@@ -329,6 +338,13 @@ class RLAgent():
             else:
                 param1_record.append(None)
                 param2_record.append(None)
+
+            # Record gate values: (num_stocks,) for this step
+            if gate_values is not None:
+                # gate_values: (batch, num_stocks), take first batch (batch=1 in eval)
+                gate_record.append(gate_values[0].detach().cpu().numpy())
+            else:
+                gate_record.append(None)
 
             # Store portfolio info first (before step)
             portfolio_records.append(portfolio_info)
@@ -344,7 +360,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth, rho_record, param1_record, param2_record, portfolio_records
+        return agent_wealth, rho_record, param1_record, param2_record, portfolio_records, gate_record
 
     def test(self, logger=None):
         self.__set_test()
@@ -358,6 +374,7 @@ class RLAgent():
         param1_record = []
         param2_record = []
         portfolio_records = []
+        gate_record = []  # (num_steps, num_stocks)
 
         while True:
             steps += 1
@@ -377,8 +394,8 @@ class RLAgent():
             if self.actor.news_embedding_bool and len(states) > 2 and states[2] is not None:
                 news_embeddings = torch.from_numpy(states[2]).to(self.args.device)
 
-            weights, rho, _, _, portfolio_info, param1, param2 \
-                = self.actor(x_a, x_m, masks, deterministic=True, news_embeddings=news_embeddings)
+            weights, rho, _, _, portfolio_info, param1, param2, gate_values \
+                = self.actor(x_a, x_m, masks, deterministic=True, news_embeddings=news_embeddings, return_gate=True)
 
             rho_record.append(np.mean(rho.detach().cpu().numpy()))
 
@@ -388,6 +405,13 @@ class RLAgent():
             else:
                 param1_record.append(None)
                 param2_record.append(None)
+
+            # Record gate values: (num_stocks,) for this step
+            if gate_values is not None:
+                # gate_values: (batch, num_stocks), take first batch (batch=1 in test)
+                gate_record.append(gate_values[0].detach().cpu().numpy())
+            else:
+                gate_record.append(None)
 
             # Store portfolio info first (before step)
             portfolio_records.append(portfolio_info)
@@ -403,7 +427,7 @@ class RLAgent():
             if done:
                 break
 
-        return agent_wealth, rho_record, param1_record, param2_record, portfolio_records
+        return agent_wealth, rho_record, param1_record, param2_record, portfolio_records, gate_record
 
     def clip_grad_norms(self, param_groups, max_norm=math.inf):
         """

@@ -42,13 +42,20 @@ def validate(func_args):
         if news_embedding_bool:
             sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/DJIA/sentiment/')
             news_embedding_dim = getattr(func_args, 'news_embedding_dim', 768)
-            if news_embedding_dim != 768:
-                news_embeddings_file = os.path.join(sentiment_data_path, f'cls_embeddings_dim{news_embedding_dim}.npy')
+            news_embedding_zeroed = getattr(func_args, 'news_embedding_zeroed', False)
+            if news_embedding_zeroed:
+                if news_embedding_dim != 768:
+                    news_embeddings_file = os.path.join(sentiment_data_path, f'cls_embeddings_zeroed_dim{news_embedding_dim}.npy')
+                else:
+                    news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings_zeroed.npy')
             else:
-                news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+                if news_embedding_dim != 768:
+                    news_embeddings_file = os.path.join(sentiment_data_path, f'cls_embeddings_dim{news_embedding_dim}.npy')
+                else:
+                    news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
             if os.path.exists(news_embeddings_file):
                 news_embeddings = np.load(news_embeddings_file)
-                print(f'Loaded news embeddings: {news_embeddings.shape}')
+                print(f'Loaded news embeddings: {news_embeddings.shape} (zeroed={news_embedding_zeroed})')
             else:
                 print(f'Warning: News embeddings file not found: {news_embeddings_file}')
                 news_embedding_bool = False
@@ -69,13 +76,20 @@ def validate(func_args):
         if news_embedding_bool:
             sentiment_data_path = getattr(func_args, 'sentiment_data_path', 'src/data/TWII/sentiment/')
             news_embedding_dim = getattr(func_args, 'news_embedding_dim', 768)
-            if news_embedding_dim != 768:
-                news_embeddings_file = os.path.join(sentiment_data_path, f'cls_embeddings_dim{news_embedding_dim}.npy')
+            news_embedding_zeroed = getattr(func_args, 'news_embedding_zeroed', False)
+            if news_embedding_zeroed:
+                if news_embedding_dim != 768:
+                    news_embeddings_file = os.path.join(sentiment_data_path, f'cls_embeddings_zeroed_dim{news_embedding_dim}.npy')
+                else:
+                    news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings_zeroed.npy')
             else:
-                news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
+                if news_embedding_dim != 768:
+                    news_embeddings_file = os.path.join(sentiment_data_path, f'cls_embeddings_dim{news_embedding_dim}.npy')
+                else:
+                    news_embeddings_file = os.path.join(sentiment_data_path, 'cls_embeddings.npy')
             if os.path.exists(news_embeddings_file):
                 news_embeddings = np.load(news_embeddings_file)
-                print(f'Loaded news embeddings: {news_embeddings.shape}')
+                print(f'Loaded news embeddings: {news_embeddings.shape} (zeroed={news_embedding_zeroed})')
             else:
                 print(f'Warning: News embeddings file not found: {news_embeddings_file}')
                 news_embedding_bool = False
@@ -173,7 +187,7 @@ def validate(func_args):
     agent = RLAgent(env, actor, func_args)
 
     try:
-        agent_wealth, rho_record, param1_record, param2_record, portfolio_records = agent.evaluation()
+        agent_wealth, rho_record, param1_record, param2_record, portfolio_records, gate_record = agent.evaluation()
         npy_save_dir = os.path.join(PREFIX, 'npy_file')
         np.save(os.path.join(npy_save_dir, 'agent_wealth_val.npy'), agent_wealth)
 
@@ -186,12 +200,30 @@ def validate(func_args):
         else:  # normal
             param1_name, param2_name = 'mu_record', 'sigma_record'
 
+        # Process gate_record: (num_steps, num_stocks) or None for each step
+        gate_record_json = None
+        if gate_record and gate_record[0] is not None:
+            # Convert list of arrays to 2D list: (num_steps, num_stocks)
+            gate_record_json = [g.tolist() if g is not None else None for g in gate_record]
+            # Also compute summary statistics
+            gate_array = np.array([g for g in gate_record if g is not None])
+            gate_summary = {
+                'overall_mean': float(gate_array.mean()),
+                'per_stock_mean': gate_array.mean(axis=0).tolist(),
+                'per_step_mean': gate_array.mean(axis=1).tolist(),
+                'shape': list(gate_array.shape)
+            }
+        else:
+            gate_summary = None
+
         val_results = {
             'agent_wealth': agent_wealth.tolist(),
             'rho_record': [convert_to_native_type(r) for r in rho_record],
             param1_name: [convert_to_native_type(r) if r is not None else None for r in param1_record],
             param2_name: [convert_to_native_type(r) if r is not None else None for r in param2_record],
             'distribution_type': distribution_type,
+            'gate_record': gate_record_json,
+            'gate_summary': gate_summary,
             'portfolio_records': convert_portfolio_records_to_json(
                 portfolio_records,
                 start_idx=val_idx,
@@ -225,6 +257,12 @@ def validate(func_args):
         print(f"Total steps: {val_results['summary']['total_steps']}")
         print(f"Final wealth: {val_results['summary']['final_wealth']:.4f}")
         print(f"Total return: {val_results['summary']['total_return']:.2%}")
+
+        # Print gate statistics if available
+        if gate_summary is not None:
+            print(f"\nGate Statistics (fusion_method=gate):")
+            print(f"  Overall mean: {gate_summary['overall_mean']:.4f}")
+            print(f"  (>0.5 = more ASU/price-volume, <0.5 = more News)")
 
     
     except KeyboardInterrupt:
