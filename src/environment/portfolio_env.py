@@ -18,6 +18,7 @@ class DataGenerator():
                  train_idx,
                  train_idx_end,
                  val_idx,
+                 val_idx_end,
                  test_idx,
                  test_idx_end,
                  batch_size,
@@ -38,6 +39,7 @@ class DataGenerator():
         self.train_idx = train_idx
         self.train_idx_end = train_idx_end
         self.val_idx = val_idx
+        self.val_idx_end = val_idx_end
         self.test_idx = test_idx
         self.test_idx_end = test_idx_end
         self.batch_size = batch_size
@@ -110,7 +112,7 @@ class DataGenerator():
 
         self.cursor += self.trade_len
         if self.val_mode:
-            done = (self.cursor >= self.test_idx)
+            done = (self.cursor >= self.val_idx_end)
         elif self.test_mode:
             # done = (self.cursor >= self.__assets_data.shape[1] - 1)
             # 修改此處：當 cursor 大於或等於 test_idx_end 則結束
@@ -167,7 +169,7 @@ class DataGenerator():
 
         self.cursor += self.trade_len
         if self.val_mode:
-            done = (self.cursor >= self.test_idx + 1)
+            done = (self.cursor >= self.val_idx_end + 1)
         elif self.test_mode:
             # done = (self.cursor >= self.__assets_data.shape[1])
             # 修改此處：用 test_idx_end 判斷
@@ -320,10 +322,11 @@ class DataGenerator():
         self.train_idx += self.trade_len
         self.train_idx_end += self.trade_len
         self.val_idx += self.trade_len
+        self.val_idx_end += self.trade_len
         self.test_idx += self.trade_len
         self.test_idx_end += self.trade_len
 
-        self.train_set_len = self.val_idx - self.train_idx
+        self.train_set_len = self.train_idx_end - self.train_idx
         lower_bound = max(self.train_idx, 5*(self.window_len+1)-1)
         self.order_set = np.arange(lower_bound, self.train_idx_end - 6 * self.trade_len)
         # self.order_set = np.arange(self.train_idx, self.val_idx)
@@ -488,6 +491,7 @@ class PortfolioEnv(object):
                  train_idx,
                 train_idx_end,
                  val_idx,
+                 val_idx_end,
                  test_idx,
                  test_idx_end,
                  batch_size,
@@ -513,6 +517,7 @@ class PortfolioEnv(object):
         self.is_norm = is_norm
         self.train_idx = train_idx
         self.val_idx = val_idx
+        self.val_idx_end = val_idx_end
         self.test_idx = test_idx
         self.test_idx_end = test_idx_end
         self.allow_short = allow_short
@@ -521,7 +526,8 @@ class PortfolioEnv(object):
 
         self.src = DataGenerator(assets_data=assets_data, rtns_data=rtns_data, market_data=market_data,
                                  in_features=in_features, train_idx=train_idx, train_idx_end=train_idx_end,
-                                 val_idx=val_idx, test_idx=test_idx, test_idx_end=test_idx_end,
+                                 val_idx=val_idx, val_idx_end=val_idx_end, test_idx=test_idx,
+                                 test_idx_end=test_idx_end,
                                  batch_size=batch_size, max_steps=max_steps, norm_type=norm_type,
                                  window_len=window_len, trade_len=trade_len, allow_short=allow_short,
                                  logger=logger, news_embeddings=news_embeddings,

@@ -14,12 +14,13 @@ from agent import *
 from environment.portfolio_env import PortfolioEnv
 
 
-def validate(func_args):
+def test(func_args):
     if func_args.seed != -1:
         setup_seed(func_args.seed)
 
     data_prefix = func_args.data_prefix
     matrix_path = data_prefix + func_args.relation_file
+
 
     # Initialize news embeddings variable
     news_embeddings = None
@@ -87,18 +88,18 @@ def validate(func_args):
                 news_embedding_bool = False
     elif func_args.market == 'HSI':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
-        rate_of_return = np.load( data_prefix + 'ror.npy')
+        rate_of_return = np.load(data_prefix + 'ror.npy')
         market_history = np.load(data_prefix + 'market_data.npy')
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        val_idx = 4211
+        test_idx = 4211
         allow_short = getattr(func_args, 'allow_short', True)
 
     elif func_args.market == 'CSI100':
         stocks_data = np.load(data_prefix + 'stocks_data.npy')
         rate_of_return = np.load(data_prefix + 'ror.npy')
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        val_idx = 1944
+        test_idx = 1944
         market_history = None
         allow_short = getattr(func_args, 'allow_short', False)
 
@@ -180,9 +181,14 @@ def validate(func_args):
     agent = RLAgent(env, actor, func_args)
 
     try:
-        agent_wealth, rho_record, param1_record, param2_record, portfolio_records, gate_record = agent.evaluation()
+        result = agent.test()
+        if len(result) == 6:
+            agent_wealth, rho_record, param1_record, param2_record, portfolio_records, gate_record = result
+        else:
+            agent_wealth, rho_record, param1_record, param2_record, portfolio_records = result
+            gate_record = []
         npy_save_dir = os.path.join(PREFIX, 'npy_file')
-        np.save(os.path.join(npy_save_dir, 'agent_wealth_val.npy'), agent_wealth)
+        np.save(os.path.join(npy_save_dir, 'agent_wealth_test.npy'), agent_wealth)
 
         metrics = calculate_metrics(agent_wealth, func_args.trade_mode)
 
@@ -209,7 +215,7 @@ def validate(func_args):
         else:
             gate_summary = None
 
-        val_results = {
+        test_results = {
             'agent_wealth': agent_wealth.tolist(),
             'rho_record': [convert_to_native_type(r) for r in rho_record],
             param1_name: [convert_to_native_type(r) if r is not None else None for r in param1_record],
@@ -219,7 +225,7 @@ def validate(func_args):
             'gate_summary': gate_summary,
             'portfolio_records': convert_portfolio_records_to_json(
                 portfolio_records,
-                start_idx=val_idx,
+                start_idx=test_idx,
                 window_len=func_args.window_len,
                 trade_len=func_args.trade_len
             ),
@@ -239,17 +245,17 @@ def validate(func_args):
             }
         }
         
-        val_results_dir = os.path.join(PREFIX, 'json_file')
-        os.makedirs(val_results_dir, exist_ok=True)
-        json_file = os.path.join(val_results_dir, 'val_results.json')
+        test_results_dir = os.path.join(PREFIX, 'json_file')
+        os.makedirs(test_results_dir, exist_ok=True)
+        json_file = os.path.join(test_results_dir, 'test_results.json')
         with open(json_file, 'w', encoding='utf-8') as f:
-            json.dump(val_results, f, indent=2, ensure_ascii=False)
+            json.dump(test_results, f, indent=2, ensure_ascii=False)
         
-        print("Validation completed successfully!")
+        print("Test completed successfully!")
         print(f"Results saved to: {json_file}")
-        print(f"Total steps: {val_results['summary']['total_steps']}")
-        print(f"Final wealth: {val_results['summary']['final_wealth']:.4f}")
-        print(f"Total return: {val_results['summary']['total_return']:.2%}")
+        print(f"Total steps: {test_results['summary']['total_steps']}")
+        print(f"Final wealth: {test_results['summary']['final_wealth']:.4f}")
+        print(f"Total return: {test_results['summary']['total_return']:.2%}")
 
         # Print gate statistics if available
         if gate_summary is not None:
@@ -279,11 +285,11 @@ if __name__ == '__main__':
     parser.add_argument('--no_tfinmsu', dest='transformer_msu_bool', action='store_false', default=None)
     parser.add_argument('--prefix', type=str, help='Experiment output directory prefix')
     parser.add_argument('--model_path', type=str, help='Direct path to model file (e.g., src/outputs/0108/012635/model_file/best_cr-1200.pkl). If specified, overrides automatic model selection.')
-    parser.add_argument('--manual_rho', type=float, help='Fixed rho value for validation (overrides MSU predictions)')
-    parser.add_argument('--ground_truth_rho', type=str, help='Path to ground truth JSON file for rho values (e.g., data/fake/val_ground_truth.json)')
+    parser.add_argument('--manual_rho', type=float, help='Fixed rho value for testing (overrides MSU predictions)')
+    parser.add_argument('--ground_truth_rho', type=str, help='Path to ground truth JSON file for rho values (e.g., data/fake/test_ground_truth.json)')
 
     opts = parser.parse_args()
-
+    
     if opts.prefix:
         PREFIX = opts.prefix
     else:
@@ -323,4 +329,4 @@ if __name__ == '__main__':
     else:
         args.ground_truth_rho_values = None
 
-    validate(args)
+    test(args)

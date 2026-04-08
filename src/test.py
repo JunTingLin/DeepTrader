@@ -32,11 +32,7 @@ def test(func_args):
         market_history = np.load(data_prefix + 'market_data.npy')
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        train_idx = func_args.train_idx
-        train_idx_end = func_args.train_idx_end
-        val_idx = func_args.val_idx
-        test_idx = func_args.test_idx
-        test_idx_end = func_args.test_idx_end
+        train_idx, train_idx_end, val_idx, val_idx_end, test_idx, test_idx_end = resolve_split_indices(func_args)
         allow_short = getattr(func_args, 'allow_short', True)
 
         # Load news embeddings (Path B) if enabled
@@ -59,11 +55,7 @@ def test(func_args):
         market_history = np.load(data_prefix + 'market_data.npy')
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        train_idx = func_args.train_idx
-        train_idx_end = func_args.train_idx_end
-        val_idx = func_args.val_idx
-        test_idx = func_args.test_idx
-        test_idx_end = func_args.test_idx_end
+        train_idx, train_idx_end, val_idx, val_idx_end, test_idx, test_idx_end = resolve_split_indices(func_args)
         allow_short = getattr(func_args, 'allow_short', True)
 
         # Load news embeddings (Path B) if enabled
@@ -122,6 +114,7 @@ def test(func_args):
         train_idx=train_idx,
         train_idx_end=train_idx_end,
         val_idx=val_idx,
+        val_idx_end=val_idx_end,
         test_idx=test_idx,
         test_idx_end=test_idx_end,
         batch_size=func_args.batch_size,

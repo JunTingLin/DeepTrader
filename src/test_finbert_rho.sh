@@ -6,7 +6,7 @@
 #
 # This script:
 # 1. Backs up original val_results.json and test_results.json (if they exist)
-# 2. Reads hyper.json to determine val_idx, test_idx, test_idx_end
+# 2. Reads hyper.json to determine val_idx, val_idx_end, test_idx, test_idx_end
 # 3. Finds corresponding FinBERT rho files based on index ranges
 # 4. Runs validation and test with FinBERT rho
 
@@ -43,6 +43,7 @@ fi
 
 # Extract values from hyper.json using python
 VAL_IDX=$(python3 -c "import json; print(json.load(open('$HYPER_FILE'))['val_idx'])")
+VAL_IDX_END=$(python3 -c "import json; d=json.load(open('$HYPER_FILE')); print(d.get('val_idx_end', d['test_idx']))")
 TEST_IDX=$(python3 -c "import json; print(json.load(open('$HYPER_FILE'))['test_idx'])")
 TEST_IDX_END=$(python3 -c "import json; print(json.load(open('$HYPER_FILE'))['test_idx_end'])")
 DATA_PREFIX=$(python3 -c "import json; print(json.load(open('$HYPER_FILE'))['data_prefix'])")
@@ -52,7 +53,7 @@ echo "FinBERT Rho Testing"
 echo "============================================"
 echo "Experiment: $EXPERIMENT_PREFIX"
 echo "Data prefix: $DATA_PREFIX"
-echo "Val range: $VAL_IDX - $TEST_IDX"
+echo "Val range: $VAL_IDX - $VAL_IDX_END"
 echo "Test range: $TEST_IDX - $TEST_IDX_END"
 echo "Mode: $MODE"
 echo "Window days: $WINDOW_DAYS"
@@ -72,7 +73,7 @@ if [ -f "$JSON_DIR/test_results.json" ] && [ ! -f "$JSON_DIR/test_results_origin
 fi
 
 # Construct FinBERT rho file paths based on index ranges
-FINBERT_RHO_VAL_FILE="${DATA_PREFIX}finbert_rho_${VAL_IDX}-${TEST_IDX}_mode-${MODE}_window-${WINDOW_DAYS}.json"
+FINBERT_RHO_VAL_FILE="${DATA_PREFIX}finbert_rho_${VAL_IDX}-${VAL_IDX_END}_mode-${MODE}_window-${WINDOW_DAYS}.json"
 FINBERT_RHO_TEST_FILE="${DATA_PREFIX}finbert_rho_${TEST_IDX}-${TEST_IDX_END}_mode-${MODE}_window-${WINDOW_DAYS}.json"
 
 echo ""

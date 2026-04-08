@@ -304,9 +304,9 @@ def compute_correlation_metrics(experiment_id, outputs_base_path, period='test')
 
     # Get date range for the period
     if period == 'val':
-        date_start_idx = config['train_end']
+        date_start_idx = config.get('val_start', config['train_end'])
     else:  # test
-        date_start_idx = config['val_end']
+        date_start_idx = config.get('test_start', config.get('test_idx', config['val_end']))
 
     # Collect scores and returns for all stocks
     all_scores = []
@@ -680,9 +680,9 @@ def compute_prediction_accuracy(experiment_id, outputs_base_path, period='test')
 
     # Get date range for the period
     if period == 'val':
-        date_start_idx = config['train_end']
+        date_start_idx = config.get('val_start', config['train_end'])
     else:  # test
-        date_start_idx = config['val_end']
+        date_start_idx = config.get('test_start', config.get('test_idx', config['val_end']))
 
     # Initialize counters for Overall precision calculation
     long_correct = 0  # TP for long (predicted long and actually went up)

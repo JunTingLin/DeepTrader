@@ -65,10 +65,10 @@ def plot_stock_price_trends(experiment_id, outputs_base_path, stock_symbols, per
 
     # Get date range for the period
     if period == 'val':
-        date_start_idx = config['train_end']
+        date_start_idx = config.get('val_start', config['train_end'])
         date_end_idx = config['val_end']
     else:  # test
-        date_start_idx = config['val_end'] 
+        date_start_idx = config.get('test_start', config.get('test_idx', config['val_end']))
         date_end_idx = config['test_end']
     
     # Create output directory for stock price plots
@@ -527,9 +527,9 @@ def plot_msu_step_analysis(experiment_id, outputs_base_path, sample_dates, perio
     
     # Get date range for the period
     if period == 'val':
-        date_start_idx = config['train_end']
+        date_start_idx = config.get('val_start', config['train_end'])
     else:  # test
-        date_start_idx = config['val_end'] 
+        date_start_idx = config.get('test_start', config.get('test_idx', config['val_end']))
     
     # Generate business day range for the entire dataset
     full_dates = load_trading_dates()
@@ -908,9 +908,9 @@ def plot_all_steps_score_scatter(experiment_id, outputs_base_path, stock_symbols
 
     # Get date range for the period
     if period == 'val':
-        date_start_idx = config['train_end']
+        date_start_idx = config.get('val_start', config['train_end'])
     else:  # test
-        date_start_idx = config['val_end']
+        date_start_idx = config.get('test_start', config.get('test_idx', config['val_end']))
 
     # Collect all data points across all steps
     all_scores = []
@@ -1153,9 +1153,9 @@ def plot_rho_with_market_trend(experiment_id, outputs_base_path, sample_dates, p
 
     # Get the date range for this period
     if period == 'val':
-        date_start_idx = config['train_end']
+        date_start_idx = config.get('val_start', config['train_end'])
     else:  # test
-        date_start_idx = config['val_end']
+        date_start_idx = config.get('test_start', config.get('test_idx', config['val_end']))
 
     # Extract DJIA opening prices: initial + after each step (n_steps + 1 points total)
     # This matches plot_market_profit_heatmap logic: wealth has n_steps values

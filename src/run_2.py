@@ -96,11 +96,7 @@ def run(func_args):
         market_history = np.load(data_prefix + 'market_data.npy')
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        train_idx = func_args.train_idx
-        train_idx_end = func_args.train_idx_end
-        val_idx = func_args.val_idx
-        test_idx = func_args.test_idx
-        test_idx_end = func_args.test_idx_end
+        train_idx, train_idx_end, val_idx, val_idx_end, test_idx, test_idx_end = resolve_split_indices(func_args)
         allow_short = getattr(func_args, 'allow_short', True)
 
         # Load news embeddings (Path B) if enabled
@@ -122,11 +118,7 @@ def run(func_args):
         market_history = np.load(data_prefix + 'market_data.npy')
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        train_idx = func_args.train_idx
-        train_idx_end = func_args.train_idx_end
-        val_idx = func_args.val_idx
-        test_idx = func_args.test_idx
-        test_idx_end = func_args.test_idx_end
+        train_idx, train_idx_end, val_idx, val_idx_end, test_idx, test_idx_end = resolve_split_indices(func_args)
         allow_short = getattr(func_args, 'allow_short', True)
 
         # Load news embeddings (Path B) if enabled
@@ -148,11 +140,7 @@ def run(func_args):
         market_history = np.load(data_prefix + 'market_data.npy')
         assert stocks_data.shape[:-1] == rate_of_return.shape, 'file size error'
         A = torch.from_numpy(np.load(matrix_path)).float().to(func_args.device)
-        train_idx = func_args.train_idx
-        train_idx_end = func_args.train_idx_end
-        val_idx = func_args.val_idx
-        test_idx = func_args.test_idx
-        test_idx_end = func_args.test_idx_end
+        train_idx, train_idx_end, val_idx, val_idx_end, test_idx, test_idx_end = resolve_split_indices(func_args)
         allow_short = getattr(func_args, 'allow_short', True)
         # News embeddings not supported for HSI/CSI100 yet
         news_embedding_bool = False
@@ -194,7 +182,10 @@ def run(func_args):
     logger.warning(f"Fine-tune epochs (Cycle 1+): {finetune_epochs}")
     logger.warning(f"Fine-tune LR decay: {finetune_lr_decay}x")
     logger.warning(f"Window shift per cycle: {func_args.trade_len} days")
-    logger.warning(f"Initial indices: train=[{train_idx}, {train_idx_end}), val={val_idx}, test=[{test_idx}, {test_idx_end})")
+    logger.warning(
+        f"Initial indices: train=[{train_idx}, {train_idx_end}), "
+        f"val=[{val_idx}, {val_idx_end}), test=[{test_idx}, {test_idx_end})"
+    )
     if news_embedding_bool:
         logger.warning(f"News embedding: ENABLED (shape={news_embeddings.shape})")
         logger.warning(f"  Fusion method: {getattr(func_args, 'fusion_method', 'concat')}")
@@ -211,6 +202,7 @@ def run(func_args):
         train_idx=train_idx,
         train_idx_end=train_idx_end,
         val_idx=val_idx,
+        val_idx_end=val_idx_end,
         test_idx=test_idx,
         test_idx_end=test_idx_end,
         batch_size=func_args.batch_size,
@@ -294,7 +286,7 @@ def run(func_args):
             logger.warning(f"  Epochs: {epochs_this_cycle}")
         logger.warning(f"  Learning rate: {current_lr}")
         logger.warning(f"  train_idx: [{env.src.train_idx}, {env.src.train_idx_end})")
-        logger.warning(f"  val_idx: {env.src.val_idx}")
+        logger.warning(f"  val_idx: [{env.src.val_idx}, {env.src.val_idx_end})")
         logger.warning(f"  test_idx: [{env.src.test_idx}, {env.src.test_idx_end})")
         logger.warning("=" * 70)
 
@@ -355,7 +347,8 @@ def run(func_args):
                 },
                 'window_info': {
                     'train_idx': env.src.train_idx, 'train_idx_end': env.src.train_idx_end,
-                    'val_idx': env.src.val_idx, 'test_idx': env.src.test_idx, 'test_idx_end': env.src.test_idx_end
+                    'val_idx': env.src.val_idx, 'val_idx_end': env.src.val_idx_end,
+                    'test_idx': env.src.test_idx, 'test_idx_end': env.src.test_idx_end
                 }
             }
             with open(os.path.join(json_save_dir, 'val_results_cycle0.json'), 'w', encoding='utf-8') as f:
@@ -462,6 +455,7 @@ def run(func_args):
                         'train_idx': env.src.train_idx,
                         'train_idx_end': env.src.train_idx_end,
                         'val_idx': env.src.val_idx,
+                        'val_idx_end': env.src.val_idx_end,
                         'test_idx': env.src.test_idx,
                         'test_idx_end': env.src.test_idx_end
                     }
@@ -554,6 +548,7 @@ def run(func_args):
                 'train_idx': env.src.train_idx,
                 'train_idx_end': env.src.train_idx_end,
                 'val_idx': env.src.val_idx,
+                'val_idx_end': env.src.val_idx_end,
                 'test_idx': env.src.test_idx,
                 'test_idx_end': env.src.test_idx_end
             }
@@ -593,10 +588,11 @@ def run(func_args):
                 # Expanding window: only shift end indices, keep train_idx at 0
                 env.src.train_idx_end += func_args.trade_len
                 env.src.val_idx += func_args.trade_len
+                env.src.val_idx_end += func_args.trade_len
                 env.src.test_idx += func_args.trade_len
                 env.src.test_idx_end += func_args.trade_len
                 # Update order_set for new training range
-                env.src.train_set_len = env.src.val_idx - env.src.train_idx
+                env.src.train_set_len = env.src.train_idx_end - env.src.train_idx
                 lower_bound = max(env.src.train_idx, 5 * (env.src.window_len + 1) - 1)
                 env.src.order_set = np.arange(lower_bound, env.src.train_idx_end - 6 * func_args.trade_len)
                 env.src.tmp_order = np.array([])

@@ -47,6 +47,7 @@
     "train_idx": 0,
     "train_idx_end": 1224,
     "val_idx": 1224,
+    "val_idx_end": 1953,
     "test_idx": 1953,
     "test_idx_end": 1974,
 

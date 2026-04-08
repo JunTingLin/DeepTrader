@@ -311,6 +311,10 @@ def compute_ground_truth_main(args):
     print(f"Trade length: {args.trade_len} days")
     print()
 
+    val_idx_end = getattr(args, 'val_idx_end', None)
+    if val_idx_end is None:
+        val_idx_end = args.test_idx
+
     # Load data
     if args.module == 'msu':
         data_path = os.path.join(args.data_dir, args.market_data_file)
@@ -340,7 +344,7 @@ def compute_ground_truth_main(args):
             step = args.train_step
         elif split == 'val':
             start_idx = args.val_idx
-            end_idx = args.test_idx
+            end_idx = val_idx_end
             step = args.val_step
         else:  # test
             start_idx = args.test_idx
@@ -419,6 +423,8 @@ if __name__ == '__main__':
                         help='Training end index (e.g., 1304)')
     parser.add_argument('--val_idx', type=int, required=True,
                         help='Validation start index (e.g., 1304)')
+    parser.add_argument('--val_idx_end', type=int, default=None,
+                        help='Validation end index, exclusive (default: test_idx for contiguous splits)')
     parser.add_argument('--test_idx', type=int, required=True,
                         help='Test start index (e.g., 2087)')
     parser.add_argument('--test_idx_end', type=int, required=True,

@@ -16,7 +16,7 @@ import os
 import numpy as np
 import random
 from utils.parse_config import ConfigParser
-from utils.functions import convert_to_native_type, calculate_metrics, setup_seed
+from utils.functions import convert_to_native_type, calculate_metrics, resolve_split_indices, setup_seed
 from environment.portfolio_env import PortfolioSim
 
 
@@ -49,13 +49,15 @@ def random_portfolio_test(func_args, period='test'):
     num_stocks = stocks_data.shape[0]
     print(f"Number of stocks: {num_stocks}")
 
+    _, _, val_idx, val_idx_end, test_idx, test_idx_end = resolve_split_indices(func_args)
+
     # Get period indices based on period argument
     if period == 'val':
-        period_idx = func_args.val_idx
-        period_idx_end = func_args.test_idx  # val ends where test begins
+        period_idx = val_idx
+        period_idx_end = val_idx_end
     else:  # test
-        period_idx = func_args.test_idx
-        period_idx_end = func_args.test_idx_end
+        period_idx = test_idx
+        period_idx_end = test_idx_end
 
     trade_len = func_args.trade_len
     G = func_args.G  # Number of stocks to long/short

@@ -7,6 +7,36 @@ import torch
 switch2days = {'D': 1, 'W': 5, 'M': 21}
 
 
+def resolve_split_indices(config):
+    """Resolve split indices with backward compatibility for contiguous configs."""
+    train_idx = config.train_idx
+    train_idx_end = config.train_idx_end
+    val_idx = config.val_idx
+    val_idx_end = getattr(config, 'val_idx_end', None)
+    test_idx = config.test_idx
+    test_idx_end = config.test_idx_end
+
+    if val_idx_end is None:
+        val_idx_end = test_idx
+
+    if train_idx > train_idx_end:
+        raise ValueError(f'Invalid training split: [{train_idx}, {train_idx_end})')
+    if val_idx > val_idx_end:
+        raise ValueError(f'Invalid validation split: [{val_idx}, {val_idx_end})')
+    if test_idx > test_idx_end:
+        raise ValueError(f'Invalid test split: [{test_idx}, {test_idx_end})')
+    if train_idx_end > val_idx:
+        raise ValueError(
+            f'Validation starts before training ends: train_end={train_idx_end}, val_start={val_idx}'
+        )
+    if val_idx_end > test_idx:
+        raise ValueError(
+            f'Test starts before validation ends: val_end={val_idx_end}, test_start={test_idx}'
+        )
+
+    return train_idx, train_idx_end, val_idx, val_idx_end, test_idx, test_idx_end
+
+
 def convert_to_native_type(obj):
     """Convert numpy types to native Python types for JSON serialization"""
     if isinstance(obj, np.integer):

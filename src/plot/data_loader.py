@@ -66,9 +66,15 @@ def get_business_day_segments(trading_dates_file=None):
 
     # Support train_start for data that starts before training period (e.g., 2013-2025 data with 2016 training start)
     train_start = config.get('train_start', 0)
-    train_days = full_days[train_start:config['train_end']]
-    val_days = full_days[config['train_end']:config['val_end']]
-    test_days = full_days[config['val_end']:config['test_end']]
+    train_end = config['train_end']
+    val_start = config.get('val_start', train_end)
+    val_end = config['val_end']
+    test_start = config.get('test_start', config.get('test_idx', val_end))
+    test_end = config['test_end']
+
+    train_days = full_days[train_start:train_end]
+    val_days = full_days[val_start:val_end]
+    test_days = full_days[test_start:test_end]
 
     print(f"Training days: {len(train_days)} (from index {train_start})")
     print(f"Validation days: {len(val_days)}")

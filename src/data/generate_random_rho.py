@@ -10,6 +10,7 @@ Usage:
       --window_len 13 \
       --trade_len 21 \
       --val_idx 1304 \
+      --val_idx_end 2087 \
       --test_idx 2087 \
       --test_idx_end 2673 \
       --seed 42
@@ -120,6 +121,8 @@ def main():
     # Data split indices (required)
     parser.add_argument('--val_idx', type=int, required=True,
                         help='Validation start index (e.g., 1304)')
+    parser.add_argument('--val_idx_end', type=int, default=None,
+                        help='Validation end index, exclusive (default: test_idx for contiguous splits)')
     parser.add_argument('--test_idx', type=int, required=True,
                         help='Test start index (e.g., 2087)')
     parser.add_argument('--test_idx_end', type=int, required=True,
@@ -145,12 +148,14 @@ def main():
     print(f"Random seed: {args.seed}")
     print()
 
+    val_idx_end = args.val_idx_end if args.val_idx_end is not None else args.test_idx
+
     # Generate files
     if args.period in ['val', 'both']:
         val_path = generate_random_rho_file(
             args.data_dir,
             args.val_idx,
-            args.test_idx,  # val ends where test begins
+            val_idx_end,
             args.window_len,
             args.trade_len,
             args.seed,
