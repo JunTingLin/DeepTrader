@@ -169,7 +169,9 @@ MARKET_CONFIGS = {
         'title': 'DeepTrader vs. DIA',
         'train_start': 756,
         'train_end': 2015,
+        'val_start': 2015,
         'val_end': 2768,
+        'test_start': 2768,
         'test_end': 3270,
         'experiment_ids': [
 
@@ -182,25 +184,30 @@ MARKET_CONFIGS = {
     },
     'TW': {
         'name': 'Taiwan',
-        'start_date': "2014-01-01",
-        'end_date': "2023-12-31",
+        'start_date': "2013-01-01",
+        'end_date': "2025-12-31",
         'market_file': "./src/data/TWII/market_data/0050_finlab_adj.csv",  # 0050 ETF (FinLab adjusted price)
         'stock_symbols': TWII_STOCKS,
         'benchmark_column': '0050',
         'benchmark_label': '0050',
         'title': 'DeepTrader vs. 0050',
-        'train_start': 246,
-        'train_end': 1475,
-        'val_end': 2206,
-        'test_end': 2691,
-        'asset_indices': None,
+        'train_start': 738,
+        'train_end': 1962,
+        'val_start': 1962,
+        'val_end': 2691,
+        'test_start': 2691,
+        'test_end': 3176,
+        'asset_indices': [1, 2, 3, 7, 8, 9, 10, 11, 13, 16, 19, 20, 21, 22, 25, 26, 27, 28, 29, 30, 31, 32],
         'experiment_ids': [
-            # '0307/212527',
+            # ASU only + FinBERT Rho (22支)
+            '0325/154254',
+            '0325/154302',
+            '0325/154318',
         ],
         'plot_ylim': None,
         'json_files': {
-            'test_results': 'test_results.json',
-            'val_results': 'val_results.json'
+            'test_results': 'test_results_finbert_rho_mode-positive_prob_window-5.json',
+            'val_results': 'val_results_finbert_rho_mode-positive_prob_window-5.json'
         }
     },
     'FAKE': {
@@ -268,7 +275,7 @@ else:  # TW
     MARKET_DATA_PATH = 'src/data/TWII/feature5-sc47-2013-2025-finlab/market_data.npy'
     GROUND_TRUTH_PREFIX = 'src/data/TWII/feature5-sc47-2013-2025-finlab'
     STOCK_PRICE_INDEX = 0     # Close price index (OHLCV: 0,1,2,3,4)
-    MARKET_PRICE_INDEX = 0
+    MARKET_PRICE_INDEX = 0    # Open price for benchmark (OHLC: 0,1,2,3)
 
 # -------------------------------
 # Plotting Style Configuration
