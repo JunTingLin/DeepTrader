@@ -57,8 +57,8 @@
     "msu_distribution_type": "normal",
     "pretrained_msu_path": null,
     "resume": null,
-    "freeze_asu": false,
-    "pretrained_asu_path": null,
+    "freeze_asu": true,
+    "pretrained_asu_path": "src/outputs/0315/132751",
 
     "news_embedding_bool": true,
     "fusion_method": "gate",

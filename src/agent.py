@@ -175,11 +175,18 @@ class RLAgent():
 
         # Choose which parameters to optimize
         if freeze_asu:
-            # MSU-only training: only optimize MSU parameters
-            if not hasattr(self.actor, 'msu'):
-                raise ValueError('freeze_asu=True but actor has no MSU module')
-            params_to_optimize = self.actor.msu.parameters()
-            print(f'[RLAgent] freeze_asu=True: Only optimizing MSU parameters')
+            # Frozen-ASU training: optimize news_integration (and MSU if present)
+            # ASU core is frozen; only news_integration + MSU receive gradient updates
+            trainable = []
+            if hasattr(self.actor, 'asu') and hasattr(self.actor.asu, 'news_integration'):
+                trainable.extend(self.actor.asu.news_integration.parameters())
+                print(f'[RLAgent] freeze_asu=True: Optimizing news_integration parameters')
+            if hasattr(self.actor, 'msu'):
+                trainable.extend(self.actor.msu.parameters())
+                print(f'[RLAgent] freeze_asu=True: Also optimizing MSU parameters')
+            if not trainable:
+                raise ValueError('freeze_asu=True but actor has neither news_integration nor MSU to train')
+            params_to_optimize = trainable
         else:
             # Normal training: optimize all parameters
             params_to_optimize = self.actor.parameters()
@@ -258,12 +265,18 @@ class RLAgent():
 
                 # Calculate ASU loss (skip if ASU is frozen)
                 if self.freeze_asu:
-                    # MSU-only training: only compute MSU loss
-                    loss_asu_val = 0.0
-                    gradient_rho = (rewards_mdd * steps_log_p_rho)
-                    loss_msu = - (self.args.gamma * gradient_rho)
-                    loss_msu_val = loss_msu.mean().item()
-                    loss = loss_msu
+                    # ASU core is frozen; news_integration (and MSU if present) are trainable.
+                    # Always include ASU loss so gradients flow through news_integration.
+                    loss_asu = - gradient_asu
+                    loss_asu_val = loss_asu.mean().item()
+                    if self.args.msu_bool:
+                        gradient_rho = (rewards_mdd * steps_log_p_rho)
+                        loss_msu = - (self.args.gamma * gradient_rho)
+                        loss_msu_val = loss_msu.mean().item()
+                        loss = loss_asu + loss_msu
+                    else:
+                        loss_msu_val = 0.0
+                        loss = loss_asu
                 elif self.args.msu_bool:
                     # Joint training: compute both ASU and MSU loss
                     loss_asu = - gradient_asu

@@ -114,32 +114,50 @@ def load_and_freeze_asu(actor, checkpoint_path, logger):
     # Load the pretrained model
     pretrained_actor = torch.load(checkpoint_path, map_location=actor.args.device, weights_only=False)
 
-    # Copy ASU weights from pretrained model to current actor
-    actor.asu.load_state_dict(pretrained_actor.asu.state_dict())
-    logger.warning('✅ Successfully loaded pretrained ASU weights')
+    # Copy ASU core weights from pretrained model, skipping news_integration
+    # (news_integration is what we're training — its architecture may differ or not exist in the checkpoint)
+    pretrained_state = pretrained_actor.asu.state_dict()
+    core_state = {k: v for k, v in pretrained_state.items() if not k.startswith('news_integration.')}
+    missing, unexpected = actor.asu.load_state_dict(core_state, strict=False)
+    # Only fail on missing core keys (news_integration missing/unexpected is expected)
+    missing_core = [k for k in missing if not k.startswith('news_integration.')]
+    if missing_core:
+        raise RuntimeError(f'Missing core ASU keys in checkpoint: {missing_core}')
+    logger.warning(f'✅ Successfully loaded pretrained ASU core weights')
+    if missing:
+        logger.warning(f'   news_integration keys not loaded (will train from scratch): {len(missing)} keys')
 
-    # Freeze ASU parameters
+    # Freeze ASU core parameters, but leave news_integration trainable
+    news_integration_params = set()
+    if hasattr(actor.asu, 'news_integration'):
+        for param in actor.asu.news_integration.parameters():
+            news_integration_params.add(id(param))
+
     frozen_params = 0
     for param in actor.asu.parameters():
-        param.requires_grad = False
-        frozen_params += param.numel()
+        if id(param) not in news_integration_params:
+            param.requires_grad = False
+            frozen_params += param.numel()
 
-    # Lock ASU in eval mode to prevent BatchNorm from updating running statistics
-    # This uses the ASU class's built-in freeze_eval_mode() method which is pickleable
+    # Lock ASU in eval mode to prevent BatchNorm running statistics from updating.
+    # news_integration will still receive gradients; only core ASU submodules are frozen.
     actor.asu.freeze_eval_mode()
 
-    logger.warning(f'✅ Frozen {frozen_params:,} ASU parameters')
+    logger.warning(f'✅ Frozen {frozen_params:,} ASU core parameters')
+    if news_integration_params:
+        ni_params = sum(p.numel() for p in actor.asu.news_integration.parameters())
+        logger.warning(f'✅ news_integration kept trainable ({ni_params:,} parameters)')
     logger.warning(f'✅ ASU locked in eval mode (BatchNorm stats frozen)')
 
-    # Count trainable parameters (should only be MSU)
+    # Count trainable parameters (should only be news_integration, and MSU if enabled)
     trainable_params = sum(p.numel() for p in actor.parameters() if p.requires_grad)
     total_params = sum(p.numel() for p in actor.parameters())
 
     logger.warning(f'   Total parameters:     {total_params:,}')
-    logger.warning(f'   Trainable parameters: {trainable_params:,} (MSU only)')
-    logger.warning(f'   Frozen parameters:    {total_params - trainable_params:,} (ASU)')
+    logger.warning(f'   Trainable parameters: {trainable_params:,} (news_integration + MSU if enabled)')
+    logger.warning(f'   Frozen parameters:    {total_params - trainable_params:,} (ASU core)')
     logger.warning('='*80)
-    logger.warning('ASU frozen. Only MSU will be trained via RL.')
+    logger.warning('ASU core frozen. Only news_integration (and MSU if enabled) will be trained via RL.')
     logger.warning('='*80)
 
 
@@ -361,8 +379,6 @@ def run(func_args):
         pretrained_asu_path = getattr(func_args, 'pretrained_asu_path', None)
         if pretrained_asu_path is None:
             raise ValueError('--freeze_asu requires --pretrained_asu_path to be specified')
-        if not func_args.msu_bool:
-            raise ValueError('--freeze_asu requires --msu_bool to be True (MSU must be enabled)')
         load_and_freeze_asu(actor, pretrained_asu_path, logger)
 
     agent = RLAgent(env, actor, func_args, freeze_asu=freeze_asu)
