@@ -206,6 +206,53 @@ class FusionGate(nn.Module):
         return fused
 
 
+class FusionGMU(nn.Module):
+    """
+    Original Gated Multimodal Unit (GMU) from Arevalo et al. (2017).
+    "Gated Multimodal Units for Information Fusion", arXiv:1702.01992.
+
+    Gate:   z = σ(W_z [v; n])               — single linear layer
+    Output: h = z ⊙ tanh(W_v v) + (1-z) ⊙ tanh(W_n n)
+
+    Difference from FusionGate:
+    - Gate is a single Linear (no hidden layer, no LN/GELU)
+    - Both modalities are passed through tanh projections before gating
+    """
+
+    def __init__(self, hidden_dim: int = 128, dropout: float = 0.1):
+        super(FusionGMU, self).__init__()
+
+        # Single linear gate: [v; n] → z  (original GMU, no hidden layer)
+        self.gate = nn.Linear(hidden_dim * 2, hidden_dim)
+
+        # Tanh projections for each modality (original GMU)
+        self.proj_v = nn.Linear(hidden_dim, hidden_dim)
+        self.proj_n = nn.Linear(hidden_dim, hidden_dim)
+
+        self.norm = nn.LayerNorm(hidden_dim)
+
+    def forward(self, asu_out: torch.Tensor, news_out: torch.Tensor, return_gate: bool = False):
+        """
+        Args:
+            asu_out:  (batch, num_stocks, hidden_dim) — price/volume features (v)
+            news_out: (batch, num_stocks, hidden_dim) — news features (n)
+            return_gate: if True, also return gate values averaged over hidden_dim
+        Returns:
+            if return_gate: (fused, gate_values) where gate_values is (batch, num_stocks)
+            else: fused only
+        """
+        combined = torch.cat([asu_out, news_out], dim=-1)  # (batch, num_stocks, hidden_dim*2)
+        z = torch.sigmoid(self.gate(combined))              # (batch, num_stocks, hidden_dim)
+
+        h = z * torch.tanh(self.proj_v(asu_out)) + (1 - z) * torch.tanh(self.proj_n(news_out))
+        h = self.norm(h)
+
+        if return_gate:
+            gate_values = z.mean(dim=-1)  # (batch, num_stocks)
+            return h, gate_values
+        return h
+
+
 class FusionCrossAttention(nn.Module):
     """
     Cross-attention fusion: News attends to ASU features.
@@ -312,7 +359,8 @@ def get_fusion_module(
     fusion_methods = {
         'concat': FusionConcat,
         'add': FusionAdd,
-        'gate': FusionGate,
+        'gmu': FusionGMU,       # original GMU (Arevalo et al., 2017)
+        'gate': FusionGate,     # enhanced GMU (2-layer MLP + LN + GELU)
         'cross_attn': FusionCrossAttention,
     }
 
@@ -324,6 +372,7 @@ def get_fusion_module(
         return FusionCrossAttention(hidden_dim=hidden_dim, num_heads=num_heads, dropout=dropout)
     else:
         return fusion_methods[fusion_method](hidden_dim=hidden_dim, dropout=dropout)
+
 
 
 class NewsIntegrationModule(nn.Module):
@@ -407,7 +456,7 @@ if __name__ == "__main__":
     news_embeddings = torch.randn(batch_size, num_stocks, window_len, embedding_dim)
 
     print("Testing fusion methods:")
-    for fusion_method in ['concat', 'add', 'gate', 'cross_attn']:
+    for fusion_method in ['concat', 'add', 'gmu', 'gate', 'cross_attn']:
         module = NewsIntegrationModule(
             embedding_dim=embedding_dim,
             hidden_dim=hidden_dim,
