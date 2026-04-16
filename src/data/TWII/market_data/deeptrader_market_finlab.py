@@ -28,11 +28,11 @@ if not FINLAB_API_KEY:
 finlab.login(FINLAB_API_KEY)
 
 # Define date range constants
-START_DATE = '2013-01-01'
+START_DATE = '2008-01-01'
 END_DATE = '2025-12-31'
 
 # Feature mode: 'basic' for 0050 OHLC only, 'full' for all market features
-FEATURE_MODE = 'full'
+FEATURE_MODE = 'basic'
 
 
 # Function to process bond data files
